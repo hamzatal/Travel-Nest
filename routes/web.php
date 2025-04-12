@@ -5,16 +5,18 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\AboutController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
+    return Inertia::render('Home', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
         'auth' => Auth::check() ? ['user' => Auth::user()] : [],
     ]);
-})->name('welcome');
+})->name('Home');
 
 Route::get('/destinations', function () {
     return Inertia::render('Destinations', [
@@ -22,17 +24,10 @@ Route::get('/destinations', function () {
     ]);
 })->name('destinations');
 
-Route::get('/about', function () {
-    return Inertia::render('About', [
-        'auth' => Auth::check() ? ['user' => Auth::user()] : [],
-    ]);
-})->name('about');
+Route::get('/about', [AboutController::class, 'index'])->name('about.index');
 
-Route::get('/contact', function () {
-    return Inertia::render('Contact', [
-        'auth' => Auth::check() ? ['user' => Auth::user()] : [],
-    ]);
-})->name('contact');
+Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
+Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {

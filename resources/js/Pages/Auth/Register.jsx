@@ -1,120 +1,261 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+// resources/js/Pages/Register.jsx
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MapPin, Lock, Eye, EyeOff, User, LogIn, Home } from "lucide-react";
+import { Head, Link, useForm } from "@inertiajs/react";
 
-export default function Register() {
-    const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
+const RegisterPage = () => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  const { data, setData, post, processing, errors, reset, setError, clearErrors } =
+    useForm({
+      name: "",
+      email: "",
+      password: "",
+      password_confirmation: "",
     });
 
-    const submit = (e) => {
-        e.preventDefault();
+  useEffect(() => {
+    return () => reset("password", "password_confirmation");
+  }, []);
 
-        post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
-        });
-    };
+  const validate = () => {
+    const newErrors = {};
+    if (!data.name) newErrors.name = "Name is required";
+    else if (data.name.length < 2)
+      newErrors.name = "Name must be at least 2 characters";
+    else if (data.name.length > 50)
+      newErrors.name = "Name cannot exceed 50 characters";
 
-    return (
-        <GuestLayout>
-            <Head title="Register" />
+    if (!data.email) newErrors.email = "Email is required";
+    else if (!/^\S+@\S+\.\S+$/.test(data.email))
+      newErrors.email = "Please enter a valid email address";
+    else if (data.email.length > 100)
+      newErrors.email = "Email cannot exceed 100 characters";
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
+    if (!data.password) newErrors.password = "Password is required";
+    else if (data.password.length < 8)
+      newErrors.password = "Password must be at least 8 characters";
+    else if (data.password.length > 50)
+      newErrors.password = "Password cannot exceed 50 characters";
 
-                    <TextInput
-                        id="name"
-                        name="name"
-                        value={data.name}
-                        className="mt-1 block w-full"
-                        autoComplete="name"
-                        isFocused={true}
-                        onChange={(e) => setData('name', e.target.value)}
-                        required
-                    />
+    if (!data.password_confirmation)
+      newErrors.password_confirmation = "Confirm password is required";
+    else if (data.password !== data.password_confirmation)
+      newErrors.password_confirmation = "Passwords do not match";
 
-                    <InputError message={errors.name} className="mt-2" />
-                </div>
+    return newErrors;
+  };
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    clearErrors();
+    const validationErrors = validate();
 
-                    <TextInput
-                        id="email"
-                        type="email"
-                        name="email"
-                        value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        onChange={(e) => setData('email', e.target.value)}
-                        required
-                    />
+    if (Object.keys(validationErrors).length > 0) {
+      Object.entries(validationErrors).forEach(([key, message]) =>
+        setError(key, message)
+      );
+      setNotification({ type: "error", message: "Please fix the errors below." });
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
 
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
+    post(route("register"), {
+      onSuccess: () => {
+        setNotification({ type: "success", message: "Registration successful! Redirecting..." });
+        setTimeout(() => setNotification(null), 2000);
+      },
+      onError: () => {
+        setNotification({ type: "error", message: "Registration failed. Try again." });
+        setTimeout(() => setNotification(null), 3000);
+      },
+    });
+  };
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+  return (
+    <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-black relative">
+      <Head title="Register - Travel Nest" />
 
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                        required
-                    />
+      {/* Back to Home Button */}
+      <Link
+        href="/"
+        className="fixed top-4 left-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
+      >
+        <Home className="w-5 h-5" />
+        <span>Home</span>
+      </Link>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
+      {/* Notification */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${
+              notification.type === "success" ? "bg-green-600" : "bg-red-600"
+            }`}
+          >
+            {notification.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                <div className="mt-4">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
+      {/* Left Side */}
+      <div className="hidden lg:flex w-1/2 items-center justify-center p-12">
+        <div className="text-center space-y-6">
+          <MapPin className="w-16 h-16 text-blue-500 mx-auto" />
+          <h1 className="text-4xl font-bold text-white">
+            Join <span className="text-blue-500">Travel Nest</span>
+          </h1>
+          <p className="text-gray-400 max-w-md mx-auto">
+            Create an account to start planning your trips, booking flights,
+            and exploring the world with Travel Nest.
+          </p>
+        </div>
+      </div>
 
-                    <TextInput
-                        id="password_confirmation"
-                        type="password"
-                        name="password_confirmation"
-                        value={data.password_confirmation}
-                        className="mt-1 block w-full"
-                        autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        required
-                    />
+      {/* Right Side - Form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6">
+        <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800">
+          <h2 className="text-2xl font-bold mb-6 text-white">
+            Create Your Account
+          </h2>
 
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300">
+                Full Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="text"
+                  value={data.name}
+                  onChange={(e) => setData("name", e.target.value)}
+                  className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
+                    errors.name ? "border-red-500" : ""
+                  }`}
+                  placeholder="John Doe"
+                />
+              </div>
+              {errors.name && (
+                <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+              )}
+            </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                    <Link
-                        href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Already registered?
-                    </Link>
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300">
+                Email
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="email"
+                  value={data.email}
+                  onChange={(e) => setData("email", e.target.value)}
+                  className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
+                    errors.email ? "border-red-500" : ""
+                  }`}
+                  placeholder="you@example.com"
+                />
+              </div>
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
+            </div>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Register
-                    </PrimaryButton>
-                </div>
-            </form>
-        </GuestLayout>
-    );
-}
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={data.password}
+                  onChange={(e) => setData("password", e.target.value)}
+                  className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
+                    errors.password ? "border-red-500" : ""
+                  }`}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400"
+                >
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={data.password_confirmation}
+                  onChange={(e) => setData("password_confirmation", e.target.value)}
+                  className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
+                    errors.password_confirmation ? "border-red-500" : ""
+                  }`}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-400"
+                >
+                  {showConfirmPassword ? <EyeOff /> : <Eye />}
+                </button>
+              </div>
+              {errors.password_confirmation && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.password_confirmation}
+                </p>
+              )}
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={processing}
+              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              <span className="flex items-center justify-center">
+                <LogIn className="w-5 h-5 mr-2" />
+                {processing ? "Registering..." : "Register"}
+              </span>
+            </button>
+
+            <p className="text-center text-sm text-gray-400">
+              Already have an account?{" "}
+              <Link
+                href={route("login")}
+                className="text-blue-400 font-medium hover:underline"
+              >
+                Sign In
+              </Link>
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RegisterPage;

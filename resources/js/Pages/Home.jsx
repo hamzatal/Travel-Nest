@@ -1,26 +1,17 @@
-// resources/js/Pages/Welcome.jsx
+// resources/js/Pages/Home.jsx
 import React from "react";
 import { motion } from "framer-motion";
-import { MapPin, Compass, ArrowRight } from "lucide-react";
+import { MapPin, ArrowRight } from "lucide-react";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
 import { Head } from "@inertiajs/react";
+import ChatBot from "../Components/ChatBot";
 
-const WelcomePage = ({ auth }) => {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.2 } },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 40 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
-  };
-
+const HomePage = ({ auth }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300">
       <Head>
-        <title>Travel Nest</title>
+        <title>Travel Nest - Home</title>
         <meta
           name="description"
           content="Book unforgettable trips and explore beautiful destinations with Travel Nest."
@@ -48,7 +39,7 @@ const WelcomePage = ({ auth }) => {
               Explore Now
             </button>
             <button className="flex items-center gap-2 px-6 py-3 border border-gray-500 rounded-full hover:bg-gray-100 text-white hover:text-gray-900 transition-all duration-300">
-              <Compass size={18} />
+              <MapPin size={18} />
               Discover
             </button>
           </div>
@@ -74,11 +65,8 @@ const WelcomePage = ({ auth }) => {
       </main>
 
       <section className="py-20 max-w-7xl mx-auto px-6 md:px-16">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={containerVariants}>
-          <motion.h3
-            variants={itemVariants}
-            className="text-3xl font-bold text-center mb-12"
-          >
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }}>
+          <motion.h3 className="text-3xl font-bold text-center mb-12">
             Popular <span className="text-blue-500">Destinations</span>
           </motion.h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -89,16 +77,10 @@ const WelcomePage = ({ auth }) => {
             ].map((destination) => (
               <motion.div
                 key={destination.name}
-                variants={itemVariants}
                 whileHover={{ y: -10, transition: { duration: 0.3 } }}
                 className="relative rounded-2xl overflow-hidden shadow-lg"
               >
-                <img
-                  src={destination.image}
-                  alt={destination.name}
-                  loading="lazy"
-                  className="w-full h-64 object-cover"
-                />
+                <img src={destination.image} alt={destination.name} loading="lazy" className="w-full h-64 object-cover" />
                 <div className="absolute bottom-4 left-4 bg-gray-900 bg-opacity-80 px-4 py-2 rounded-full flex items-center gap-2 shadow">
                   <MapPin size={16} />
                   <span>{destination.name}</span>
@@ -142,10 +124,11 @@ const WelcomePage = ({ auth }) => {
           </div>
         </motion.div>
       </section>
+      <ChatBot />
 
       <Footer />
     </div>
   );
 };
 
-export default WelcomePage;
+export default HomePage;
