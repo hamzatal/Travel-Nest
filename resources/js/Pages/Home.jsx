@@ -1,13 +1,17 @@
-// resources/js/Pages/Home.jsx
 import React from "react";
 import { motion } from "framer-motion";
 import { MapPin, ArrowRight } from "lucide-react";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
-import { Head } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import ChatBot from "../Components/ChatBot";
+import Notification from "../Components/Notification";
 
 const HomePage = ({ auth }) => {
+  const { props } = usePage();
+  const user = auth?.user || null;
+  const successMessage = props.flash?.success || null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300">
       <Head>
@@ -18,7 +22,9 @@ const HomePage = ({ auth }) => {
         />
       </Head>
 
-      <Navbar user={auth.user} />
+      <Navbar user={user} />
+
+      <Notification message={successMessage} type="success" />
 
       <main className="flex flex-col md:flex-row items-center justify-between px-6 md:px-16 py-24 max-w-7xl mx-auto gap-12 mt-16">
         <motion.div

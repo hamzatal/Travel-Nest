@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Home, Bookmark, BookOpen, Mail, User, LogOut, Menu, X, MapPin, LogIn } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
-import LiveSearch from "../Components/LiveSearch"; 
+import LiveSearch from "../Components/LiveSearch";
 
-const Navbar = ({ user }) => {
+const Navbar = ({ user = null }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { url } = usePage();
@@ -27,10 +27,21 @@ const Navbar = ({ user }) => {
     { label: "Contact", href: "/contact", icon: Mail },
   ];
 
-  const dropdownItems = [
-    { label: "Profile", href: "/profile", icon: User },
-    { label: "Logout", href: route("logout"), icon: LogOut, method: "post" },
-  ];
+  const dropdownItems = user
+    ? [
+        {
+          label: "Profile",
+          href: user.is_admin ? route("admin.dashboard") : route("user.profile"),
+          icon: User,
+        },
+        {
+          label: "Logout",
+          href: user.is_admin ? route("admin.logout") : route("user.logout"),
+          icon: LogOut,
+          method: "post",
+        },
+      ]
+    : [];
 
   const isActive = (href) => url === href;
 
@@ -90,12 +101,13 @@ const Navbar = ({ user }) => {
   const AuthButtons = () => (
     <div className="flex items-center space-x-4">
       <Link
-        href="/login"
+        href={route("user.login")}
         className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-all duration-300"
       >
         <LogIn className="w-5 h-5" />
         <span>Sign In</span>
       </Link>
+      
     </div>
   );
 
@@ -107,16 +119,15 @@ const Navbar = ({ user }) => {
       className="fixed top-0 left-0 right-0 z-20 px-5 md:px-10 py-3 flex justify-between items-center bg-gradient-to-br from-gray-900 to-black text-white backdrop-blur-xl border-b border-gray-800/50"
     >
       <div className="flex items-center space-x-4">
-      <motion.div whileHover={{ scale: 1.05 }}>
-  <Link href="/">
-    <img
-      src="/images/logo.png"
-      alt="Travel Nest Logo"
-      className="h-12 w-auto"
-    />
-  </Link>
-</motion.div>
-
+        <motion.div whileHover={{ scale: 1.05 }}>
+          <Link href="/">
+            <img
+              src="/images/logo.png"
+              alt="Travel Nest Logo"
+              className="h-12 w-auto"
+            />
+          </Link>
+        </motion.div>
       </div>
 
       <div className="hidden md:block w-96 max-w-md">
@@ -146,7 +157,6 @@ const Navbar = ({ user }) => {
 
       <div className="flex items-center space-x-4">
         {user ? <ProfileButton /> : <AuthButtons />}
-
         <button
           className="lg:hidden p-2 rounded-lg hover:bg-gray-700"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -185,7 +195,7 @@ const Navbar = ({ user }) => {
               {!user ? (
                 <>
                   <Link
-                    href="/login"
+                    href={route("user.login")}
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium w-full text-gray-300 hover:bg-gray-800 hover:text-white"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -193,7 +203,7 @@ const Navbar = ({ user }) => {
                     <span>Sign In</span>
                   </Link>
                   <Link
-                    href="/register"
+                    href={route("register")}
                     className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium w-full text-gray-300 hover:bg-gray-800 hover:text-white"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

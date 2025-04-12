@@ -1,12 +1,10 @@
-// resources/js/Pages/Register.jsx
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Lock, Eye, EyeOff, User, LogIn, Home } from "lucide-react";
+import { MapPin, Lock, Eye, EyeOff, User, Home } from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [notification, setNotification] = useState(null);
 
   const { data, setData, post, processing, errors, reset, setError, clearErrors } =
@@ -24,8 +22,6 @@ const RegisterPage = () => {
   const validate = () => {
     const newErrors = {};
     if (!data.name) newErrors.name = "Name is required";
-    else if (data.name.length < 2)
-      newErrors.name = "Name must be at least 2 characters";
     else if (data.name.length > 50)
       newErrors.name = "Name cannot exceed 50 characters";
 
@@ -41,9 +37,7 @@ const RegisterPage = () => {
     else if (data.password.length > 50)
       newErrors.password = "Password cannot exceed 50 characters";
 
-    if (!data.password_confirmation)
-      newErrors.password_confirmation = "Confirm password is required";
-    else if (data.password !== data.password_confirmation)
+    if (data.password_confirmation !== data.password)
       newErrors.password_confirmation = "Passwords do not match";
 
     return newErrors;
@@ -69,7 +63,7 @@ const RegisterPage = () => {
         setTimeout(() => setNotification(null), 2000);
       },
       onError: () => {
-        setNotification({ type: "error", message: "Registration failed. Try again." });
+        setNotification({ type: "error", message: "Registration failed. Please try again." });
         setTimeout(() => setNotification(null), 3000);
       },
     });
@@ -109,11 +103,11 @@ const RegisterPage = () => {
         <div className="text-center space-y-6">
           <MapPin className="w-16 h-16 text-blue-500 mx-auto" />
           <h1 className="text-4xl font-bold text-white">
-            Join <span className="text-blue-500">Travel Nest</span>
+            Welcome to <span className="text-blue-500">Travel Nest</span>
           </h1>
           <p className="text-gray-400 max-w-md mx-auto">
-            Create an account to start planning your trips, booking flights,
-            and exploring the world with Travel Nest.
+            Plan your next trip with ease. Book flights, explore destinations,
+            and unlock unforgettable adventures around the world.
           </p>
         </div>
       </div>
@@ -122,14 +116,14 @@ const RegisterPage = () => {
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6">
         <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800">
           <h2 className="text-2xl font-bold mb-6 text-white">
-            Create Your Account
+            Create an Account
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name */}
             <div>
               <label className="block text-sm font-medium text-gray-300">
-                Full Name
+                Name
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-3 text-gray-400" />
@@ -140,7 +134,7 @@ const RegisterPage = () => {
                   className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
                     errors.name ? "border-red-500" : ""
                   }`}
-                  placeholder="John Doe"
+                  placeholder="Your Name"
                 />
               </div>
               {errors.name && (
@@ -207,7 +201,7 @@ const RegisterPage = () => {
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-gray-400" />
                 <input
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showPassword ? "text" : "password"}
                   value={data.password_confirmation}
                   onChange={(e) => setData("password_confirmation", e.target.value)}
                   className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
@@ -217,38 +211,32 @@ const RegisterPage = () => {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-gray-400"
                 >
-                  {showConfirmPassword ? <EyeOff /> : <Eye />}
+                  {showPassword ? <EyeOff /> : <Eye />}
                 </button>
               </div>
               {errors.password_confirmation && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.password_confirmation}
-                </p>
+                <p className="text-red-500 text-sm mt-1">{errors.password_confirmation}</p>
               )}
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={processing}
               className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
             >
-              <span className="flex items-center justify-center">
-                <LogIn className="w-5 h-5 mr-2" />
-                {processing ? "Registering..." : "Register"}
-              </span>
+              {processing ? "Registering..." : "Register"}
             </button>
 
             <p className="text-center text-sm text-gray-400">
               Already have an account?{" "}
               <Link
-                href={route("login")}
+                href={route("user.login")}
                 className="text-blue-400 font-medium hover:underline"
               >
-                Sign In
+                Sign in
               </Link>
             </p>
           </form>

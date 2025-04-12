@@ -1,10 +1,10 @@
-// resources/js/Pages/Contact.jsx
 import React, { useState } from "react";
 import { Head, useForm } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Mail, MessageSquare } from "lucide-react";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
+import Notification from "../Components/Notification"; // استيراد مكون الإشعارات
 
 const Contact = ({ auth }) => {
   const [notification, setNotification] = useState(null);
@@ -49,19 +49,16 @@ const Contact = ({ auth }) => {
         setError(key, message)
       );
       setNotification({ type: "error", message: "Please fix the errors below." });
-      setTimeout(() => setNotification(null), 3000);
       return;
     }
 
     post(route("contact.store"), {
       onSuccess: () => {
         setNotification({ type: "success", message: "Message sent successfully!" });
-        setTimeout(() => setNotification(null), 2000);
         reset();
       },
       onError: () => {
         setNotification({ type: "error", message: "Failed to send message. Try again." });
-        setTimeout(() => setNotification(null), 3000);
       },
     });
   };
@@ -71,21 +68,8 @@ const Contact = ({ auth }) => {
       <Head title="Contact Us - Travel Nest" />
       <Navbar user={auth.user} />
 
-      {/* Notification */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${
-              notification.type === "success" ? "bg-green-600" : "bg-red-600"
-            }`}
-          >
-            {notification.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* عرض الإشعار باستخدام Notification.jsx */}
+      <Notification message={notification?.message} type={notification?.type} />
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 md:px-16 py-12 mt-16">
@@ -112,7 +96,7 @@ const Contact = ({ auth }) => {
                 Name
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-3 text-gray-400" />
+                <User className="absolute left-3 top 🙂-3 text-gray-400" />
                 <input
                   type="text"
                   name="name"

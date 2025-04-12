@@ -1,23 +1,43 @@
 <?php
-// routes/web.php
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
+
+use App\Http\Controllers\UserAuth\LoginController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
-use App\Http\Controllers\ContactController;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AboutController;
+use App\Http\Controllers\ContactController;
 
-Route::get('/', function () {
-    return Inertia::render('Home', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-        'auth' => Auth::check() ? ['user' => Auth::user()] : [],
-    ]);
-})->name('Home');
+Route::prefix('user')->group(function () {
+    Route::get('/login', function () {
+        return Inertia::render('Auth/Login');
+    })->name('user.login');
 
+    Route::post('/login', [LoginController::class, 'login']);
+    Route::post('/logout', [LoginController::class, 'logout'])->name('user.logout');
+
+    Route::get('/register', function () {
+        return Inertia::render('Auth/Register');
+    })->name('register');
+
+    Route::post('/register', [RegisteredUserController::class, 'store']);
+
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->name('password.email');
+});
+
+Route::prefix('user')->middleware(['auth'])->group(function () {
+    Route::get('/profile', function () {
+        $user = Auth::user();
+        if ($user->is_admin) {
+            return redirect()->route('admin.dashboard');
+        }
+        return Inertia::render('User/Profile');
+    })->name('user.profile');
+});
 Route::get('/destinations', function () {
     return Inertia::render('Destinations', [
         'auth' => Auth::check() ? ['user' => Auth::user()] : [],
@@ -29,20 +49,18 @@ Route::get('/about', [AboutController::class, 'index'])->name('about.index');
 Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
 
-Route::middleware('auth')->group(function () {
+Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard')->middleware('verified');
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect()->route('user.profile');
+        }
+        return Inertia::render('Admin/Dashboard');
+    })->name('admin.dashboard');
 
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/logout', [LoginController::class, 'logout'])->name('admin.logout');
 });
 
-Route::fallback(function () {
-    return Inertia::render('NotFound', [
-        'auth' => Auth::check() ? ['user' => Auth::user()] : [],
-    ]);
-});
-
-require __DIR__.'/auth.php';
+Route::get('/', function () {
+    return Inertia::render('Home');
+})->name('home');

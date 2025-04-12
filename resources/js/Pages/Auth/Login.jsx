@@ -1,8 +1,8 @@
-// resources/js/Pages/Login.jsx
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Lock, Eye, EyeOff, LogIn, Home } from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
+import Notification from "../../Components/Notification"; // استيراد مكون الإشعارات
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -46,18 +46,15 @@ const LoginPage = () => {
         setError(key, message)
       );
       setNotification({ type: "error", message: "Please fix the errors below." });
-      setTimeout(() => setNotification(null), 3000);
       return;
     }
 
-    post(route("login"), {
+    post(route("user.login"), {
       onSuccess: () => {
         setNotification({ type: "success", message: "Login successful! Redirecting..." });
-        setTimeout(() => setNotification(null), 2000);
       },
       onError: () => {
         setNotification({ type: "error", message: "Invalid credentials. Try again." });
-        setTimeout(() => setNotification(null), 3000);
       },
     });
   };
@@ -75,21 +72,8 @@ const LoginPage = () => {
         <span>Home</span>
       </Link>
 
-      {/* Notification */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${
-              notification.type === "success" ? "bg-green-600" : "bg-red-600"
-            }`}
-          >
-            {notification.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* عرض الإشعار باستخدام Notification.jsx */}
+      <Notification message={notification?.message} type={notification?.type} />
 
       {/* Left Side */}
       <div className="hidden lg:flex w-1/2 items-center justify-center p-12">

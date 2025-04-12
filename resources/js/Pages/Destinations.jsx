@@ -3,6 +3,8 @@ import React from "react";
 import { Head } from "@inertiajs/react";
 import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
+import ChatBot from "../Components/ChatBot";
+
 
 const Destinations = ({ auth }) => {
   return (
@@ -13,6 +15,7 @@ const Destinations = ({ auth }) => {
         <h1 className="text-4xl font-bold mb-8">Destinations</h1>
         <p className="text-gray-400">Explore our amazing travel destinations coming soon!</p>
       </div>
+      <ChatBot />
       <Footer />
     </div>
   );
