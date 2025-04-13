@@ -1,21 +1,21 @@
-<?php 
+<?php
 
-use App\Http\Controllers\AdminAuth\LoginController;
-use App\Http\Controllers\AdminAuth\ProfileController;
-use App\Http\Controllers\AdminAuth\AdminDashboardController;
+use App\Http\Controllers\UserAuth\LoginController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
-Route::prefix('admin')->group(function () {
-    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('admin.login');
-    Route::post('/login', [LoginController::class, 'login']);
+//! Admin Routes (Authenticated Admins)
+Route::middleware(['auth'])->group(function () {
+    // Admin Dashboard Route
+    Route::get('/dashboard', function () {
+        $user = Auth::user();
+        if (!$user->is_admin) {
+            return redirect()->route('user.profile');
+        }
+        return Inertia::render('Admin/Dashboard');
+    })->name('admin.dashboard');
+
+    // Admin Logout Route
     Route::post('/logout', [LoginController::class, 'logout'])->name('admin.logout');
-});
-Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
-    Route::get('/dashboard', [AdminDashboardController::class, 'index'])
-        ->name('admin.dashboard')
-        ->middleware('verified');
-
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('admin.profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('admin.profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('admin.profile.destroy');
 });

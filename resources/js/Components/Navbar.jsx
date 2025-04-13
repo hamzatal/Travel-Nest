@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Bookmark, BookOpen, Mail, User, LogOut, Menu, X, MapPin, LogIn } from "lucide-react";
+import { Home, Bookmark, BookOpen, Mail, User, LogOut, Menu, X, MapPin, LogIn, Package as PackageIcon } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
 import LiveSearch from "../Components/LiveSearch";
 
@@ -23,6 +23,7 @@ const Navbar = ({ user = null }) => {
   const navItems = [
     { label: "Home", href: "/", icon: Home },
     { label: "Destinations", href: "/destinations", icon: Bookmark },
+    { label: "Packages", href: "/packages", icon: PackageIcon },
     { label: "About", href: "/about", icon: BookOpen },
     { label: "Contact", href: "/contact", icon: Mail },
   ];
@@ -130,7 +131,7 @@ const Navbar = ({ user = null }) => {
         </motion.div>
       </div>
 
-      <div className="hidden md:block w-96 max-w-md">
+      <div className="hidden md:block w-90 max-w-md">
         <LiveSearch />
       </div>
 
@@ -139,7 +140,7 @@ const Navbar = ({ user = null }) => {
           <Link
             key={item.label}
             href={item.href}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 group ${
+            className={`flex items-center space-x-2 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-300 group ${
               isActive(item.href)
                 ? "bg-gray-800 text-white"
                 : "text-gray-300 hover:bg-gray-800 hover:text-white"

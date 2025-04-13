@@ -25,7 +25,6 @@ const LiveSearch = () => {
 
     setIsSearching(true);
 
-    // تصفية البيانات المحلية بناءً على الاستعلام
     const filteredResults = dummyData.filter((item) =>
       item.name.toLowerCase().includes(query.toLowerCase())
     );
@@ -33,7 +32,7 @@ const LiveSearch = () => {
     setTimeout(() => {
       setSearchResults(filteredResults);
       setIsSearching(false);
-    }, 500); // تأخير بسيط لمحاكاة البحث
+    }, 500); 
   };
 
   const handleClearSearch = () => {

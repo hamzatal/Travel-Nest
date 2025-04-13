@@ -1,4 +1,3 @@
-// resources/js/Components/ChatBot.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, X } from "lucide-react";
@@ -12,14 +11,15 @@ const ChatBot = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showTooltip, setShowTooltip] = useState(true);
   const messagesEndRef = useRef(null);
+  const conversationHistory = useRef([
+    { role: "assistant", parts: [{ text: "Hey there! How can I assist you today? Try one of the suggestions below!" }] }
+  ]);
 
-  // إخفاء النص التوضيحي بعد 5 ثوانٍ
   useEffect(() => {
     const timer = setTimeout(() => setShowTooltip(false), 5000);
     return () => clearTimeout(timer);
   }, []);
 
-  // التمرير للأسفل عند تغيير الرسائل
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -40,62 +40,153 @@ const ChatBot = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
   };
 
-  const planeAnimation = {
-    animate: {
-      rotate: [0, 360],
-      transition: {
-        duration: 6,
-        ease: "linear",
-        repeat: Infinity,
-      },
-    },
-  };
-  
-  
+  // Function to call Gemini API
+  const callGeminiAPI = async (userMessage) => {
+    try {
+      // Use VITE_GEMINI_API_KEY for Vite projects
+      const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      
+      if (!geminiApiKey) {
+        console.error("Gemini API key is missing");
+        return "I can't connect to my brain right now. Please check the API configuration.";
+      }
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
+      
+      // Update conversation history for context
+      conversationHistory.current.push({ role: "user", parts: [{ text: userMessage }] });
+      
+      // Create history-aware prompt with full conversation context
+      const contents = conversationHistory.current.map(entry => ({
+        role: entry.role,
+        parts: entry.parts
+      }));
 
-  const handleSubmit = (e) => {
+      // Prepend system message if it doesn't exist
+      if (!contents.some(entry => entry.role === "system")) {
+        contents.unshift({
+          role: "system",
+          parts: [{ text: "You are Travel Nest Bot, a helpful and friendly travel assistant. Keep responses concise, engaging, and travel-focused." }]
+        });
+      }
+      
+      console.log("Sending request to Gemini API with contents:", contents);
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 200,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Gemini API error:", errorData);
+        throw new Error(`API error: ${response.status} - ${JSON.stringify(errorData)}`);
+      }
+
+      const data = await response.json();
+      console.log("Gemini API response:", data);
+      
+      // Extract response text from Gemini API response
+      let botReply = "I'm having trouble connecting to my brain. Please try again later.";
+      
+      if (data.candidates && data.candidates.length > 0 && 
+          data.candidates[0].content && 
+          data.candidates[0].content.parts && 
+          data.candidates[0].content.parts.length > 0) {
+        botReply = data.candidates[0].content.parts[0].text;
+      }
+      
+      // Store bot response in conversation history
+      conversationHistory.current.push({ role: "assistant", parts: [{ text: botReply }] });
+      
+      return botReply;
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      return "I'm having trouble connecting right now. Please try again later.";
+    }
+  };
+
+  // Fallback function to use if API fails
+  const getFallbackResponse = (userMessage) => {
+    const lowerCaseMessage = userMessage.toLowerCase();
+    
+    if (lowerCaseMessage.includes("destination") || lowerCaseMessage.includes("place") || lowerCaseMessage.includes("where")) {
+      return "I'd recommend checking out Bali, Japan, Portugal, or Costa Rica - all amazing destinations! What kind of travel experience are you looking for?";
+    } else if (lowerCaseMessage.includes("budget") || lowerCaseMessage.includes("cost") || lowerCaseMessage.includes("price")) {
+      return "Budget planning is important! What's your price range? I can suggest affordable destinations or luxury getaways depending on what you're looking for.";
+    } else if (lowerCaseMessage.includes("time") || lowerCaseMessage.includes("when") || lowerCaseMessage.includes("season")) {
+      return "The best time to travel depends on your destination. Europe is lovely in spring/fall, Southeast Asia is great in winter, and tropical islands are year-round. When are you thinking of traveling?";
+    } else if (lowerCaseMessage.includes("help") || lowerCaseMessage.includes("assist")) {
+      return "I can help with destination ideas, budget planning, finding the best time to travel, or suggesting activities. What are you most interested in?";
+    } else {
+      return "I'd love to help with your travel plans! Tell me more about what you're looking for - destinations, activities, budget, or timing?";
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
 
-    setMessages((prev) => [...prev, { text: inputMessage, sender: "user" }]);
+    const userMsg = inputMessage.trim();
+    setMessages((prev) => [...prev, { text: userMsg, sender: "user" }]);
     setInputMessage("");
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      let botResponse = await callGeminiAPI(userMsg);
+      
+      // If we got an error response, try the fallback
+      if (botResponse.includes("trouble connecting") || botResponse.includes("can't connect")) {
+        console.log("Using fallback response system");
+        botResponse = getFallbackResponse(userMsg);
+      }
+      
+      setMessages((prev) => [...prev, { text: botResponse, sender: "bot" }]);
+    } catch (error) {
+      console.error("Error in chat submission:", error);
+      const fallbackResponse = getFallbackResponse(userMsg);
       setMessages((prev) => [
         ...prev,
-        { text: "I’ll get back to you soon! For now, try the suggestions below.", sender: "bot" },
+        { text: fallbackResponse, sender: "bot" },
       ]);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
-  const handleSuggestionClick = (suggestion) => {
+  const handleSuggestionClick = async (suggestion) => {
     setMessages((prev) => [...prev, { text: suggestion, sender: "user" }]);
     setIsLoading(true);
 
-    setTimeout(() => {
-      let botResponse;
-      switch (suggestion.toLowerCase()) {
-        case "destinations":
-          botResponse = "Looking for a destination? Tell me more about what you like!";
-          break;
-        case "budget":
-          botResponse = "What’s your budget? I can help find options that fit!";
-          break;
-        case "best time":
-          botResponse = "When are you planning to travel? I’ll find the best time!";
-          break;
-        case "help":
-          botResponse = "I’m here to assist! What do you need help with?";
-          break;
-        default:
-          botResponse = "Great choice! Tell me more so I can assist you better.";
+    try {
+      let botResponse = await callGeminiAPI(suggestion);
+      
+      // If we got an error response, try the fallback
+      if (botResponse.includes("trouble connecting") || botResponse.includes("can't connect")) {
+        console.log("Using fallback response system for suggestion");
+        botResponse = getFallbackResponse(suggestion);
       }
-
+      
       setMessages((prev) => [...prev, { text: botResponse, sender: "bot" }]);
+    } catch (error) {
+      console.error("Error in suggestion click:", error);
+      const fallbackResponse = getFallbackResponse(suggestion);
+      setMessages((prev) => [
+        ...prev,
+        { text: fallbackResponse, sender: "bot" },
+      ]);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -113,7 +204,6 @@ const ChatBot = () => {
 
   return (
     <div className="fixed bottom-0 right-0 z-50">
-      {/* Chatbot Toggle Button with Tooltip */}
       <div className="relative">
         <AnimatePresence>
           {showTooltip && !isChatOpen && (
@@ -142,7 +232,6 @@ const ChatBot = () => {
           aria-label="Toggle chat assistant"
           className="w-16 h-16 bg-gradient-to-br from-blue-950 to-gray-900 hover:from-blue-900 hover:to-gray-800 rounded-tl-full shadow-lg transition-all duration-300 flex items-center justify-center relative overflow-hidden"
         >
-          {/* نصف كرة أرضية واقعية */}
           <div
             className="absolute inset-0 rounded-tl-full"
             style={{
@@ -161,27 +250,26 @@ const ChatBot = () => {
             />
           </div>
           {!isChatOpen && (
-  <motion.div
-    animate={{ rotate: [0, 360] }}
-    transition={{
-      repeat: Infinity,
-      duration: 12,
-      ease: "linear",
-    }}
-    className="absolute w-32 h-32"
-    style={{ transformOrigin: "80% 80%" }}
-  >
-    <div className="absolute left-full top-1/2 -translate-y-1/2 rotate-[90deg]">
-      <span className="text-white text-xl">✈️</span>
-    </div>
-  </motion.div>
-)}
+            <motion.div
+              animate={{ rotate: [0, 360] }}
+              transition={{
+                repeat: Infinity,
+                duration: 12,
+                ease: "linear",
+              }}
+              className="absolute w-32 h-32"
+              style={{ transformOrigin: "80% 80%" }}
+            >
+              <div className="absolute left-full top-1/2 -translate-y-1/2 rotate-[90deg]">
+                <span className="text-white text-xl">✈️</span>
+              </div>
+            </motion.div>
+          )}
 
           {isChatOpen && <X className="w-6 h-6 text-white z-10" />}
         </motion.button>
       </div>
 
-      {/* Chatbot Window */}
       <AnimatePresence>
         {isChatOpen && (
           <motion.div
@@ -191,7 +279,6 @@ const ChatBot = () => {
             exit="exit"
             className="w-80 h-screen bg-gradient-to-b from-gray-900 to-gray-800 shadow-2xl overflow-hidden flex flex-col"
           >
-            {/* Header */}
             <div className="p-4 bg-gradient-to-r from-blue-950 to-blue-900 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-full bg-blue-950 flex items-center justify-center">
@@ -212,7 +299,6 @@ const ChatBot = () => {
               </motion.button>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900/80">
               {messages.map((msg, index) => (
                 <motion.div
@@ -264,7 +350,6 @@ const ChatBot = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Suggestions Area */}
             <div className="p-4 bg-gray-900 border-t border-gray-800">
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((suggestion, index) => (
@@ -284,7 +369,6 @@ const ChatBot = () => {
               </div>
             </div>
 
-            {/* Input Area */}
             <form onSubmit={handleSubmit} className="p-4 bg-gray-900 border-t border-gray-800">
               <div className="relative flex items-center">
                 <input
