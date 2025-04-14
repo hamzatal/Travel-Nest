@@ -205,26 +205,7 @@ const ChatBot = () => {
   return (
     <div className="fixed bottom-0 right-0 z-50">
       <div className="relative">
-        <AnimatePresence>
-          {showTooltip && !isChatOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.3 }}
-              className="absolute bottom-20 right-6 bg-gradient-to-r from-blue-900 to-blue-950 bg-opacity-90 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
-            >
-              <span>Your Travel Buddy</span>
-              <button
-                onClick={() => setShowTooltip(false)}
-                className="text-blue-300 hover:text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
+       
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
