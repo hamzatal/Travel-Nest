@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Bookmark, BookOpen, Mail, User, LogOut, Menu, X, MapPin, LogIn, Package as PackageIcon } from "lucide-react";
+import { Home, Bookmark, BookOpen, Mail, User, LogOut, Menu, X, MapPin, LogIn, Package as PackageIcon, Tag } from "lucide-react";
 import { Link, usePage } from "@inertiajs/react";
 import LiveSearch from "../Components/LiveSearch";
 
 const Navbar = ({ user = null }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isPackagesDropdownOpen, setIsPackagesDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { url } = usePage();
 
@@ -23,7 +24,16 @@ const Navbar = ({ user = null }) => {
   const navItems = [
     { label: "Home", href: "/", icon: Home },
     { label: "Destinations", href: "/destinations", icon: Bookmark },
-    { label: "Packages", href: "/packages", icon: PackageIcon },
+    { 
+      label: "Explore", 
+      href: "#", 
+      icon: PackageIcon,
+      hasDropdown: true,
+      dropdownItems: [
+        { label: "Packages", href: "/packages", icon: PackageIcon },
+        { label: "Deals", href: "/deal", icon: Tag },
+      ] 
+    },
     { label: "About", href: "/about", icon: BookOpen },
     { label: "Contact", href: "/contact", icon: Mail },
   ];
@@ -108,7 +118,6 @@ const Navbar = ({ user = null }) => {
         <LogIn className="w-5 h-5" />
         <span>Sign In</span>
       </Link>
-      
     </div>
   );
 
@@ -137,22 +146,75 @@ const Navbar = ({ user = null }) => {
 
       <nav className="hidden lg:flex items-center space-x-6 mr-8">
         {navItems.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`flex items-center space-x-2 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-300 group ${
-              isActive(item.href)
-                ? "bg-gray-800 text-white"
-                : "text-gray-300 hover:bg-gray-800 hover:text-white"
-            }`}
-          >
-            <item.icon
-              className={`w-5 h-5 transition-transform group-hover:scale-110 ${
-                isActive(item.href) ? "text-white" : "text-gray-400"
+          item.hasDropdown ? (
+            <div 
+              key={item.label}
+              className="relative"
+              onMouseEnter={() => setIsPackagesDropdownOpen(true)}
+              onMouseLeave={() => setIsPackagesDropdownOpen(false)}
+            >
+              <button
+                className={`flex items-center space-x-2 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-300 group ${
+                  (isActive(item.dropdownItems[0].href) || isActive(item.dropdownItems[1].href))
+                    ? "bg-gray-800 text-white"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                }`}
+              >
+                <item.icon
+                  className={`w-5 h-5 transition-transform group-hover:scale-110 ${
+                    (isActive(item.dropdownItems[0].href) || isActive(item.dropdownItems[1].href))
+                      ? "text-white" 
+                      : "text-gray-400"
+                  }`}
+                />
+                <span>{item.label}</span>
+              </button>
+              
+              <AnimatePresence>
+                {isPackagesDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute left-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-gray-800 text-white border border-gray-700 overflow-hidden z-50"
+                  >
+                    {item.dropdownItems.map((dropdownItem) => (
+                      <Link
+                        key={dropdownItem.label}
+                        href={dropdownItem.href}
+                        className={`flex items-center space-x-2 px-4 py-3 text-sm w-full text-left transition-colors ${
+                          isActive(dropdownItem.href)
+                            ? "bg-gray-700"
+                            : "hover:bg-gray-700 focus:bg-gray-700"
+                        }`}
+                      >
+                        <dropdownItem.icon className="w-5 h-5 mr-2" />
+                        {dropdownItem.label}
+                      </Link>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`flex items-center space-x-2 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-300 group ${
+                isActive(item.href)
+                  ? "bg-gray-800 text-white"
+                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
               }`}
-            />
-            <span>{item.label}</span>
-          </Link>
+            >
+              <item.icon
+                className={`w-5 h-5 transition-transform group-hover:scale-110 ${
+                  isActive(item.href) ? "text-white" : "text-gray-400"
+                }`}
+              />
+              <span>{item.label}</span>
+            </Link>
+          )
         ))}
       </nav>
 
@@ -178,21 +240,50 @@ const Navbar = ({ user = null }) => {
               <LiveSearch />
             </div>
             <div className="space-y-2 px-4">
-              {navItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium w-full ${
-                    isActive(item.href)
-                      ? "bg-gray-800 text-white"
-                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
-                </Link>
-              ))}
+              {navItems.map((item) => 
+                item.hasDropdown ? (
+                  <div key={item.label} className="space-y-1">
+                    <div
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium w-full text-gray-300`}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                    </div>
+                    <div className="pl-8 space-y-1">
+                      {item.dropdownItems.map((dropdownItem) => (
+                        <Link
+                          key={dropdownItem.label}
+                          href={dropdownItem.href}
+                          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium w-full ${
+                            isActive(dropdownItem.href)
+                              ? "bg-gray-800 text-white"
+                              : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                          }`}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <dropdownItem.icon className="w-5 h-5" />
+                          <span>{dropdownItem.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium w-full ${
+                      isActive(item.href)
+                        ? "bg-gray-800 text-white"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              )}
+              
               {!user ? (
                 <>
                   <Link

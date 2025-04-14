@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\PackageController;
+use App\Http\Controllers\DealController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,9 @@ Route::get('/', function () {
 
 // About Page Route
 Route::get('/about', [AboutController::class, 'index'])->name('about.index');
+
+// Deals Page Route
+Route::get('/deal', [DealController::class, 'index'])->name('deal.index');
 
 // Contact Page Routes
 Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
