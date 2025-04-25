@@ -29,7 +29,7 @@
 
 ## 🚀 Demo
 
-Experience TravelDiscovery live at [travel-discovery.com](https://travel-discovery.com)
+Experience TravelDiscovery live at [TravelNest.com](https://TravelNest.com)
 
 ## 📸 Screenshots
 
