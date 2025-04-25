@@ -69,7 +69,7 @@ Experience TravelDiscovery live at [TravelNest.com](https://TravelNest.com)
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/travel-discovery.git
+git clone https://github.com/hamzatal/Travel-Nest.git
 cd travel-discovery
 ```
 
