@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Contact;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\Contact;
 
 class ContactController extends Controller
 {
@@ -23,6 +23,7 @@ class ContactController extends Controller
             'name' => 'required|string|min:2|max:50',
             'email' => 'required|email|max:100',
             'message' => 'required|string|min:10|max:500',
+            'subject' => 'required|string|min:2|max:100',
         ]);
 
         Contact::create($validated);

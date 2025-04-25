@@ -7,6 +7,9 @@ use App\Http\Controllers\AboutController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\DealController;
+use App\Http\Controllers\AdminAuth\AdminUserController;
+use App\Http\Controllers\AdminAuth\AdminContactMessageController;
+use App\Http\Controllers\AdminAuth\AdminHeroController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -36,6 +39,11 @@ Route::get('/destinations', function () {
 
 // Packages Page Route
 Route::get('/packages', [PackageController::class, 'index'])->name('packages.index');
+
+// Contact Us page route
+Route::get('/contact-us', function () {
+    return Inertia::render('ContactUs');
+})->name('contact-us');
 
 //! User Authentication Routes (Unauthenticated Users)
 Route::prefix('user')->group(function () {
@@ -89,23 +97,58 @@ Route::prefix('user')->middleware(['auth'])->group(function () {
 Route::prefix('admin')->middleware(['auth'])->group(function () {
     // Admin Dashboard Route
     Route::get('/dashboard', function () {
-        $user = Auth::user();
-
-        if (!$user) {
-            Auth::logout();
-            request()->session()->invalidate();
-            request()->session()->regenerateToken();
-            return Inertia::render('Auth/Login', [
-                'status' => 'Your account has been deleted. Please register again.',
-            ]);
-        }
-
-        if (!$user->is_admin) {
-            return redirect()->route('user.profile');
-        }
         return Inertia::render('Admin/Dashboard');
     })->name('admin.dashboard');
+        
+    //! Admin User Management Routes
+    // Admin Users List Route
+    Route::get('/users', function () {
+        return Inertia::render('Admin/Users');
+    })->name('admin.users');
 
-    // Admin Logout Route
-    Route::post('/logout', [LoginController::class, 'logout'])->name('admin.logout');
+    // Admin User Management CRUD Routes
+    Route::resource('users', AdminUserController::class, ['as' => 'admin']);
+    
+    // Admin Toggle User Status
+    Route::post('/users/{id}/toggle-status', [AdminUserController::class, 'toggleUserStatus'])
+        ->name('admin.users.toggle-status');
+
+    //! Admin Contact Messages Routes
+    Route::get('/messages', function () {
+        return Inertia::render('Admin/Messages');
+    })->name('admin.messages');
+
+    Route::get('/messages/{id}', [AdminContactMessageController::class, 'show'])
+        ->name('admin.messages.show');
+    Route::put('/messages/{id}/mark-as-read', [AdminContactMessageController::class, 'markAsRead'])
+        ->name('admin.messages.mark-as-read');
+    Route::put('/messages/{id}/mark-as-unread', [AdminContactMessageController::class, 'markAsUnread'])
+        ->name('admin.messages.mark-as-unread');
+    Route::delete('/messages/{id}', [AdminContactMessageController::class, 'destroy'])
+        ->name('admin.messages.destroy');
+        
+    //! Admin Destinations Routes
+    Route::get('/destinations', function () {
+        return Inertia::render('Admin/Destinations');
+    })->name('admin.destinations');
+
+    //! Admin Offers Routes
+    Route::get('/offers', function () {
+        return Inertia::render('Admin/Offers');
+    })->name('admin.offers');
+
+    //! Admin Hero Section Routes
+    Route::get('/hero', function () {
+        return Inertia::render('Admin/HeroSections');
+    })->name('admin.hero');
+    //! Admin Home Route
+    Route::get('/home', function () {
+        return Inertia::render('Admin/Home');
+    })->name('admin.home');
+
+    //! Admin Logout Route
+    Route::post('/admin/logout', function () {
+        Auth::logout();
+        return redirect('/');
+    })->name('admin.logout');
 });

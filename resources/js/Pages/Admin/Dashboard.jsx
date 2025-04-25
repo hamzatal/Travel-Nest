@@ -1,61 +1,217 @@
 import React from "react";
-import { Head, usePage } from "@inertiajs/react";
-import Navbar from "../../Components/Navbar";
+import { Head, usePage, Link } from "@inertiajs/react";
+import { 
+  Users, MessageSquare, MapPin, Tag, Image, 
+  Bell, Settings, Briefcase, LogOut, Grid, BarChart2,
+  Eye, Inbox, Calendar, TrendingUp, AlertCircle
+} from "lucide-react";
+import AdminSidebar from "@/Components/AdminSidebar";
 
 export default function Dashboard() {
   const { props } = usePage();
-  const user = props.auth?.user || null;
+  
+  // Safely extract data with fallbacks to prevent errors
+  const admin = props.admin || props.auth?.user || {};
+  const stats = props.stats || {
+    users: 0,
+    messages: 0,
+    unread_messages: 0,
+    destinations: 0,
+    offers: 0,
+    hero_sections: 0
+  };
+  const latest_users = props.latest_users || [];
+  const latest_messages = props.latest_messages || [];
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex items-center justify-center">
-        <Head title="Error" />
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Error</h2>
-          <p className="text-gray-400">You must be logged in to access this page.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user.is_admin) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex items-center justify-center">
-        <Head title="Error" />
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Error</h2>
-          <p className="text-gray-400">You do not have permission to access this page.</p>
-        </div>
-      </div>
-    );
-  }
+  // Safe access to user name with fallback
+  const adminName = admin?.name || "Admin";
+  const adminInitial = adminName.charAt(0).toUpperCase() || "A";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <Head title="Admin Dashboard - Travel Nest" />
-      <Navbar user={user} />
 
-      <div className="pt-20 max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="bg-gray-800 rounded-lg shadow-lg p-8">
-          <h2 className="text-2xl font-bold mb-6 text-center">Admin Dashboard</h2>
+      {/* Main Content */}
+      <div className="ml-64 p-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Dashboard Overview</h1>
+          <div className="flex space-x-2">
+            <button className="p-2 bg-gray-800 rounded-full hover:bg-gray-700">
+              <Bell className="w-5 h-5" />
+            </button>
+            <button className="p-2 bg-gray-800 rounded-full hover:bg-gray-700">
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
 
-          <div className="space-y-6">
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold">Welcome, {user.name}!</h3>
-              <p className="text-gray-400 mt-2">
-                This is your admin dashboard. From here, you can manage users, destinations, and more.
-              </p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-blue-200">Total Users</p>
+                <h3 className="text-3xl font-bold mt-1">{stats.users}</h3>
+              </div>
+              <div className="bg-blue-500/30 p-3 rounded-lg">
+                <Users className="w-6 h-6" />
+              </div>
             </div>
+            <div className="flex items-center mt-4 text-blue-200 text-sm">
+              <TrendingUp className="w-4 h-4 mr-1" />
+              <span>12% increase this month</span>
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-700 p-4 rounded-lg">
-                <h4 className="text-md font-semibold">Total Users</h4>
-                <p className="text-2xl font-bold text-blue-400 mt-2">150</p>
+          <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-purple-200">Destinations</p>
+                <h3 className="text-3xl font-bold mt-1">{stats.destinations}</h3>
               </div>
-              <div className="bg-gray-700 p-4 rounded-lg">
-                <h4 className="text-md font-semibold">Total Destinations</h4>
-                <p className="text-2xl font-bold text-blue-400 mt-2">25</p>
+              <div className="bg-purple-500/30 p-3 rounded-lg">
+                <MapPin className="w-6 h-6" />
               </div>
+            </div>
+            <div className="flex items-center mt-4 text-purple-200 text-sm">
+              <MapPin className="w-4 h-4 mr-1" />
+              <span>Popular: Santorini, Bali</span>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-yellow-600 to-amber-700 rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-yellow-200">Messages</p>
+                <h3 className="text-3xl font-bold mt-1">{stats.messages}</h3>
+              </div>
+              <div className="bg-yellow-500/30 p-3 rounded-lg">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center mt-4 text-yellow-200 text-sm">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              <span>{stats.unread_messages} unread messages</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-pink-600 to-pink-800 rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-pink-200">Special Offers</p>
+                <h3 className="text-3xl font-bold mt-1">{stats.offers}</h3>
+              </div>
+              <div className="bg-pink-500/30 p-3 rounded-lg">
+                <Tag className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center mt-4 text-pink-200 text-sm">
+              <Tag className="w-4 h-4 mr-1" />
+              <span>Active discounts available</span>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-indigo-200">Hero Sections</p>
+                <h3 className="text-3xl font-bold mt-1">{stats.hero_sections}</h3>
+              </div>
+              <div className="bg-indigo-500/30 p-3 rounded-lg">
+                <Image className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center mt-4 text-indigo-200 text-sm">
+              <Eye className="w-4 h-4 mr-1" />
+              <span>Website showcase content</span>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-green-200">Revenue</p>
+                <h3 className="text-3xl font-bold mt-1">$24,567</h3>
+              </div>
+              <div className="bg-green-500/30 p-3 rounded-lg">
+                <BarChart2 className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center mt-4 text-green-200 text-sm">
+              <TrendingUp className="w-4 h-4 mr-1" />
+              <span>8.2% increase this week</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Latest Users */}
+          <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold">Latest Users</h3>
+              <Link href="/admin/users" className="text-blue-400 text-sm hover:underline">View All</Link>
+            </div>
+            <div className="divide-y divide-gray-700">
+              {latest_users.length > 0 ? latest_users.map((user) => (
+                <div key={user.id} className="p-4 flex items-center">
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-10 h-10 rounded-full flex items-center justify-center mr-4">
+                    {(user.name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-grow">
+                    <p className="font-medium">{user.name || "Unknown User"}</p>
+                    <p className="text-sm text-gray-400">{user.email || "No email"}</p>
+                  </div>
+                  <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : "Unknown date"}
+                  </span>
+                </div>
+              )) : (
+                <div className="p-6 text-center text-gray-400">
+                  No users found
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Latest Messages */}
+          <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold">Latest Messages</h3>
+              <Link href="/admin/messages" className="text-blue-400 text-sm hover:underline">View All</Link>
+            </div>
+            <div className="divide-y divide-gray-700">
+              {latest_messages.length > 0 ? latest_messages.map((message) => (
+                <div key={message.id} className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center">
+                      <div className="bg-gradient-to-br from-yellow-500 to-yellow-700 w-10 h-10 rounded-full flex items-center justify-center mr-4">
+                        {(message.name || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium">{message.name || "Unknown Sender"}</p>
+                        <p className="text-sm text-gray-400">{message.email || "No email"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      {!message.is_read && (
+                        <span className="bg-blue-500 w-2 h-2 rounded-full mr-2"></span>
+                      )}
+                      <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+                        {message.created_at ? new Date(message.created_at).toLocaleDateString() : "Unknown date"}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-300 truncate">{message.message || "No message content"}</p>
+                </div>
+              )) : (
+                <div className="p-6 text-center text-gray-400">
+                  No messages found
+                </div>
+              )}
+                  <AdminSidebar />
+
             </div>
           </div>
         </div>
