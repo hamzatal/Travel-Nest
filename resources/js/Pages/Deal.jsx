@@ -5,7 +5,7 @@ import Navbar from "../Components/Navbar";
 import Footer from "../Components/Footer";
 import { MapPin } from "lucide-react";
 
-const About = ({ auth }) => {
+const Deals = ({ auth }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
       <Head title="About Us - Travel Nest" />
@@ -87,4 +87,4 @@ const About = ({ auth }) => {
   );
 };
 
-export default About;
+export default Deals;

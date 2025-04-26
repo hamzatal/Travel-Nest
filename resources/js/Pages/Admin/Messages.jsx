@@ -147,19 +147,19 @@ export default function MessagesIndex() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex space-x-2">
-                          <Link href={`/admin/messages/${message.id}`} className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                          <Link href={`/messages/${message.id}`} className="p-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                             <Eye className="w-4 h-4" />
                           </Link>
                           {message.is_read ? (
-                            <Link href={`/admin/messages/${message.id}/mark-unread`} method="post" as="button" className="p-2 bg-yellow-600 rounded-lg hover:bg-yellow-700 transition-colors">
+                            <Link href={`/messages/${message.id}/mark-unread`} method="post" as="button" className="p-2 bg-yellow-600 rounded-lg hover:bg-yellow-700 transition-colors">
                               <RefreshCw className="w-4 h-4" />
                             </Link>
                           ) : (
-                            <Link href={`/admin/messages/${message.id}/mark-read`} method="post" as="button" className="p-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+                            <Link href={`/messages/${message.id}/mark-read`} method="post" as="button" className="p-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
                               <CheckCircle className="w-4 h-4" />
                             </Link>
                           )}
-                          <Link href={`/admin/messages/${message.id}`} method="delete" as="button" className="p-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                          <Link href={`/messages/${message.id}`} method="delete" as="button" className="p-2 bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </Link>
                         </div>

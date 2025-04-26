@@ -118,15 +118,9 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     //! Admin Contact Messages Routes
 
-    Route::prefix('admin/messages')->middleware(['auth:admin'])->group(function () {
-        Route::get('/', [AdminContactMessageController::class, 'index'])->name('admin.messages.index');
-        Route::get('/{id}', [AdminContactMessageController::class, 'show'])->name('admin.messages.show');
-        Route::post('/{id}/mark-read', [AdminContactMessageController::class, 'markAsRead'])->name('admin.messages.markRead');
-        Route::post('/{id}/mark-unread', [AdminContactMessageController::class, 'markAsUnread'])->name('admin.messages.markUnread');
-        Route::delete('/{id}', [AdminContactMessageController::class, 'destroy'])->name('admin.messages.destroy');
-    });
-
-    //! Admin Destinations Routes
+    Route::get('/messages', function () {
+        return Inertia::render('Admin/Messages');
+    })->name('admin.messages');    //! Admin Messages Routes
     Route::get('/destinations', function () {
         return Inertia::render('Admin/Destinations');
     })->name('admin.destinations');
