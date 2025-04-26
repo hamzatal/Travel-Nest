@@ -111,7 +111,7 @@ const HomePage = ({ auth }) => {
   return (
     <div className={`min-h-screen transition-all duration-300 ${isDarkMode ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white' : 'bg-gradient-to-br from-blue-50 via-white to-gray-100 text-gray-900'}`}>
       <Head>
-        <title>Travel Nest - Find Your Perfect Getaway</title>
+        <title>Travel Nest</title>
         <meta
           name="description"
           content="Book unforgettable trips, explore beautiful destinations, and find the best travel deals with Travel Nest."

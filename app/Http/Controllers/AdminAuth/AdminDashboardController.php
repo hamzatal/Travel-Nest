@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\AdminAuth;
 
 use App\Http\Controllers\Controller;
-use App\Models\ContactMessage;
+use App\Models\Contact;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
@@ -29,14 +29,15 @@ class AdminController extends Controller
             'admin' => Auth::user(),
             'stats' => [
                 'users' => User::count(),
-                'messages' => ContactMessage::count(),
-                'unread_messages' => ContactMessage::where('is_read', false)->count(),
+                'messages' => Contact::count(),
+                'unread_messages' => Contact::where('is_read', false)->count(),
                 'destinations' => Destination::count(),
                 'offers' => Offer::count(),
                 'hero_sections' => Hero::count(),
-            ],
+            ],              
+
             'latest_users' => User::latest()->take(5)->get(),
-            'latest_messages' => ContactMessage::with('user')->latest()->take(5)->get(),
+            'latest_messages' => Contact::with('user')->latest()->take(5)->get(),
         ]);
     }
 
@@ -74,14 +75,14 @@ class AdminController extends Controller
     public function messages()
     {
         return Inertia::render('Admin/Messages', [
-            'messages' => ContactMessage::with('user')->latest()->paginate(10),
+            'messages' => Contact::with('user')->latest()->paginate(10),
         ]);
     }
 
     /**
      * Mark message as read
      */
-    public function markMessageAsRead(ContactMessage $message)
+    public function markMessageAsRead(Contact $message)
     {
         $message->is_read = true;
         $message->save();

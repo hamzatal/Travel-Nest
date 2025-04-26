@@ -20,7 +20,6 @@ export default function Profile() {
     );
   }
 
-  // بيانات وهمية للرحلات المحجوزة والوجهات المفضلة (يمكن استبدالها ببيانات حقيقية لاحقًا)
   const bookedTrips = [
     { id: 1, destination: "Paris, France", date: "2025-06-15", status: "Confirmed" },
     { id: 2, destination: "Tokyo, Japan", date: "2025-08-20", status: "Pending" },

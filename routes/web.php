@@ -51,14 +51,14 @@ Route::prefix('user')->group(function () {
     Route::get('/login', function () {
         return Inertia::render('Auth/Login');
     })->name('user.login');
-    
+
     Route::post('/login', [LoginController::class, 'login']);
 
     // Register Routes
     Route::get('/register', function () {
         return Inertia::render('Auth/Register');
     })->name('register');
-    
+
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('user.register');
 
     // Password Reset Routes
@@ -99,7 +99,7 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Admin/Dashboard');
     })->name('admin.dashboard');
-        
+
     //! Admin User Management Routes
     // Admin Users List Route
     Route::get('/users', function () {
@@ -108,25 +108,24 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     // Admin User Management CRUD Routes
     Route::resource('users', AdminUserController::class, ['as' => 'admin']);
-    
-    // Admin Toggle User Status
-    Route::post('/users/{id}/toggle-status', [AdminUserController::class, 'toggleUserStatus'])
-        ->name('admin.users.toggle-status');
+
+    // Admin User Toggle Status Route
+    Route::put('/admin/users/{id}/toggle-status', [AdminUserController::class, 'toggleUserStatus'])
+        ->name('admin.users.toggleStatus');
+
+
+
 
     //! Admin Contact Messages Routes
-    Route::get('/messages', function () {
-        return Inertia::render('Admin/Messages');
-    })->name('admin.messages');
 
-    Route::get('/messages/{id}', [AdminContactMessageController::class, 'show'])
-        ->name('admin.messages.show');
-    Route::put('/messages/{id}/mark-as-read', [AdminContactMessageController::class, 'markAsRead'])
-        ->name('admin.messages.mark-as-read');
-    Route::put('/messages/{id}/mark-as-unread', [AdminContactMessageController::class, 'markAsUnread'])
-        ->name('admin.messages.mark-as-unread');
-    Route::delete('/messages/{id}', [AdminContactMessageController::class, 'destroy'])
-        ->name('admin.messages.destroy');
-        
+    Route::prefix('admin/messages')->middleware(['auth:admin'])->group(function () {
+        Route::get('/', [AdminContactMessageController::class, 'index'])->name('admin.messages.index');
+        Route::get('/{id}', [AdminContactMessageController::class, 'show'])->name('admin.messages.show');
+        Route::post('/{id}/mark-read', [AdminContactMessageController::class, 'markAsRead'])->name('admin.messages.markRead');
+        Route::post('/{id}/mark-unread', [AdminContactMessageController::class, 'markAsUnread'])->name('admin.messages.markUnread');
+        Route::delete('/{id}', [AdminContactMessageController::class, 'destroy'])->name('admin.messages.destroy');
+    });
+
     //! Admin Destinations Routes
     Route::get('/destinations', function () {
         return Inertia::render('Admin/Destinations');

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\AdminAuth;
 
 use App\Http\Controllers\Controller;
 use Inertia\Inertia;
-use App\Models\ContactMessage;
+use App\Models\Contact;
 
 class AdminContactMessageController extends Controller
 {
@@ -15,7 +15,7 @@ class AdminContactMessageController extends Controller
      */
     public function index()
     {
-        $messages = ContactMessage::latest()->paginate(10);
+        $messages = Contact::latest()->paginate(10);
 
         return Inertia::render('Admin/Messages', [
             'messages' => $messages,
@@ -30,7 +30,7 @@ class AdminContactMessageController extends Controller
      */
     public function show($id)
     {
-        $message = ContactMessage::findOrFail($id);
+        $message = Contact::findOrFail($id);
         
         // Mark as read if not already
         if (!$message->is_read) {
@@ -50,7 +50,7 @@ class AdminContactMessageController extends Controller
      */
     public function markAsRead($id)
     {
-        $message = ContactMessage::findOrFail($id);
+        $message = Contact::findOrFail($id);
         $message->update(['is_read' => true]);
 
         return redirect()->back()->with('success', 'Message marked as read');
@@ -64,7 +64,7 @@ class AdminContactMessageController extends Controller
      */
     public function markAsUnread($id)
     {
-        $message = ContactMessage::findOrFail($id);
+        $message = Contact::findOrFail($id);
         $message->update(['is_read' => false]);
 
         return redirect()->back()->with('success', 'Message marked as unread');
@@ -78,7 +78,7 @@ class AdminContactMessageController extends Controller
      */
     public function destroy($id)
     {
-        $message = ContactMessage::findOrFail($id);
+        $message = Contact::findOrFail($id);
         $message->delete();
 
         return redirect()->route('admin.messages')->with('success', 'Message deleted successfully');
