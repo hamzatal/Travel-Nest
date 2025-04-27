@@ -1,140 +1,107 @@
-import React, { useState, useEffect } from "react";
-import { SunMedium, Moon, Mail, Film, AlertTriangle, Clapperboard } from "lucide-react";
+// resources/js/Pages/Auth/VerifyEmail.jsx
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MapPin, Home, UserPlus } from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
 
-export default function VerifyEmail({ status }) {
-    const [isDarkMode, setIsDarkMode] = useState(true);
-    const { post, processing } = useForm({});
+const VerifyEmail = ({ status }) => {
+  const [notification, setNotification] = useState(null);
 
-    const submit = (e) => {
-        e.preventDefault();
-        post(route("verification.send"));
-    };
+  const { post, processing } = useForm({});
 
-    return (
-        <div
-            className={`min-h-screen flex transition-colors duration-300 ${
-                isDarkMode ? "bg-gray-900" : "bg-gray-50"
+  const submit = (e) => {
+    e.preventDefault();
+    post(route("verification.send"), {
+      onSuccess: () => {
+        setNotification({
+          type: "success",
+          message: "Verification link sent to your email!",
+        });
+        setTimeout(() => setNotification(null), 2000);
+      },
+    });
+  };
+
+  return (
+    <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-black relative">
+      <Head title="Email Verification - Travel Nest" />
+
+      {/* Back to Home Button */}
+      <Link
+        href="/"
+        className="fixed top-4 left-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
+      >
+        <Home className="w-5 h-5" />
+        <span>Home</span>
+      </Link>
+
+      {/* Back to Register Button */}
+      <Link
+        href={route("register")}
+        className="fixed top-4 right-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
+      >
+        <UserPlus className="w-5 h-5" />
+        <span>Register</span>
+      </Link>
+
+      {/* Notification */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${
+              notification.type === "success" ? "bg-green-600" : "bg-red-600"
             }`}
-        >
-            <Head title="Verify Email" />
+          >
+            {notification.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* Left Side */}
-            <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
-                <div className="flex items-center mb-8 animate-fade-in">
-                <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
-                    <h1
-                        className={`text-4xl font-bold ml-2 ${
-                            isDarkMode ? "text-white" : "text-gray-900"
-                        }`}
-                    >
-                        JO <span className="text-red-500">BEST</span>
-                    </h1>
-                </div>
-                <p
-                    className={`text-xl text-center max-w-md ${
-                        isDarkMode ? "text-gray-300" : "text-gray-600"
-                    }`}
-                >
-                    Verify your email to unlock full access to your favorite
-                    movies and shows.
-                </p>
+      {/* Content */}
+      <div className="w-full flex flex-col justify-center items-center p-6">
+        <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800">
+          <div className="text-center space-y-6">
+            <MapPin className="w-16 h-16 text-blue-500 mx-auto" />
+            <h2 className="text-2xl font-bold text-white">Verify Your Email</h2>
+          </div>
+          <p className="mt-4 mb-4 text-sm text-gray-400">
+            Thanks for signing up! Please verify your email address by clicking
+            the link we sent you. Didn’t receive it? Resend below.
+          </p>
+
+          {status === "verification-link-sent" && (
+            <div className="mb-4 text-sm font-medium text-green-400">
+              A new verification link has been sent to your email.
             </div>
+          )}
 
-            {/* Right Side - Verify Email Form */}
-            <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8">
-                <div
-                    className={`w-full max-w-md p-8 rounded-xl shadow-lg transition-colors duration-300 ${
-                        isDarkMode ? "bg-gray-800" : "bg-white"
-                    }`}
-                >
-                    {/* Mobile Logo */}
-                    <div className="lg:hidden flex items-center justify-center mb-8">
-                    <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
-                        <h1
-                            className={`text-3xl font-bold ml-2 ${
-                                isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                        >
-                            JO <span className="text-red-500">BEST</span>
-                        </h1>
-                    </div>
+          <form onSubmit={submit} className="space-y-6">
+            <button
+              type="submit"
+              disabled={processing}
+              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {processing ? "Sending..." : "Resend Verification Email"}
+            </button>
 
-                    <h2
-                        className={`text-2xl font-bold mb-4 ${
-                            isDarkMode ? "text-white" : "text-gray-900"
-                        }`}
-                    >
-                        Verify Your Email
-                    </h2>
-
-                    <p
-                        className={`mb-6 text-sm ${
-                            isDarkMode ? "text-gray-300" : "text-gray-600"
-                        }`}
-                    >
-                        Thanks for signing up! Before getting started, verify
-                        your email address by clicking the link we emailed you.
-                        Didn't receive the email? We'll send another.
-                    </p>
-
-                    {/* Important Account Deletion Warning */}
-                    <div
-                        className={`flex items-center p-4 mb-6 rounded-lg border-l-4 ${
-                            isDarkMode
-                                ? "bg-red-900/20 border-red-500 text-red-300"
-                                : "bg-red-100 border-red-600 text-red-700"
-                        }`}
-                    >
-                        <AlertTriangle className="w-6 h-6 mr-3 flex-shrink-0" />
-                        <div>
-                            <p className="font-bold text-sm mb-1">
-                                Important: The verify email link will expire in 60 minutes.
-                            </p>
-
-                        </div>
-                    </div>
-
-                    {status === "verification-link-sent" && (
-                        <div className="mb-4 p-3 rounded bg-green-100 text-green-700 text-sm">
-                            A new verification link has been sent to your email
-                            address.
-                        </div>
-                    )}
-
-                    <form onSubmit={submit} className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className={`py-3 px-6 rounded-lg font-medium transition-all transform hover:scale-105 ${
-                                    isDarkMode
-                                        ? "bg-red-600 text-white hover:bg-red-700"
-                                        : "bg-red-500 text-white hover:bg-red-600"
-                                } ${
-                                    processing &&
-                                    "opacity-50 cursor-not-allowed"
-                                }`}
-                            >
-                                Resend Verification Email
-                            </button>
-
-                            <Link
-                                href={route("logout")}
-                                method="post"
-                                as="button"
-                                className={`text-sm font-medium hover:underline ${
-                                    isDarkMode
-                                        ? "text-red-400 hover:text-red-300"
-                                        : "text-red-600 hover:text-red-700"
-                                }`}
-                            >
-                                Log Out
-                            </Link>
-                        </div>
-                    </form>
-                </div>
+            <div className="text-center">
+              <Link
+                href={route("logout")}
+                method="post"
+                as="button"
+                className="text-sm text-blue-400 hover:underline"
+              >
+                Log Out
+              </Link>
             </div>
+          </form>
         </div>
-    );
-}
+      </div>
+    </div>
+  );
+};
+
+export default VerifyEmail;

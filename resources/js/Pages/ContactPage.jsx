@@ -2,12 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Head, useForm } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, Mail, MessageSquare, Send } from "lucide-react";
+import axios from "axios";
 import Navbar from "../Components/Nav";
 import Footer from "../Components/Footer";
 
 const Contact = ({ auth }) => {
   const [notification, setNotification] = useState(null);
-  const [subject, setSubject] = useState("");
 
   // Clear notification after 5 seconds
   useEffect(() => {
@@ -19,7 +19,7 @@ const Contact = ({ auth }) => {
     }
   }, [notification]);
 
-  const { data, setData, post, processing, errors, reset, setError, clearErrors } =
+  const { data, setData, processing, errors, reset, setError, clearErrors } =
     useForm({
       name: "",
       email: "",
@@ -56,7 +56,7 @@ const Contact = ({ auth }) => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     clearErrors();
     const validationErrors = validate();
@@ -69,15 +69,16 @@ const Contact = ({ auth }) => {
       return;
     }
 
-    post(route("contact.store"), {
-      onSuccess: () => {
-        setNotification({ type: "success", message: "Message sent successfully!" });
-        reset();
-      },
-      onError: () => {
-        setNotification({ type: "error", message: "Failed to send message. Try again." });
-      },
-    });
+    try {
+      const response = await axios.post('/contacts', data);
+      setNotification({ type: "success", message: response.data.message || "Message sent successfully!" });
+      reset();
+    } catch (error) {
+      setNotification({
+        type: "error",
+        message: error.response?.data?.message || 'An error occurred while sending your message.'
+      });
+    }
   };
 
   const inputClasses = (error) => `
@@ -100,7 +101,11 @@ const Contact = ({ auth }) => {
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-20 right-5 z-50"
           >
-            <Notification message={notification.message} type={notification.type} />
+            <div className={`px-4 py-3 rounded-lg shadow-lg ${
+              notification.type === "success" ? "bg-green-600" : "bg-red-600"
+            }`}>
+              <p className="text-white">{notification.message}</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
