@@ -1,147 +1,103 @@
 <?php
 
-use App\Http\Controllers\UserAuth\LoginController;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\AboutController;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\PackageController;
-use App\Http\Controllers\DealController;
-use App\Http\Controllers\AdminAuth\AdminUserController;
-use App\Http\Controllers\AdminAuth\AdminContactMessageController;
-use App\Http\Controllers\AdminAuth\AdminHeroController;
+use App\Http\Controllers\AdminAuth\ProfileController as AdminProfileController;
+use App\Http\Controllers\AdminAuth\LoginController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\ChatBotController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\AdminController;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
-//! Public Routes
-// Home Page Route
+//! ==================== MAIN PUBLIC ROUTES ====================
+// Landing page
 Route::get('/', function () {
-    return Inertia::render('Home');
-})->name('home');
-
-// About Page Route
-Route::get('/about', [AboutController::class, 'index'])->name('about.index');
-
-// Deals Page Route
-Route::get('/deal', [DealController::class, 'index'])->name('deal.index');
-
-// Contact Page Routes
-Route::get('/contact', [ContactController::class, 'index'])->name('contact.index');
-Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
-
-// Destinations Page Route
-Route::get('/destinations', function () {
-    return Inertia::render('Destinations', [
-        'auth' => Auth::check() ? ['user' => Auth::user()] : [],
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
     ]);
-})->name('destinations');
+})->name('welcome');
 
-// Packages Page Route
-Route::get('/packages', [PackageController::class, 'index'])->name('packages.index');
+//! ==================== STATIC CONTENT PAGES ====================
+Route::get('/about-us', fn() => Inertia::render('about-us'))->name('about-us');
+Route::get('/contact-us', fn() => Inertia::render('contact-us'))->name('contact-us');
+Route::get('/ContactPage', fn() => Inertia::render('ContactPage'))->name('ContactPage');
 
-// Contact Us page route
-Route::get('/contact-us', function () {
-    return Inertia::render('ContactUs');
-})->name('contact-us');
+//! ==================== PAYMENT AND SUBSCRIPTION ROUTES ====================
+Route::get('/PaymentSuccess', fn() => Inertia::render('PaymentSuccess'))->name('PaymentSuccess');
+Route::get('/SubscriptionPage', fn() => Inertia::render('SubscriptionPage'))->name('SubscriptionPage');
+Route::post('/process-payment', 'PaymentController@processPayment')->name('process.payment');
+Route::get('/payment-callback', 'PaymentController@handleCallback')->name('payment.callback');
 
-//! User Authentication Routes (Unauthenticated Users)
-Route::prefix('user')->group(function () {
-    // Login Routes
-    Route::get('/login', function () {
-        return Inertia::render('Auth/Login');
-    })->name('user.login');
+//! ==================== INCLUDE AUTHENTICATION ROUTES ====================
+require __DIR__ . '/auth.php';
 
-    Route::post('/login', [LoginController::class, 'login']);
+//! ==================== AUTHENTICATED USER ROUTES ====================
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard
+    Route::get('/home', fn() => Inertia::render('Home'))->name('home');
 
-    // Register Routes
-    Route::get('/register', function () {
-        return Inertia::render('Auth/Register');
-    })->name('register');
+    // Profile
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+        Route::delete('/profile', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
+        Route::post('/profile/reactivate', [ProfileController::class, 'reactivate'])->name('profile.reactivate');
+    });
+    
+    // Profile Page
+    Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
-    Route::post('/register', [RegisteredUserController::class, 'store'])->name('user.register');
+    // Watchlist
+    Route::get('/Packages', fn() => Inertia::render('Packages'))->name('Packages');
+   
+    // Preferences
+    Route::get('/preferences', 'PreferenceController@edit')->name('preferences.edit');
+    Route::patch('/preferences', 'PreferenceController@update')->name('preferences.update');
 
-    // Password Reset Routes
-    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
-        ->name('password.request');
-    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
-        ->name('password.email');
+   
 });
 
-//! User Routes (Authenticated Users)
-Route::prefix('user')->middleware(['auth'])->group(function () {
-    // User Profile Route
-    Route::get('/profile', function () {
-        $user = Auth::user();
-
-        if (!$user) {
-            Auth::logout();
-            request()->session()->invalidate();
-            request()->session()->regenerateToken();
-            return Inertia::render('Auth/Login', [
-                'status' => 'Your account has been deleted. Please register again.',
-            ]);
-        }
-
-        if ($user->is_admin) {
-            return redirect()->route('admin.dashboard');
-        }
-        return Inertia::render('User/Profile');
-    })->name('user.profile');
-
-    // User Logout Route
-    Route::post('/logout', [LoginController::class, 'logout'])->name('user.logout');
+//! ==================== CHATBOT API ====================
+Route::middleware(['auth'])->group(function() {
+    Route::post('/chatbot/message', [ChatBotController::class, 'processMessage'])->name('chatbot.message');
+    Route::get('/chatbot/history', [ChatBotController::class, 'getHistory'])->name('chatbot.history');
 });
 
-//! Admin Routes (Authenticated Admins)
-Route::prefix('admin')->middleware(['auth'])->group(function () {
-    // Admin Dashboard Route
-    Route::get('/dashboard', function () {
-        return Inertia::render('Admin/Dashboard');
-    })->name('admin.dashboard');
-
-    //! Admin User Management Routes
-    // Admin Users List Route
-    Route::get('/users', function () {
-        return Inertia::render('Admin/Users');
-    })->name('admin.users');
-
-    // Admin User Management CRUD Routes
-    Route::resource('users', AdminUserController::class, ['as' => 'admin']);
-
-    // Admin User Toggle Status Route
-    Route::put('/admin/users/{id}/toggle-status', [AdminUserController::class, 'toggleUserStatus'])
-        ->name('admin.users.toggleStatus');
-
-
-
-
-    //! Admin Contact Messages Routes
-
-    Route::get('/messages', function () {
-        return Inertia::render('Admin/Messages');
-    })->name('admin.messages');    //! Admin Messages Routes
-    Route::get('/destinations', function () {
-        return Inertia::render('Admin/Destinations');
-    })->name('admin.destinations');
-
-    //! Admin Offers Routes
-    Route::get('/offers', function () {
-        return Inertia::render('Admin/Offers');
-    })->name('admin.offers');
-
-    //! Admin Hero Section Routes
-    Route::get('/hero', function () {
-        return Inertia::render('Admin/HeroSections');
-    })->name('admin.hero');
-    //! Admin Home Route
-    Route::get('/home', function () {
-        return Inertia::render('Admin/Home');
-    })->name('admin.home');
-
-    //! Admin Logout Route
-    Route::post('/admin/logout', function () {
-        Auth::logout();
-        return redirect('/');
-    })->name('admin.logout');
+//! ==================== ADMIN AUTHENTICATION ROUTES ====================
+Route::middleware('guest:admin')->group(function () {
+    
+    Route::get('admin/login', [LoginController::class, 'create'])->name('admin.login');
+    Route::post('admin/login', [LoginController::class, 'store']);
 });
+
+//! ==================== ADMIN PROTECTED ROUTES ====================
+Route::middleware('auth:admin')->group(function () {
+    Route::post('admin/logout', [LoginController::class, 'destroy'])->name('admin.logout');
+    Route::get('admin/dashboard', fn() => Inertia::render('admin/Dashboard'))->name('admin.dashboard');
+
+    Route::get('/admin/movies', 'Admin\MovieController@index')->name('admin.movies');
+    Route::get('/admin/categories', 'Admin\CategoryController@index')->name('admin.categories');
+    Route::get('/admin/users', 'Admin\UserController@index')->name('admin.users');
+    Route::get('/admin/users/{user}', 'Admin\UserController@show')->name('admin.users.show');
+    Route::put('/admin/users/{user}', 'Admin\UserController@update')->name('admin.users.update');
+
+    Route::get('/admin/analytics', 'Admin\AnalyticsController@index')->name('admin.analytics');
+    Route::get('/admin/analytics/users', 'Admin\AnalyticsController@users')->name('admin.analytics.users');
+    Route::get('/admin/analytics/movies', 'Admin\AnalyticsController@movies')->name('admin.analytics.movies');
+
+    Route::get('/admin/settings', 'Admin\SettingController@index')->name('admin.settings');
+    Route::post('/admin/settings', 'Admin\SettingController@update')->name('admin.settings.update');
+
+    Route::get('/admin/contacts', [AdminController::class, 'showContacts'])->name('admin.contacts');
+});
+
+//! ==================== FALLBACK ROUTE ====================
+Route::fallback(fn() => Inertia::render('Errors/404'));
+Route::get('/404', fn() => Inertia::render('Errors/404'))->name('404');

@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -20,9 +21,13 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'bio',
         'phone',
-        'is_admin',
+        'avatar',
         'is_active',
+        'deactivated_at',
+        'deactivation_reason',
+        'last_login',
     ];
 
     /**
@@ -42,18 +47,25 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'is_admin' => 'boolean',    
+        'last_login' => 'datetime',
+        'deactivated_at' => 'datetime',
+        'birthday' => 'date',
         'is_active' => 'boolean',
     ];
 
     /**
-     * Check if the user is an admin.
-     *
-     * @return bool
+     * Get all of the user's reviews.
      */
-    public function isAdmin()
+    public function reviews()
     {
-        return $this->is_admin === true;
+        return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Get all of the user's favorites.
+     */
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class);
     }
 }

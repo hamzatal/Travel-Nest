@@ -1,129 +1,104 @@
-// resources/js/Pages/Auth/ConfirmPassword.jsx
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Home, LogIn } from "lucide-react";
-import { Head, Link, useForm } from "@inertiajs/react";
+import React, { useState } from 'react';
+import { SunMedium, Moon, Film, Lock, Clapperboard } from 'lucide-react';
 
 const ConfirmPassword = () => {
-  const [notification, setNotification] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data, setData, post, processing, errors, reset, setError, clearErrors } =
-    useForm({
-      password: "",
-    });
+  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
 
-  useEffect(() => {
-    return () => reset("password");
-  }, []);
-
-  const validate = () => {
-    const newErrors = {};
-    if (!data.password) newErrors.password = "Password is required";
-    else if (data.password.length < 8)
-      newErrors.password = "Password must be at least 8 characters";
-    else if (data.password.length > 50)
-      newErrors.password = "Password cannot exceed 50 characters";
-    return newErrors;
-  };
-
-  const submit = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    clearErrors();
-    const validationErrors = validate();
-
-    if (Object.keys(validationErrors).length > 0) {
-      Object.entries(validationErrors).forEach(([key, message]) =>
-        setError(key, message)
-      );
-      setNotification({ type: "error", message: "Please enter a valid password." });
-      setTimeout(() => setNotification(null), 3000);
-      return;
-    }
-
-    post(route("password.confirm"), {
-      onSuccess: () => {
-        setNotification({ type: "success", message: "Password confirmed successfully!" });
-        setTimeout(() => setNotification(null), 2000);
-      },
-      onFinish: () => reset("password"),
-    });
+    setIsSubmitting(true);
+    // Handle password confirmation logic here
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-black relative">
-      <Head title="Confirm Password - Travel Nest" />
+    <div className={`min-h-screen flex transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Left Side */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
+        <div className="flex items-center mb-8 animate-fade-in">
+        <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
+          <h1 className={`text-4xl font-bold ml-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          JO <span className="text-red-500">BEST</span>
+          </h1>
+        </div>
+        <p className={`text-xl text-center max-w-md ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          Security is our priority. Please confirm your password to access this secure area.
+        </p>
+      </div>
 
-      {/* Back to Home Button */}
-      <Link
-        href="/"
-        className="fixed top-4 left-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
-      >
-        <Home className="w-5 h-5" />
-        <span>Home</span>
-      </Link>
+      {/* Right Side - Confirm Password Form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8">
+        <div className={`w-full max-w-md p-8 rounded-xl shadow-lg transition-colors duration-300 ${
+          isDarkMode ? 'bg-gray-800' : 'bg-white'
+        }`}>
+         
 
-      {/* Back to Login Button */}
-      <Link
-        href={route("login")}
-        className="fixed top-4 right-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
-      >
-        <LogIn className="w-5 h-5" />
-        <span>Login</span>
-      </Link>
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex items-center justify-center mb-8">
+          <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
+            <h1 className={`text-3xl font-bold ml-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            JO <span className="text-red-500">BEST</span>
+            </h1>
+          </div>
 
-      {/* Notification */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${
-              notification.type === "success" ? "bg-green-600" : "bg-red-600"
-            }`}
-          >
-            {notification.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            Confirm Password
+          </h2>
 
-      {/* Form */}
-      <div className="w-full flex flex-col justify-center items-center p-6">
-        <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800">
-          <h2 className="text-2xl font-bold mb-6 text-white">Confirm Your Password</h2>
-          <p className="mb-4 text-sm text-gray-400">
-            This is a secure area. Please confirm your password to continue.
+          <p className={`mb-6 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            This is a secure area of the application. Please confirm your password before continuing.
           </p>
 
-          <form onSubmit={submit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" />
+                <Lock className={`absolute left-3 top-3 w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                 <input
-                  type="password"
-                  value={data.password}
-                  onChange={(e) => setData("password", e.target.value)}
-                  className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
-                    errors.password ? "border-red-500" : ""
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`pl-10 w-full p-3 rounded-lg border transition-colors focus:ring-2 focus:ring-red-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
                   }`}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
+                  required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3"
+                >
+                  {showPassword ? (
+                    <EyeOff className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  ) : (
+                    <Eye className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                  )}
+                </button>
               </div>
-              {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-              )}
             </div>
 
-            <button
-              type="submit"
-              disabled={processing}
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {processing ? "Confirming..." : "Confirm"}
-            </button>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`py-3 px-6 rounded-lg font-medium transition-all transform hover:scale-105 ${
+                  isDarkMode
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-red-500 text-white hover:bg-red-600'
+                } ${isSubmitting && 'opacity-50 cursor-not-allowed'}`}
+              >
+                Confirm
+              </button>
+            </div>
           </form>
         </div>
       </div>

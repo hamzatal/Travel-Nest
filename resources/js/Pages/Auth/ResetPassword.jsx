@@ -1,204 +1,285 @@
-// resources/js/Pages/Auth/ResetPassword.jsx
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Lock, Eye, EyeOff, Home, LogIn } from "lucide-react";
-import { Head, Link, useForm } from "@inertiajs/react";
+import { SunMedium, Moon, Mail, Lock, Film, Eye, EyeOff, Clapperboard } from "lucide-react";
+import { Head, useForm } from "@inertiajs/react";
 
-const ResetPassword = ({ token, email }) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [notification, setNotification] = useState(null);
+export default function ResetPassword({ token, email }) {
+    const [isDarkMode, setIsDarkMode] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const { data, setData, post, processing, errors, reset, setError, clearErrors } =
-    useForm({
-      token: token,
-      email: email,
-      password: "",
-      password_confirmation: "",
+    const { data, setData, post, processing, errors, reset } = useForm({
+        token: token,
+        email: email,
+        password: "",
+        password_confirmation: "",
     });
 
-  useEffect(() => {
-    return () => reset("password", "password_confirmation");
-  }, []);
+    useEffect(() => {
+        return () => {
+            reset("password", "password_confirmation");
+        };
+    }, []);
 
-  const validate = () => {
-    const newErrors = {};
-    if (!data.email) newErrors.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(data.email))
-      newErrors.email = "Please enter a valid email address";
-    else if (data.email.length > 100)
-      newErrors.email = "Email cannot exceed 100 characters";
+    const submit = (e) => {
+        e.preventDefault();
+        post(route("password.store"));
+    };
 
-    if (!data.password) newErrors.password = "Password is required";
-    else if (data.password.length < 8)
-      newErrors.password = "Password must be at least 8 characters";
-    else if (data.password.length > 50)
-      newErrors.password = "Password cannot exceed 50 characters";
-
-    if (!data.password_confirmation)
-      newErrors.password_confirmation = "Confirm password is required";
-    else if (data.password !== data.password_confirmation)
-      newErrors.password_confirmation = "Passwords do not match";
-
-    return newErrors;
-  };
-
-  const submit = (e) => {
-    e.preventDefault();
-    clearErrors();
-    const validationErrors = validate();
-
-    if (Object.keys(validationErrors).length > 0) {
-      Object.entries(validationErrors).forEach(([key, message]) =>
-        setError(key, message)
-      );
-      setNotification({ type: "error", message: "Please fix the errors below." });
-      setTimeout(() => setNotification(null), 3000);
-      return;
-    }
-
-    post(route("password.store"), {
-      onSuccess: () => {
-        setNotification({ type: "success", message: "Password reset successfully!" });
-        setTimeout(() => setNotification(null), 2000);
-      },
-      onFinish: () => reset("password", "password_confirmation"),
-    });
-  };
-
-  return (
-    <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-black relative">
-      <Head title="Reset Password - Travel Nest" />
-
-      {/* Back to Home Button */}
-      <Link
-        href="/"
-        className="fixed top-4 left-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
-      >
-        <Home className="w-5 h-5" />
-        <span>Home</span>
-      </Link>
-
-      {/* Back to Login Button */}
-      <Link
-        href={route("login")}
-        className="fixed top-4 right-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
-      >
-        <LogIn className="w-5 h-5" />
-        <span>Login</span>
-      </Link>
-
-      {/* Notification */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${
-              notification.type === "success" ? "bg-green-600" : "bg-red-600"
+    return (
+        <div
+            className={`min-h-screen flex transition-colors duration-300 ${
+                isDarkMode ? "bg-gray-900" : "bg-gray-50"
             }`}
-          >
-            {notification.message}
-          </motion.div>
-        )}
-      </AnimatePresence>
+        >
+            <Head title="Reset Password" />
 
-      {/* Form */}
-      <div className="w-full flex flex-col justify-center items-center p-6">
-        <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800">
-          <h2 className="text-2xl font-bold mb-6 text-white">Reset Password</h2>
-
-          <form onSubmit={submit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300">
-                Email
-              </label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 text-gray-400" />
-                <input
-                  type="email"
-                  value={data.email}
-                  onChange={(e) => setData("email", e.target.value)}
-                  className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
-                    errors.email ? "border-red-500" : ""
-                  }`}
-                  placeholder="you@example.com"
-                />
-              </div>
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300">
-                New Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={data.password}
-                  onChange={(e) => setData("password", e.target.value)}
-                  className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
-                    errors.password ? "border-red-500" : ""
-                  }`}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400"
+            {/* Left Side */}
+            <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
+                <div className="flex items-center mb-8 animate-fade-in">
+                <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
+                    <h1
+                        className={`text-4xl font-bold ml-2 ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                    >
+                        JO <span className="text-red-500">BEST</span>
+                    </h1>
+                </div>
+                <p
+                    className={`text-xl text-center max-w-md ${
+                        isDarkMode ? "text-gray-300" : "text-gray-600"
+                    }`}
                 >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-              )}
+                    Almost there! Set your new password to regain access to your
+                    account and continue enjoying your favorite movies.
+                </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300">
-                Confirm New Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 text-gray-400" />
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={data.password_confirmation}
-                  onChange={(e) => setData("password_confirmation", e.target.value)}
-                  className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
-                    errors.password_confirmation ? "border-red-500" : ""
-                  }`}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-3 text-gray-400"
+            {/* Right Side - Reset Password Form */}
+            <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8">
+                <div
+                    className={`w-full max-w-md p-8 rounded-xl shadow-lg transition-colors duration-300 ${
+                        isDarkMode ? "bg-gray-800" : "bg-white"
+                    }`}
                 >
-                  {showConfirmPassword ? <EyeOff /> : <Eye />}
-                </button>
-              </div>
-              {errors.password_confirmation && (
-                <p className="text-red-500 text-sm mt-1">{errors.password_confirmation}</p>
-              )}
-            </div>
+                    {/* Mobile Logo */}
+                    <div className="lg:hidden flex items-center justify-center mb-8">
+                    <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
+                        <h1
+                            className={`text-3xl font-bold ml-2 ${
+                                isDarkMode ? "text-white" : "text-gray-900"
+                            }`}
+                        >
+                            JO <span className="text-red-500">BEST</span>
+                        </h1>
+                    </div>
 
-            <button
-              type="submit"
-              disabled={processing}
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {processing ? "Resetting..." : "Reset Password"}
-            </button>
-          </form>
+                    <h2
+                        className={`text-2xl font-bold mb-6 ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                    >
+                        Reset Password
+                    </h2>
+
+                    <form onSubmit={submit} className="space-y-6">
+                        {/* Email Field */}
+                        <div>
+                            <label
+                                className={`block text-sm font-medium mb-2 ${
+                                    isDarkMode
+                                        ? "text-gray-300"
+                                        : "text-gray-700"
+                                }`}
+                            >
+                                Email
+                            </label>
+                            <div className="relative">
+                                <Mail
+                                    className={`absolute left-3 top-3 w-5 h-5 ${
+                                        isDarkMode
+                                            ? "text-gray-400"
+                                            : "text-gray-500"
+                                    }`}
+                                />
+                                <input
+                                    type="email"
+                                    value={data.email}
+                                    readOnly
+                                    className={`pl-10 w-full p-3 rounded-lg border transition-colors focus:ring-2 focus:ring-red-500 ${
+                                        isDarkMode
+                                            ? "bg-gray-700 border-gray-600 text-white"
+                                            : "bg-white border-gray-300 text-gray-900"
+                                    }`}
+                                />
+                            </div>
+                            {errors.email && (
+                                <span className="text-red-500 text-sm mt-1">
+                                    {errors.email}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* New Password Field */}
+                        <div>
+                            <label
+                                className={`block text-sm font-medium mb-2 ${
+                                    isDarkMode
+                                        ? "text-gray-300"
+                                        : "text-gray-700"
+                                }`}
+                            >
+                                New Password
+                            </label>
+                            <div className="relative">
+                                <Lock
+                                    className={`absolute left-3 top-3 w-5 h-5 ${
+                                        isDarkMode
+                                            ? "text-gray-400"
+                                            : "text-gray-500"
+                                    }`}
+                                />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    name="password"
+                                    value={data.password}
+                                    onChange={(e) =>
+                                        setData("password", e.target.value)
+                                    }
+                                    className={`pl-10 w-full p-3 rounded-lg border transition-colors focus:ring-2 focus:ring-red-500 ${
+                                        isDarkMode
+                                            ? "bg-gray-700 border-gray-600 text-white"
+                                            : "bg-white border-gray-300 text-gray-900"
+                                    }`}
+                                    placeholder="Enter new password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPassword(!showPassword)
+                                    }
+                                    className="absolute right-3 top-3"
+                                >
+                                    {showPassword ? (
+                                        <EyeOff
+                                            className={`w-5 h-5 ${
+                                                isDarkMode
+                                                    ? "text-gray-400"
+                                                    : "text-gray-500"
+                                            }`}
+                                        />
+                                    ) : (
+                                        <Eye
+                                            className={`w-5 h-5 ${
+                                                isDarkMode
+                                                    ? "text-gray-400"
+                                                    : "text-gray-500"
+                                            }`}
+                                        />
+                                    )}
+                                </button>
+                            </div>
+                            {errors.password && (
+                                <span className="text-red-500 text-sm mt-1">
+                                    {errors.password}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Confirm Password Field */}
+                        <div>
+                            <label
+                                className={`block text-sm font-medium mb-2 ${
+                                    isDarkMode
+                                        ? "text-gray-300"
+                                        : "text-gray-700"
+                                }`}
+                            >
+                                Confirm New Password
+                            </label>
+                            <div className="relative">
+                                <Lock
+                                    className={`absolute left-3 top-3 w-5 h-5 ${
+                                        isDarkMode
+                                            ? "text-gray-400"
+                                            : "text-gray-500"
+                                    }`}
+                                />
+                                <input
+                                    type={
+                                        showConfirmPassword
+                                            ? "text"
+                                            : "password"
+                                    }
+                                    name="password_confirmation"
+                                    value={data.password_confirmation}
+                                    onChange={(e) =>
+                                        setData(
+                                            "password_confirmation",
+                                            e.target.value
+                                        )
+                                    }
+                                    className={`pl-10 w-full p-3 rounded-lg border transition-colors focus:ring-2 focus:ring-red-500 ${
+                                        isDarkMode
+                                            ? "bg-gray-700 border-gray-600 text-white"
+                                            : "bg-white border-gray-300 text-gray-900"
+                                    }`}
+                                    placeholder="Confirm new password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowConfirmPassword(
+                                            !showConfirmPassword
+                                        )
+                                    }
+                                    className="absolute right-3 top-3"
+                                >
+                                    {showConfirmPassword ? (
+                                        <EyeOff
+                                            className={`w-5 h-5 ${
+                                                isDarkMode
+                                                    ? "text-gray-400"
+                                                    : "text-gray-500"
+                                            }`}
+                                        />
+                                    ) : (
+                                        <Eye
+                                            className={`w-5 h-5 ${
+                                                isDarkMode
+                                                    ? "text-gray-400"
+                                                    : "text-gray-500"
+                                            }`}
+                                        />
+                                    )}
+                                </button>
+                            </div>
+                            {errors.password_confirmation && (
+                                <span className="text-red-500 text-sm mt-1">
+                                    {errors.password_confirmation}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className={`py-3 px-6 rounded-lg font-medium transition-all transform hover:scale-105 ${
+                                    isDarkMode
+                                        ? "bg-red-600 text-white hover:bg-red-700"
+                                        : "bg-red-500 text-white hover:bg-red-600"
+                                } ${
+                                    processing &&
+                                    "opacity-50 cursor-not-allowed"
+                                }`}
+                            >
+                                Reset Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
-};
-
-export default ResetPassword;
+    );
+}

@@ -1,104 +1,166 @@
-import React from "react";
+import React, { useState } from "react";
+import { SunMedium, Moon, Mail, Film, Clapperboard } from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
-import { MapPin, Home } from "lucide-react";
 
 export default function ForgotPassword({ status }) {
-  const { data, setData, post, processing, errors } = useForm({
-    email: "",
-  });
+    const [isDarkMode, setIsDarkMode] = useState(true);
 
-  const submit = (e) => {
-    e.preventDefault();
-    post(route("password.email"));
-  };
+    const { data, setData, post, processing, errors } = useForm({
+        email: "",
+    });
 
-  return (
-    <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-black relative">
-      <Head title="Forgot Password - Travel Nest" />
+    const submit = (e) => {
+        e.preventDefault();
+        post(route("password.email"));
+    };
 
-      {/* Back to Home Button */}
-      <Link
-        href="/"
-        className="fixed top-4 left-4 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all"
-      >
-        <Home className="w-5 h-5" />
-        <span>Home</span>
-      </Link>
+    return (
+        <div
+            className={`min-h-screen flex transition-colors duration-300 ${
+                isDarkMode ? "bg-gray-900" : "bg-gray-50"
+            }`}
+        >
+            <Head title="Forgot Password" />
 
-      {/* Left Side */}
-      <div className="hidden lg:flex w-1/2 items-center justify-center p-12">
-        <div className="text-center space-y-6">
-          <MapPin className="w-16 h-16 text-blue-500 mx-auto" />
-          <h1 className="text-4xl font-bold text-white">
-            Welcome to <span className="text-blue-500">Travel Nest</span>
-          </h1>
-          <p className="text-gray-400 max-w-md mx-auto">
-            Plan your next trip with ease. Book flights, explore destinations,
-            and unlock unforgettable adventures around the world.
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6">
-        <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800">
-          <h2 className="text-2xl font-bold mb-6 text-white">
-            Forgot Your Password?
-          </h2>
-
-          <p className="text-gray-400 mb-6">
-            Enter your email address and we will send you a link to reset your password.
-          </p>
-
-          {status && (
-            <div className="mb-4 text-sm font-medium text-green-500">
-              {status}
-            </div>
-          )}
-
-          <form onSubmit={submit} className="space-y-6">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300">
-                Email
-              </label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 text-gray-400" />
-                <input
-                  type="email"
-                  value={data.email}
-                  onChange={(e) => setData("email", e.target.value)}
-                  className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-blue-500 ${
-                    errors.email ? "border-red-500" : ""
-                  }`}
-                  placeholder="you@example.com"
-                />
-              </div>
-              {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-              )}
+            {/* Left Side */}
+            <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
+                <div className="flex items-center mb-8 animate-fade-in">
+                <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
+                    <h1
+                        className={`text-4xl font-bold ml-2 ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                    >
+                        JO <span className="text-red-500">BEST</span>
+                        </h1>
+                </div>
+                <p
+                    className={`text-xl text-center max-w-md ${
+                        isDarkMode ? "text-gray-300" : "text-gray-600"
+                    }`}
+                >
+                    No worries! We'll help you get back to enjoying your
+                    favorite movies in no time.
+                </p>
             </div>
 
-            <button
-              type="submit"
-              disabled={processing}
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {processing ? "Sending..." : "Send Password Reset Link"}
-            </button>
+            {/* Right Side - Forgot Password Form */}
+            <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8">
+                <div
+                    className={`w-full max-w-md p-8 rounded-xl shadow-lg transition-colors duration-300 ${
+                        isDarkMode ? "bg-gray-800" : "bg-white"
+                    }`}
+                >
+                    
 
-            <p className="text-center text-sm text-gray-400">
-              Remember your password?{" "}
-              <Link
-                href={route("user.login")}
-                className="text-blue-400 font-medium hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
-          </form>
+                    {/* Mobile Logo */}
+                    <div className="lg:hidden flex items-center justify-center mb-8">
+                    <Clapperboard className="w-10 h-10 text-red-500 mr-3" />
+                        <h1
+                            className={`text-3xl font-bold ml-2 ${
+                                isDarkMode ? "text-white" : "text-gray-900"
+                            }`}
+                        >
+                        JO <span className="text-red-500">BEST</span>
+                        </h1>
+                    </div>
+
+                    <h2
+                        className={`text-2xl font-bold mb-4 ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                        }`}
+                    >
+                        Forgot Password
+                    </h2>
+
+                    <p
+                        className={`mb-6 text-sm ${
+                            isDarkMode ? "text-gray-300" : "text-gray-600"
+                        }`}
+                    >
+                        Forgot your password? No problem. Just let us know your
+                        email address and we will email you a password reset
+                        link that will allow you to choose a new one.
+                    </p>
+
+                    {status && (
+                        <div className="mb-4 p-3 rounded bg-green-100 text-green-700 text-sm">
+                            {status}
+                        </div>
+                    )}
+
+                    <form onSubmit={submit} className="space-y-6">
+                        <div>
+                            <label
+                                className={`block text-sm font-medium mb-2 ${
+                                    isDarkMode
+                                        ? "text-gray-300"
+                                        : "text-gray-700"
+                                }`}
+                            >
+                                Email
+                            </label>
+                            <div className="relative">
+                                <Mail
+                                    className={`absolute left-3 top-3 w-5 h-5 ${
+                                        isDarkMode
+                                            ? "text-gray-400"
+                                            : "text-gray-500"
+                                    }`}
+                                />
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={data.email}
+                                    onChange={(e) =>
+                                        setData("email", e.target.value)
+                                    }
+                                    className={`pl-10 w-full p-3 rounded-lg border transition-colors focus:ring-2 focus:ring-red-500 ${
+                                        isDarkMode
+                                            ? "bg-gray-700 border-gray-600 text-white"
+                                            : "bg-white border-gray-300 text-gray-900"
+                                    }`}
+                                    placeholder="Enter your email"
+                                    required
+                                />
+                            </div>
+                            {errors.email && (
+                                <span className="text-red-500 text-sm mt-1">
+                                    {errors.email}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <Link
+                                href={route("login")}
+                                className={`text-sm font-medium hover:underline ${
+                                    isDarkMode
+                                        ? "text-red-400 hover:text-red-300"
+                                        : "text-red-600 hover:text-red-700"
+                                }`}
+                            >
+                                Back to login
+                            </Link>
+
+                            <button
+                                type="submit"
+                                disabled={processing}
+                                className={`py-3 px-6 rounded-lg font-medium transition-all transform hover:scale-105 ${
+                                    isDarkMode
+                                        ? "bg-red-600 text-white hover:bg-red-700"
+                                        : "bg-red-500 text-white hover:bg-red-600"
+                                } ${
+                                    processing &&
+                                    "opacity-50 cursor-not-allowed"
+                                }`}
+                            >
+                                Email Password Reset Link
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

@@ -9,45 +9,34 @@ use Inertia\Inertia;
 
 class LoginController extends Controller
 {
-    public function showLoginForm()
+    public function create()
     {
-        return Inertia::render('Admin/Auth/Login');
+        return Inertia::render('Admin/Login');
     }
 
-    public function login(Request $request)
-{
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
-    ]);
+    public function store(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'min:8'],
+        ]);
 
-    if (Auth::attempt($credentials)) {
-        $request->session()->regenerate();
-        $user = Auth::user();
-
-        if (!$user->is_admin) {
-            Auth::logout();
-            return back()->withErrors(['email' => 'Only admins can login here.']);
+        if (Auth::guard('admin')->attempt($credentials, $request->remember)) {
+            $request->session()->regenerate();
+            return redirect()->intended(route('admin.dashboard'));
         }
-
-        if (!$user->is_active) {
-            Auth::logout();
-            return back()->withErrors(['email' => 'Your account is deactivated.']);
-        }
-
-        return redirect()->intended(route('admin.dashboard'));
+        return back()->withErrors([
+            'email' => 'The provided credentials do not match our records.',
+        ]);
     }
 
-    return back()->withErrors([
-        'email' => 'The provided credentials do not match our records.',
-    ])->onlyInput('email');
-}
-
-    public function logout(Request $request)
+    public function destroy(Request $request)
     {
-        Auth::logout();
+        Auth::guard('admin')->logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/');
+
+        return redirect()->route('admin.login');
     }
 }

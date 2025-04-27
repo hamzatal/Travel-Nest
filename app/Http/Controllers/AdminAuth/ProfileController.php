@@ -1,51 +1,58 @@
-<?php 
+<?php
 
 namespace App\Http\Controllers\AdminAuth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
-    public function edit()
+    public function show()
     {
-        return Inertia::render('Admin/Profile/Edit', [
-            'mustVerifyEmail' => Auth::user()->mustVerifyEmail ?? false,
-            'status' => session('status'),
-        ]);
+        $admin = Auth::guard('admin')->user();
+        return response()->json($admin->only(['name', 'email']));
     }
 
     public function update(Request $request)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . auth()->id()],
+        $admin = Auth::guard('admin')->user();
+        
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:admins,email,' . $admin->id,
+            'currentPassword' => 'required_with:newPassword',
+            'newPassword' => 'nullable|min:12|regex:/^.*(?=.{3,})(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[\d\x])(?=.*[!$#%]).*$/',
+            'newPassword_confirmation' => 'required_with:newPassword|same:newPassword',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', 
         ]);
-
-        auth()->user()->update([
-            'name' => $request->name,
-            'email' => $request->email,
-        ]);
-
-        return redirect()->route('admin.profile.edit')->with('status', 'profile-updated');
+    
+        if ($request->filled('currentPassword') && !Hash::check($request->currentPassword, $admin->password)) {
+            return response()->json(['message' => 'Current password is incorrect'], 422);
+        }
+    
+        $updateData = [
+            'name' => $validated['name'],
+            'email' => $validated['email']
+        ];
+    
+        if ($request->filled('newPassword')) {
+            $updateData['password'] = Hash::make($validated['newPassword']);
+        }
+    
+        if ($request->hasFile('avatar')) {
+            if ($admin->avatar && file_exists(public_path('storage/avatars/' . $admin->avatar))) {
+                unlink(public_path('storage/avatars/' . $admin->avatar));
+            }
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $updateData['avatar'] = basename($avatarPath);
+        }
+    
+        $admin->update($updateData);
+    
+        return response()->json(['message' => 'Profile updated successfully']);
     }
-
-    public function destroy(Request $request)
-    {
-        $request->validate([
-            'password' => ['required', 'current_password'],
-        ]);
-
-        $user = auth()->user();
-        Auth::logout();
-        $user->delete();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return Redirect::to('/');
-    }
+    
 }
