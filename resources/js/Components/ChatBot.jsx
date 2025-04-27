@@ -73,7 +73,7 @@ const ChatBot = ({ isChatOpen, toggleChat, resetChat }) => {
           <div className="flex justify-between items-center p-4 border-b bg-gray-900 border-gray-700">
             <div className="flex items-center">
               <MessageCircle className="mr-2 text-green-500" />
-              <h2 className="text-xl font-bold">TravelNest AI ASSISTANT</h2>
+              <h2 className="text-xl font-bold text-white">TravelNest AI ASSISTANT</h2>
             </div>
             {/* <button
               onClick={resetChat}

@@ -4,7 +4,8 @@ import { Link, usePage } from '@inertiajs/react';
 import { 
   Users, Film, Settings, 
   LogOut, Menu, X, Bell,
-  BarChart2, Clapperboard, SquareStack
+  BarChart2, Clapperboard, SquareStack,
+  PlaneIcon
 } from 'lucide-react';
 
 const AdminLayout = ({ children }) => {
@@ -30,8 +31,8 @@ const AdminLayout = ({ children }) => {
         {/* Logo */}
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
           <div className="flex items-center space-x-2">
-            <Clapperboard className="w-8 h-8 text-red-500" />
-            <span className="text-xl font-bold dark:text-white">JO BEST</span>
+            <PlaneIcon className="w-8 h-8 text-green-500" />
+            <span className="text-xl font-bold dark:text-white">Travel Nest</span>
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden">
             <X className="w-6 h-6 text-gray-500" />

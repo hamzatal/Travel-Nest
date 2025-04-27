@@ -5,10 +5,10 @@ import {
   Users, LogOut, Menu, X, Bell, Search,
   BarChart2, Clapperboard, MessageSquare, User,
   Shield, Calendar, ChevronLeft, ChevronRight,
-  Activity, Settings, UploadCloud, Save, Eye, EyeOff
+  Activity, Settings, UploadCloud, Save, Eye, EyeOff,
+  PlaneIcon
 } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { Transition } from '@headlessui/react';
 
 const AdminDashboard = () => {
   // State Initialization
@@ -1187,8 +1187,8 @@ const AdminDashboard = () => {
       }`}>
         <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
           <div className="flex items-center space-x-2">
-            <Clapperboard className="w-8 h-8 text-red-500" />
-            <span className="text-xl font-bold dark:text-white">JO BEST</span>
+            <PlaneIcon className="w-8 h-8 text-green-500" />
+            <span className="text-xl font-bold dark:text-white">Travel Nest</span>
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden">
             <X className="w-6 h-6 text-gray-500" />
@@ -1254,7 +1254,7 @@ const AdminDashboard = () => {
         
           <button
             onClick={handleLogout}
-            className="w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 mt-2"
+            className="w-full flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-green-600 dark:text-red-400 mt-2"
           >
             <LogOut className="w-5 h-5" />
             <span>Logout</span>
