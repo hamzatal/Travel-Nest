@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, User, Clapperboard, Home, PlaneIcon } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, PlaneIcon, Home } from 'lucide-react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 const Notification = ({ message, type }) => {
@@ -158,7 +158,7 @@ export default function Register() {
           <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800/90 backdrop-blur-sm">
             <div className="lg:hidden text-center mb-8">
               <div className="bg-green-600/20 p-4 rounded-full inline-block mx-auto">
-                <Clapperboard className="w-12 h-12 text-red-500" />
+                <PlaneIcon className="w-12 h-12 text-green-500" />
               </div>
             </div>
 

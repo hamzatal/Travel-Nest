@@ -100,16 +100,19 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
     const isActive = (href) => url === href;
 
     // Profile Button Component
-    const ProfileButton = () => (
+  const ProfileButton = () => {
+    const displayAvatar = user?.avatar_url ? user.avatar_url : '/images/avatar.webp';
+
+    return (
         <div className="relative">
             <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 focus:outline-none border-2 border-green-500 hover:bg-green-600/30 transition-colors"
             >
-                {user?.avatar ? (
+                {user?.avatar_url ? (
                     <img 
-                        src={user.avatar} 
-                        alt="User Avatar" 
+                        src={displayAvatar}
+                        alt="User Avatar"
                         className="w-full h-full rounded-full object-cover"
                     />
                 ) : (
@@ -120,24 +123,14 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
             </button>
 
             {isDropdownOpen && (
-                <div
-                    className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-black/80 backdrop-blur-lg text-white border border-green-500/30 overflow-hidden z-50"
-                >
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-black/80 backdrop-blur-lg text-white border border-green-500/30 overflow-hidden z-50">
                     {dropdownItems.map((item) => (
                         <Link
                             key={item.label}
                             href={item.href}
                             method={item.method || 'get'}
                             as={item.method ? 'button' : 'a'}
-                            className={`
-                                flex items-center
-                                px-4 py-3
-                                text-sm
-                                w-full
-                                text-left
-                                transition-colors
-                                ${isActive(item.href) ? 'bg-green-600/30' : 'hover:bg-green-600/20 focus:bg-green-600/20'}
-                            `}
+                            className={`flex items-center px-4 py-3 text-sm w-full text-left transition-colors ${isActive(item.href) ? 'bg-green-600/30' : 'hover:bg-green-600/20 focus:bg-green-600/20'}`}
                             onClick={() => setIsDropdownOpen(false)}
                         >
                             <item.icon className="w-5 h-5 mr-2" />
@@ -148,6 +141,9 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
             )}
         </div>
     );
+};
+
+    
 
     return (
         <header

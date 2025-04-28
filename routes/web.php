@@ -1,8 +1,6 @@
 <?php
 
-use App\Http\Controllers\AdminAuth\ProfileController as AdminProfileController;
 use App\Http\Controllers\AdminAuth\LoginController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\ChatBotController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
@@ -12,8 +10,11 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
-//! ==================== MAIN PUBLIC ROUTES ====================
-// Landing page
+// ===================================================
+//! Public Routes (No Authentication Required)
+// ===================================================
+
+// Landing Page
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -23,81 +24,113 @@ Route::get('/', function () {
     ]);
 })->name('welcome');
 
-//! ==================== STATIC CONTENT PAGES ====================
+// Static Pages
 Route::get('/about-us', fn() => Inertia::render('about-us'))->name('about-us');
 Route::get('/contact-us', fn() => Inertia::render('contact-us'))->name('contact-us');
 Route::get('/ContactPage', fn() => Inertia::render('ContactPage'))->name('ContactPage');
 
-//! ==================== PAYMENT AND SUBSCRIPTION ROUTES ====================
-Route::get('/PaymentSuccess', fn() => Inertia::render('PaymentSuccess'))->name('PaymentSuccess');
-Route::get('/SubscriptionPage', fn() => Inertia::render('SubscriptionPage'))->name('SubscriptionPage');
-Route::post('/process-payment', 'PaymentController@processPayment')->name('process.payment');
-Route::get('/payment-callback', 'PaymentController@handleCallback')->name('payment.callback');
+// ===================================================
+//! Authentication Routes
+// ===================================================
 
-//! ==================== INCLUDE AUTHENTICATION ROUTES ====================
 require __DIR__ . '/auth.php';
 
-//! ==================== AUTHENTICATED USER ROUTES ====================
+// ===================================================
+//! Protected Routes (User Authenticated)
+// ===================================================
+
 Route::middleware(['auth', 'verified'])->group(function () {
+    
     // Dashboard
     Route::get('/home', fn() => Inertia::render('Home'))->name('home');
 
-    // Profile
-    Route::middleware(['auth', 'verified'])->group(function () {
-        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-        Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
-        Route::delete('/profile', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
-        Route::post('/profile/reactivate', [ProfileController::class, 'reactivate'])->name('profile.reactivate');
-    });
-    
-    // Profile Page
+    // Profile Pages
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
-    // Watchlist
-    Route::get('/Packages', fn() => Inertia::render('Packages'))->name('Packages');
-   
+    // Profile Management
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/', [ProfileController::class, 'edit'])->name('edit');
+        Route::patch('/', [ProfileController::class, 'update'])->name('update');
+        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+        Route::delete('/', [ProfileController::class, 'deactivate'])->name('deactivate');
+        Route::post('/reactivate', [ProfileController::class, 'reactivate'])->name('reactivate');
+    });
+
     // Preferences
     Route::get('/preferences', 'PreferenceController@edit')->name('preferences.edit');
     Route::patch('/preferences', 'PreferenceController@update')->name('preferences.update');
-
-   
 });
 
-//! ==================== CHATBOT API ====================
-Route::middleware(['auth'])->group(function() {
-    Route::post('/chatbot/message', [ChatBotController::class, 'processMessage'])->name('chatbot.message');
-    Route::get('/chatbot/history', [ChatBotController::class, 'getHistory'])->name('chatbot.history');
+// ===================================================
+//! ChatBot API (Authenticated)
+// ===================================================
+
+Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function () {
+    Route::post('/message', [ChatBotController::class, 'processMessage'])->name('message');
+    Route::get('/history', [ChatBotController::class, 'getHistory'])->name('history');
 });
 
-//! ==================== ADMIN AUTHENTICATION ROUTES ====================
-Route::middleware('guest:admin')->group(function () {
+// ===================================================
+//! Admin Authentication (Guest: Admin Only)
+// ===================================================
+
+Route::middleware('guest:admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/login', [LoginController::class, 'create'])->name('login');
+    Route::post('/login', [LoginController::class, 'store']);
+});
+
+// ===================================================
+//! Admin Protected Routes (Authenticated: Admin)
+// ===================================================
+
+Route::middleware('auth:admin')->prefix('admin')->name('admin.')->group(function () {
+    Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     
-    Route::get('admin/login', [LoginController::class, 'create'])->name('admin.login');
-    Route::post('admin/login', [LoginController::class, 'store']);
+    // Dashboard
+    Route::get('/dashboard', fn() => Inertia::render('admin/Dashboard'))->name('dashboard');
+
+    // Users Management
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/', 'Admin\UserController@index')->name('index');
+        Route::get('/{user}', 'Admin\UserController@show')->name('show');
+        Route::put('/{user}', 'Admin\UserController@update')->name('update');
+    });
+
+    // Analytics
+    Route::prefix('analytics')->name('analytics.')->group(function () {
+        Route::get('/', 'Admin\AnalyticsController@index')->name('index');
+        Route::get('/users', 'Admin\AnalyticsController@users')->name('users');
+        Route::get('/movies', 'Admin\AnalyticsController@movies')->name('movies');
+    });
+
+    // Settings
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', 'Admin\SettingController@index')->name('index');
+        Route::post('/', 'Admin\SettingController@update')->name('update');
+    });
+
+    // Contact Messages
+    Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
 });
 
-//! ==================== ADMIN PROTECTED ROUTES ====================
-Route::middleware('auth:admin')->group(function () {
-    Route::post('admin/logout', [LoginController::class, 'destroy'])->name('admin.logout');
-    Route::get('admin/dashboard', fn() => Inertia::render('admin/Dashboard'))->name('admin.dashboard');
+// ===================================================
+//! API Routes (Authenticated)
+// ===================================================
 
-    Route::get('/admin/movies', 'Admin\MovieController@index')->name('admin.movies');
-    Route::get('/admin/categories', 'Admin\CategoryController@index')->name('admin.categories');
-    Route::get('/admin/users', 'Admin\UserController@index')->name('admin.users');
-    Route::get('/admin/users/{user}', 'Admin\UserController@show')->name('admin.users.show');
-    Route::put('/admin/users/{user}', 'Admin\UserController@update')->name('admin.users.update');
-
-    Route::get('/admin/analytics', 'Admin\AnalyticsController@index')->name('admin.analytics');
-    Route::get('/admin/analytics/users', 'Admin\AnalyticsController@users')->name('admin.analytics.users');
-    Route::get('/admin/analytics/movies', 'Admin\AnalyticsController@movies')->name('admin.analytics.movies');
-
-    Route::get('/admin/settings', 'Admin\SettingController@index')->name('admin.settings');
-    Route::post('/admin/settings', 'Admin\SettingController@update')->name('admin.settings.update');
-
-    Route::get('/admin/contacts', [AdminController::class, 'showContacts'])->name('admin.contacts');
+Route::middleware(['auth', 'web'])->prefix('api')->name('api.')->group(function () {
+    
+    Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
+    Route::post('/update', [UserController::class, 'updateUser'])->name('user.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+    Route::put('/profile/deactivate', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
 });
 
-//! ==================== FALLBACK ROUTE ====================
+// ===================================================
+//! Fallback Route
+// ===================================================
+
 Route::fallback(fn() => Inertia::render('Errors/404'));
 Route::get('/404', fn() => Inertia::render('Errors/404'))->name('404');
+

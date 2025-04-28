@@ -4,7 +4,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { 
   Users, Film, Settings, 
   LogOut, Menu, X, Bell,
-  BarChart2, Clapperboard, SquareStack,
+  BarChart2, PlayIcon, SquareStack,
   PlaneIcon
 } from 'lucide-react';
 

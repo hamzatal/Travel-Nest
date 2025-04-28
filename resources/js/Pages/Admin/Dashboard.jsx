@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, LogOut, Menu, X, Bell, Search,
-  BarChart2, Clapperboard, MessageSquare, User,
+  BarChart2, PlayIcon, MessageSquare, User,
   Shield, Calendar, ChevronLeft, ChevronRight,
   Activity, Settings, UploadCloud, Save, Eye, EyeOff,
   PlaneIcon

@@ -33,7 +33,6 @@ const WelcomePage = () => {
                     </div>
                 </nav>
 
-                {/* جسم الصفحة */}
                 <div className="flex-1 flex items-center justify-center p-6">
                     <div className="text-center max-w-3xl">
                         <h1 className="text-6xl font-black mb-6 leading-tight text-white">
