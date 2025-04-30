@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Mail, Lock, Eye, EyeOff, User, Home, Shield } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User, Home, Shield ,PlaneIcon, AmpersandIcon, ShieldAlert } from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
 
 const Notification = ({ message, type }) => {
@@ -114,10 +114,10 @@ const AdminLoginPage = () => {
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
           <div className="text-center space-y-8">
             <div className="bg-green-600/20 p-6 rounded-full inline-block mx-auto">
-              <User className="w-20 h-20 text-green-500" />
+              <User className="w-20 h-20 text-red-500" />
             </div>
             <h1 className="text-5xl font-bold text-white">
-              Travel Nest <span className="text-green-500">Admin</span>
+              Travel Nest <span className="text-red-500">Admin</span>
             </h1>
             <p className="text-gray-300 max-w-md mx-auto text-lg">
               Secure administrative access for Travel Nest. Authorized personnel only.
@@ -134,11 +134,13 @@ const AdminLoginPage = () => {
               <h1 className="text-3xl font-bold text-white mt-3">
                 <span className="text-green-500">Travel Nest Admin</span>
               </h1>
+              
             </div>
 
-            <h2 className="text-3xl font-bold text-white text-center mb-2">
-              Administrator Sign In
-            </h2>
+            <h2 className="text-4xl font-bold text-white text-center mb-2 ">
+           <ShieldAlert className="inline-block w-8 h-8 text-red-500 " />   Administrator <ShieldAlert className="inline-block w-8 h-8 text-red-500 " />
+            </h2>      
+            
             <p className="text-gray-400 text-center mb-6">Enter your admin credentials</p>
 
             <form onSubmit={submit} className="space-y-6">

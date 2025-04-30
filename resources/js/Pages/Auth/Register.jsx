@@ -1,16 +1,38 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, User, PlaneIcon, Home } from 'lucide-react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-const Notification = ({ message, type }) => {
+const Notification = ({ message, type, onClose }) => {
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message, onClose]);
+
   if (!message) return null;
 
   return (
-    <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg ${
-      type === "error" ? "bg-red-500" : "bg-green-500"
-    } text-white`}>
-      {message}
-    </div>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className={`fixed top-4 right-4 z-[100] p-4 rounded-md shadow-lg max-w-sm ${
+          type === 'error' ? 'bg-red-600' : 'bg-green-600'
+        } text-white flex items-center space-x-2`}
+      >
+        <span>{message}</span>
+        <button onClick={onClose} className="ml-2 text-white hover:text-gray-200">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
@@ -104,12 +126,21 @@ export default function Register() {
     }
     post(route('register'), {
       onSuccess: () => {
-        setNotification({ type: "success", message: "Registration successful! Redirecting..." });
+        setNotification({ 
+          type: "success", 
+          message: data.role === 'admin' 
+            ? "Admin registration successful! Redirecting to dashboard..." 
+            : "Registration successful! Please verify your email."
+        });
       },
-      onError: () => {
-        setNotification({ type: "error", message: "Registration failed. Please try again." });
+      onError: (errors) => {
+        setNotification({ type: "error", message: errors.email || "Registration failed. Please try again." });
       },
     });
+  };
+
+  const closeNotification = () => {
+    setNotification(null);
   };
 
   return (
@@ -131,7 +162,11 @@ export default function Register() {
         <span className="font-medium">Home</span>
       </Link>
 
-      <Notification message={notification?.message} type={notification?.type} />
+      <Notification 
+        message={notification?.message} 
+        type={notification?.type} 
+        onClose={closeNotification} 
+      />
 
       <div className="relative z-10 min-h-screen flex">
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
@@ -142,8 +177,8 @@ export default function Register() {
             <div className="flex items-center justify-center">
               <PlaneIcon className="w-10 h-10 text-green-500 mr-3" />
               <h1 className="text-5xl font-bold text-white">
-              Travel       <span className="text-green-500"> Nest</span>
-                        </h1>
+                Travel <span className="text-green-500">Nest</span>
+              </h1>
             </div>
             <p className="text-gray-300 max-w-md mx-auto text-lg">
               Welcome to Travel Nest! Create an account to explore the world of travel and adventure.
@@ -169,7 +204,7 @@ export default function Register() {
 
             <form onSubmit={submit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
                   Name
                 </label>
                 <div className="relative">
@@ -194,7 +229,7 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                   Email Address
                 </label>
                 <div className="relative">
@@ -219,7 +254,7 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
                   Password
                 </label>
                 <div className="relative">
@@ -255,7 +290,7 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="password_confirmation" className="block text-sm font-medium text-gray-300 mb-2">
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -291,9 +326,9 @@ export default function Register() {
               </div>
 
               {/* Role Field */}
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Role
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-300 mb-2">
+                  Account Type
                 </label>
                 <select
                   id="role"
@@ -303,10 +338,15 @@ export default function Register() {
                   className="w-full p-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
                   required
                 >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                  <option value="user">User (Requires Email Verification)</option>
+                  <option value="admin">Admin (No Email Verification)</option>
                 </select>
-              </div> */}
+                <p className="text-gray-400 text-sm mt-1">
+                  {data.role === 'admin' 
+                    ? 'Admins have access to the dashboard and do not require email verification.' 
+                    : 'Users need to verify their email after registration.'}
+                </p>
+              </div>
 
               <button
                 type="submit"
@@ -323,7 +363,7 @@ export default function Register() {
                   className="text-green-400 font-medium hover:text-green-300 hover:underline transition-colors"
                 >
                   Sign in
-                </Link>                
+                </Link>
               </p>
             </form>
           </div>

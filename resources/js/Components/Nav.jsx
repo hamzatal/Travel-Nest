@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Hotel,
     Plane,
@@ -23,8 +23,9 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const { url } = usePage();
-    
-    // Handle scroll effect with a smoother transition
+    const searchRef = useRef(null);
+
+    // Handle scroll effect
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
@@ -34,7 +35,7 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Close mobile menu on window resize
+    // Close mobile menu on resize
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth >= 1024) {
@@ -46,104 +47,86 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Close search bar when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setIsSearchOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     // Handle search submission
     const handleSearchSubmit = (e) => {
         e.preventDefault();
-        // Implement your search functionality here
         console.log("Searching for:", searchQuery);
-        // You could redirect to search results page
+        // Redirect to search results page
         // window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+        setIsSearchOpen(false);
+        setSearchQuery("");
     };
 
     const navItems = [
-        {
-            label: "Home",
-            href: "/home",
-            icon: Hotel,
-        },
-        {
-            label: "Packages",
-            href: "/Packages",
-            icon: Bookmark,
-        },
-        {
-            label: "Destinations",
-            href: "/destinations",
-            icon: Map,
-        },
-        {
-            label: "About Us",
-            href: "/about-us",
-            icon: BookOpen,
-        },
-        {
-            label: "Contact",
-            href: "/ContactPage",
-            icon: Mail,
-        },
+        { label: "Home", href: "/home", icon: Hotel },
+        { label: "Packages", href: "/Packages", icon: Bookmark },
+        { label: "Destinations", href: "/destinations", icon: Map },
+        { label: "About Us", href: "/about-us", icon: BookOpen },
+        { label: "Contact", href: "/ContactPage", icon: Mail },
     ];
 
     const dropdownItems = [
-        {
-            label: "Profile",
-            href: "/UserProfile",
-            icon: User,
-        },
-        {
-            label: "Logout",
-            href: route("logout"),
-            icon: LogOut,
-            method: "post"
-        }
+        { label: "Profile", href: "/UserProfile", icon: User },
+        { label: "Logout", href: route("logout"), icon: LogOut, method: "post" }
     ];
 
     const isActive = (href) => url === href;
 
     // Profile Button Component
-  const ProfileButton = () => {
-    const displayAvatar = user?.avatar_url ? user.avatar_url : '/images/avatar.webp';
+    const ProfileButton = () => {
+        const displayAvatar = user?.avatar_url ? user.avatar_url : '/images/avatar.webp';
 
-    return (
-        <div className="relative">
-            <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 focus:outline-none border-2 border-green-500 hover:bg-green-600/30 transition-colors"
-            >
-                {user?.avatar_url ? (
-                    <img 
-                        src={displayAvatar}
-                        alt="User Avatar"
-                        className="w-full h-full rounded-full object-cover"
-                    />
-                ) : (
-                    <div className="w-full h-full rounded-full flex items-center justify-center">
-                        <User className="w-6 h-6 text-white" />
+        return (
+            <div className="relative">
+                <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 focus:outline-none border-2 border-green-500 hover:bg-green-600/30 transition-colors"
+                >
+                    {user?.avatar_url ? (
+                        <img 
+                            src={displayAvatar}
+                            alt="User Avatar"
+                            className="w-full h-full rounded-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full rounded-full flex items-center justify-center">
+                            <User className="w-6 h-6 text-white" />
+                        </div>
+                    )}
+                </button>
+
+                {isDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-black/80 backdrop-blur-lg text-white border border-green-500/30 overflow-hidden z-50">
+                        {dropdownItems.map((item) => (
+                            <Link
+                                key={item.label}
+                                href={item.href}
+                                method={item.method || 'get'}
+                                as={item.method ? 'button' : 'a'}
+                                className={`flex items-center px-4 py-3 text-sm w-full text-left transition-colors ${isActive(item.href) ? 'bg-green-600/30' : 'hover:bg-green-600/20 focus:bg-green-600/20'}`}
+                                onClick={() => setIsDropdownOpen(false)}
+                            >
+                                <item.icon className="w-5 h-5 mr-2" />
+                                {item.label}
+                            </Link>
+                        ))}
                     </div>
                 )}
-            </button>
-
-            {isDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-black/80 backdrop-blur-lg text-white border border-green-500/30 overflow-hidden z-50">
-                    {dropdownItems.map((item) => (
-                        <Link
-                            key={item.label}
-                            href={item.href}
-                            method={item.method || 'get'}
-                            as={item.method ? 'button' : 'a'}
-                            className={`flex items-center px-4 py-3 text-sm w-full text-left transition-colors ${isActive(item.href) ? 'bg-green-600/30' : 'hover:bg-green-600/20 focus:bg-green-600/20'}`}
-                            onClick={() => setIsDropdownOpen(false)}
-                        >
-                            <item.icon className="w-5 h-5 mr-2" />
-                            {item.label}
-                        </Link>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-    
+            </div>
+        );
+    };
 
     return (
         <header
@@ -158,12 +141,10 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
         >
             {/* Logo */}
             <div className="flex items-center">
-                <div className="flex items-center">
-                    <PlaneIcon className="w-10 h-10 text-green-500 mr-3" />
-                    <h1 className="text-3xl font-bold text-white">
-                        Travel <span className="text-green-500">Nest</span>
-                    </h1>
-                </div>
+                <PlaneIcon className="w-10 h-10 text-green-500 mr-3" />
+                <h1 className="text-3xl font-bold text-white">
+                    Travel <span className="text-green-500">Nest</span>
+                </h1>
             </div>
 
             {/* Desktop Navigation */}
@@ -194,36 +175,45 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
             {/* Right Section with Search, Profile and Mobile Menu Button */}
             <div className="flex items-center space-x-4">
                 {/* Desktop Search */}
-                <div className="hidden md:block relative">
-                    {isSearchOpen ? (
-                        <form onSubmit={handleSearchSubmit} className="flex items-center">
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search destinations..."
-                                className="w-48 px-4 py-2 pl-10 rounded-full bg-black/50 border border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50"
-                                autoFocus
-                            />
-                            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
-                            <button 
-                                type="button" 
-                                className="absolute right-3 top-2.5 text-gray-400 hover:text-white"
-                                onClick={() => setIsSearchOpen(false)}
+                <div className="hidden md:block relative" ref={searchRef}>
+                    <button
+                        onClick={() => setIsSearchOpen(!isSearchOpen)}
+                        className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 focus:outline-none border border-green-500/30 hover:bg-green-600/30 transition-colors"
+                    >
+                        <Search className="w-5 h-5 text-white" />
+                    </button>
+
+                    <AnimatePresence>
+                        {isSearchOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.2 }}
+                                className="absolute top-full mt-2 right-0 w-80 bg-black/90 backdrop-blur-lg rounded-lg shadow-lg border border-green-500/30 p-4 z-50"
                             >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </form>
-                    ) : (
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 focus:outline-none border border-green-500/30 hover:bg-green-600/30 transition-colors"
-                        >
-                            <Search className="w-5 h-5 text-white" />
-                        </button>
-                    )}
+                                <form onSubmit={handleSearchSubmit} className="relative">
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search destinations..."
+                                        className="w-full px-4 py-2 pl-10 rounded-full bg-green-600/10 border border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                                        autoFocus
+                                    />
+                                    <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+                                    <button
+                                        type="submit"
+                                        className="absolute right-3 top-2.5 text-gray-400 hover:text-white"
+                                    >
+                                        <Plane className="w-5 h-5" />
+                                    </button>
+                                </form>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
-                
+
                 {/* Book Now Button */}
                 <Link
                     href="/booking"
@@ -232,7 +222,7 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                     Book Now <Plane className="ml-2 w-5 h-5" />
                 </Link>
 
-                {/* Profile Button - Always Visible */}
+                {/* Profile Button */}
                 <ProfileButton />
 
                 {/* Mobile Menu Button */}
@@ -264,7 +254,7 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                                 className="w-full px-4 py-2 pl-10 rounded-full bg-green-600/10 border border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50"
                             />
                             <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
-                            <button 
+                            <button
                                 type="submit"
                                 className="absolute right-3 top-2.5 text-gray-400 hover:text-white"
                             >

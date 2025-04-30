@@ -160,7 +160,7 @@ const Footer = () => {
               Terms of Service
             </button>
             <a 
-              href="/contact" 
+              href="/ContactPage" 
               className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
             >
               Contact
