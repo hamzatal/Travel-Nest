@@ -158,4 +158,36 @@ class AdminController extends Controller
             'last_login' => $admin->last_login,
         ]);
     }
+
+    public function dashboard()
+{
+    $stats = [
+        'users' => User::count(),
+        'messages' => Contact::count(),
+        'unread_messages' => Contact::where('is_read', false)->count(),
+        'destinations' => 0, // Replace with Destination::count() if model exists
+        'offers' => 0, // Replace with Offer::count() if model exists
+        'hero_sections' => 0, // Replace with HeroSection::count() if model exists
+    ];
+
+    $latest_users = User::select('id', 'name', 'email', 'created_at')
+        ->latest()
+        ->take(5)
+        ->get();
+
+    $latest_messages = Contact::select('id', 'name', 'email', 'message', 'created_at', 'is_read')
+        ->latest()
+        ->take(5)
+        ->get();
+
+    return Inertia::render('Admin/Dashboard', [
+        'stats' => $stats,
+        'latest_users' => $latest_users,
+        'latest_messages' => $latest_messages,
+        'flash' => [
+            'success' => session('success'),
+            'error' => session('error'),
+        ],
+    ]);
+}
 }

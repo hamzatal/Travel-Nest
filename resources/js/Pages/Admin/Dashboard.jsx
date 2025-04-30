@@ -1,16 +1,26 @@
 import React from "react";
 import { Head, usePage, Link } from "@inertiajs/react";
-import { 
-  Users, MessageSquare, MapPin, Tag, Image, 
-  Bell, Settings, Briefcase, LogOut, Grid, BarChart2,
-  Eye, Inbox, Calendar, TrendingUp, AlertCircle
+import {
+  Users,
+  MessageSquare,
+  MapPin,
+  Tag,
+  Image,
+  Bell,
+  Settings,
+  LogOut,
+  Grid,
+  BarChart2,
+  Eye,
+  AlertCircle,
+  TrendingUp,
 } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
 
 export default function Dashboard() {
   const { props } = usePage();
-  
-  // Safely extract data with fallbacks to prevent errors
+
+  // Safely extract data with fallbacks
   const admin = props.admin || props.auth?.user || {};
   const stats = props.stats || {
     users: 0,
@@ -18,7 +28,7 @@ export default function Dashboard() {
     unread_messages: 0,
     destinations: 0,
     offers: 0,
-    hero_sections: 0
+    hero_sections: 0,
   };
   const latest_users = props.latest_users || [];
   const latest_messages = props.latest_messages || [];
@@ -36,7 +46,12 @@ export default function Dashboard() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Dashboard Overview</h1>
           <div className="flex space-x-2">
-           
+            <button className="p-2 bg-gray-800 rounded-full hover:bg-gray-700">
+              <Bell className="w-5 h-5" />
+            </button>
+            <button className="p-2 bg-gray-800 rounded-full hover:bg-gray-700">
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -53,8 +68,8 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center mt-4 text-blue-200 text-sm">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              <span>12% increase this month</span>
+              <Grid className="w-4 h-4 mr-1" />
+              <span>Deactivated: {stats.deactivated_users || 0}</span>
             </div>
           </div>
 
@@ -128,7 +143,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-green-200">Revenue</p>
-                <h3 className="text-3xl font-bold mt-1">$24,567</h3>
+                <h3 className="text-3xl font-bold mt-1">$0</h3> {/* Update with real data */}
               </div>
               <div className="bg-green-500/30 p-3 rounded-lg">
                 <BarChart2 className="w-6 h-6" />
@@ -136,7 +151,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center mt-4 text-green-200 text-sm">
               <TrendingUp className="w-4 h-4 mr-1" />
-              <span>8.2% increase this week</span>
+              <span>0% increase this week</span> {/* Update with real data */}
             </div>
           </div>
         </div>
@@ -146,23 +161,36 @@ export default function Dashboard() {
           <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
             <div className="p-6 border-b border-gray-700 flex justify-between items-center">
               <h3 className="text-xl font-bold">Latest Users</h3>
-              <Link href="/admin/users" className="text-blue-400 text-sm hover:underline">View All</Link>
+              <Link
+                href="/admin/users"
+                className="text-blue-400 text-sm hover:underline"
+              >
+                View All
+              </Link>
             </div>
             <div className="divide-y divide-gray-700">
-              {latest_users.length > 0 ? latest_users.map((user) => (
-                <div key={user.id} className="p-4 flex items-center">
-                  <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-10 h-10 rounded-full flex items-center justify-center mr-4">
-                    {(user.name || "?").charAt(0).toUpperCase()}
+              {latest_users.length > 0 ? (
+                latest_users.map((user) => (
+                  <div key={user.id} className="p-4 flex items-center">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-700 w-10 h-10 rounded-full flex items-center justify-center mr-4">
+                      {(user.name || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-grow">
+                      <p className="font-medium">
+                        {user.name || "Unknown User"}
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        {user.email || "No email"}
+                      </p>
+                    </div>
+                    <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+                      {user.created_at
+                        ? new Date(user.created_at).toLocaleDateString()
+                        : "Unknown date"}
+                    </span>
                   </div>
-                  <div className="flex-grow">
-                    <p className="font-medium">{user.name || "Unknown User"}</p>
-                    <p className="text-sm text-gray-400">{user.email || "No email"}</p>
-                  </div>
-                  <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
-                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : "Unknown date"}
-                  </span>
-                </div>
-              )) : (
+                ))
+              ) : (
                 <div className="p-6 text-center text-gray-400">
                   No users found
                 </div>
@@ -174,43 +202,57 @@ export default function Dashboard() {
           <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
             <div className="p-6 border-b border-gray-700 flex justify-between items-center">
               <h3 className="text-xl font-bold">Latest Messages</h3>
-              <Link href="/admin/messages" className="text-blue-400 text-sm hover:underline">View All</Link>
+              <Link
+                href="/admin/messages"
+                className="text-blue-400 text-sm hover:underline"
+              >
+                View All
+              </Link>
             </div>
             <div className="divide-y divide-gray-700">
-              {latest_messages.length > 0 ? latest_messages.map((message) => (
-                <div key={message.id} className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center">
-                      <div className="bg-gradient-to-br from-yellow-500 to-yellow-700 w-10 h-10 rounded-full flex items-center justify-center mr-4">
-                        {(message.name || "?").charAt(0).toUpperCase()}
+              {latest_messages.length > 0 ? (
+                latest_messages.map((message) => (
+                  <div key={message.id} className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center">
+                        <div className="bg-gradient-to-br from-yellow-500 to-yellow-700 w-10 h-10 rounded-full flex items-center justify-center mr-4">
+                          {(message.name || "?").charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {message.name || "Unknown Sender"}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            {message.email || "No email"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{message.name || "Unknown Sender"}</p>
-                        <p className="text-sm text-gray-400">{message.email || "No email"}</p>
+                      <div className="flex items-center">
+                        {!message.is_read && (
+                          <span className="bg-blue-500 w-2 h-2 rounded-full mr-2"></span>
+                        )}
+                        <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
+                          {message.created_at
+                            ? new Date(message.created_at).toLocaleDateString()
+                            : "Unknown date"}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center">
-                      {!message.is_read && (
-                        <span className="bg-blue-500 w-2 h-2 rounded-full mr-2"></span>
-                      )}
-                      <span className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded">
-                        {message.created_at ? new Date(message.created_at).toLocaleDateString() : "Unknown date"}
-                      </span>
-                    </div>
+                    <p className="text-sm text-gray-300 truncate">
+                      {message.message || "No message content"}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-300 truncate">{message.message || "No message content"}</p>
-                </div>
-              )) : (
+                ))
+              ) : (
                 <div className="p-6 text-center text-gray-400">
                   No messages found
                 </div>
               )}
-                  <AdminSidebar />
-
             </div>
           </div>
         </div>
       </div>
+      <AdminSidebar />
     </div>
   );
 }

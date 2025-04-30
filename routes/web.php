@@ -73,6 +73,7 @@ Route::middleware('guest:admin')->prefix('admin')->name('admin.')->group(functio
 
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
     Route::get('/dashboard', fn() => Inertia::render('Admin/Dashboard'))->name('dashboard');
 
     // Users Management
@@ -80,7 +81,8 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::post('/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('toggle-status');
     });
-
+    Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
+    
     // Contact Messages
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
 
