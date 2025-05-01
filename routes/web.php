@@ -118,8 +118,11 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
 
     // Offers routes
     Route::get('/offers', [OfferController::class, 'index'])->name('offers');
-    Route::delete('/offers/{id}', [OfferController::class, 'destroy'])->name('offers.delete');
-
+    Route::post('/offers', [OfferController::class, 'store'])->name('offers.store');
+    Route::put('/offers/{id}', [OfferController::class, 'update'])->name('offers.update');
+    Route::delete('/offers/{id}', [OfferController::class, 'destroy'])->name('offers.destroy');
+    Route::patch('/offers/{id}/toggle', [OfferController::class, 'toggleActive'])->name('offers.toggle');
+    
     // Hero Sections routes
     Route::get('/hero', [HeroSectionController::class, 'index'])->name('hero');
     Route::post('/hero', [HeroSectionController::class, 'store'])->name('hero.store');
