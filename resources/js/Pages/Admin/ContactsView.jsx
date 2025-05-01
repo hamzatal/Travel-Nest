@@ -117,9 +117,9 @@ export default function ContactsView() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Message
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Actions
-                    </th>
+                    </th> */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
@@ -146,7 +146,7 @@ export default function ContactsView() {
                             {message.message || "No message"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {/* <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button
                             onClick={() => {
                               setSelectedContact(message);
@@ -156,13 +156,13 @@ export default function ContactsView() {
                           >
                             Reply
                           </button>
-                          {/* <button
+                          <button
                             onClick={() => handleDeleteContact(message.id)}
                             className="text-red-400 hover:text-red-300"
                           >
                             Delete
-                          </button> */}
-                        </td>
+                          </button>
+                        </td> */}
                       </tr>
                     ))
                   ) : (
@@ -239,13 +239,13 @@ export default function ContactsView() {
                       Cancel
                     </button>
                     <button
-                      type="submit"
-                      disabled={processing}
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Send Reply
-                    </button>
+  type="submit"
+  disabled={processing}
+  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+>
+  <Send className="w-4 h-4 mr-2" />
+  Send Reply
+</button>
                   </div>
                 </form>
               </div>

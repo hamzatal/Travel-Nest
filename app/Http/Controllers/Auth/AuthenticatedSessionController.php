@@ -4,50 +4,63 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Providers\RouteServiceProvider;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\Validation\ValidationException;
 
 class AuthenticatedSessionController extends Controller
 {
     /**
      * Display the login view.
+     *
+     * @return \Inertia\Response
      */
-    public function create(): Response
+    public function create()
     {
-        return Inertia::render('Auth/Login', [
-            'canResetPassword' => Route::has('password.request'),
+        return \Inertia\Inertia::render('Auth/Login', [
             'status' => session('status'),
         ]);
     }
 
     /**
      * Handle an incoming authentication request.
+     *
+     * @param  \App\Http\Requests\Auth\LoginRequest  $request
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request)
     {
+        // Attempt to authenticate the user
         $request->authenticate();
 
+        // Check if the user is active
+        if (!Auth::user()->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            throw ValidationException::withMessages([
+                'email' => 'Your account has been deactivated. Please contact support.',
+            ]);
+        }
+
+        // Regenerate session only after is_active check
         $request->session()->regenerate();
 
-        return redirect()->intended(RouteServiceProvider::HOME);
+        // Flash success message only after all checks pass
+        return redirect()->intended(route('home'))->with('success', 'Login successful! Redirecting...');
     }
 
     /**
      * Destroy an authenticated session.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request)
     {
-        Auth::guard('web')->logout();
-
+        Auth::logout();
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
-
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

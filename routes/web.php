@@ -11,6 +11,17 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 // ===================================================
+//! Test Route (For Debugging)
+// ===================================================
+
+
+
+
+
+
+
+
+// ===================================================
 //! Public Routes (No Authentication Required)
 // ===================================================
 
@@ -36,7 +47,7 @@ require __DIR__ . '/auth.php';
 //! Protected Routes (User Authenticated)
 // ===================================================
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('/home', fn() => Inertia::render('Home'))->name('home');
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
@@ -46,6 +57,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
         Route::delete('/', [ProfileController::class, 'deactivate'])->name('deactivate');
         Route::post('/reactivate', [ProfileController::class, 'reactivate'])->name('reactivate');
+    });
+
+    Route::prefix('chatbot')->name('chatbot.')->group(function () {
+        Route::post('/message', [ChatBotController::class, 'processMessage'])->name('message');
+        Route::get('/history', [ChatBotController::class, 'getHistory'])->name('history');
     });
 });
 
@@ -82,7 +98,8 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::post('/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('toggle-status');
     });
     Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
-    
+
+
     // Contact Messages
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
 

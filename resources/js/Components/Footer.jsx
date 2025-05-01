@@ -145,7 +145,7 @@ const Footer = () => {
         />
         <div className="absolute inset-0 bg-black opacity-50" />
         <div className="relative z-10">
-          <p className="text-white text-sm">© 2024 Travel Nest. All rights reserved.</p>
+          <p className="text-white text-sm">© 2025 Travel Nest. All rights reserved.</p>
           <div className="mt-10 space-x-6">
             <button 
               onClick={() => setActivePopup('privacyPolicy')} 

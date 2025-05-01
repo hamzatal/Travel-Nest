@@ -259,7 +259,7 @@ const UserProfile = () => {
 
     const handleDeactivationSuccessClose = () => {
         setShowDeactivationSuccessModal(false);
-        window.location.href = '/about-us';
+        window.location.href = '/';
     };
 
     const displayAvatar = previewImage || (user?.avatar_url ? user.avatar_url : '/images/avatar.webp');

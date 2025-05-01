@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Hotel, Plane } from "lucide-react"; 
+import { Hotel, InfoIcon, Plane } from "lucide-react"; 
 
 const WelcomePage = () => {
     const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
@@ -49,12 +49,12 @@ const WelcomePage = () => {
                             >
                                 Start Booking <Plane className="ml-2" />
                             </button>
-                            {/* <button
+                            <button
                                 onClick={() => window.location.href = '/about-us'}
                                 className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-3 rounded-full transition-colors flex items-center"
                             >
-                                About US <Plane className="ml-2" />
-                            </button> */}
+                                About US <InfoIcon className="ml-2" />
+                            </button>
                         </div>
                     </div>
                 </div>

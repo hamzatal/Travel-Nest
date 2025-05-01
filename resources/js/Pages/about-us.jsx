@@ -1,9 +1,7 @@
 import React from "react";
-import { Head } from "@inertiajs/react";
+import { Head, Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
-import { MapPin, Globe, Calendar, Clock, Users, Shield } from "lucide-react";
-import Navbar from "../Components/Nav";
-import Footer from "../Components/Footer";
+import { MapPin, Globe, Calendar, Clock, Users, Shield, Home } from "lucide-react";
 
 const About = ({ auth }) => {
   // Animation variants
@@ -15,7 +13,15 @@ const About = ({ auth }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
       <Head title="About Us - Travel Nest" />
-      <Navbar user={auth.user} />
+
+      {/* Home Button */}
+      <Link
+        href="/home"
+        className="fixed top-6 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+      >
+        <Home className="w-5 h-5" />
+        <span className="font-medium">Home</span>
+      </Link>
 
       {/* Hero Section */}
       <div className="relative h-64 md:h-72 overflow-hidden">
@@ -220,57 +226,6 @@ const About = ({ auth }) => {
           </div>
         </motion.div>
 
-        {/* Our Team */}
-        {/* <motion.div 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          variants={fadeIn}
-          className="mb-16"
-        >
-          <h2 className="text-3xl font-bold mb-8 text-center">
-            Meet Our <span className="text-green-500">Team</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[
-              {
-                name: "Sarah Johnson",
-                role: "CEO & Founder",
-                bio: "Former travel journalist with a passion for culture and adventure."
-              },
-              {
-                name: "David Chen",
-                role: "CTO",
-                bio: "Tech innovator committed to creating seamless digital experiences."
-              },
-              {
-                name: "Aisha Patel",
-                role: "Head of Destinations",
-                bio: "Has visited 78 countries and counting, specializing in unique experiences."
-              },
-              {
-                name: "Miguel Rodriguez",
-                role: "Customer Experience",
-                bio: "Dedicated to ensuring every traveler receives exceptional service."
-              }
-            ].map((member, index) => (
-              <motion.div 
-                key={index}
-                whileHover={{ scale: 1.05 }}
-                className="bg-gray-800 bg-opacity-60 p-6 rounded-lg text-center border border-gray-700"
-              >
-                <div className="w-24 h-24 bg-gray-700 rounded-full mx-auto mb-4 overflow-hidden flex items-center justify-center text-gray-500">
-                  <Users size={32} />
-                </div>
-                <h3 className="text-xl font-semibold text-green-500">{member.name}</h3>
-                <p className="text-sm text-gray-400 mb-2">{member.role}</p>
-                <p className="text-gray-300">{member.bio}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div> */}
-
         {/* Our Values */}
         <motion.div 
           initial="hidden"
@@ -350,8 +305,6 @@ const About = ({ auth }) => {
           </div>
         </motion.div>
       </div>
-
-      <Footer />
     </div>
   );
 };
