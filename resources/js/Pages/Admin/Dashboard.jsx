@@ -6,9 +6,6 @@ import {
   MapPin,
   Tag,
   Image,
-  Bell,
-  Settings,
-  LogOut,
   Grid,
   BarChart2,
   Eye,
@@ -45,14 +42,7 @@ export default function Dashboard() {
       <div className="ml-64 p-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Dashboard Overview</h1>
-          <div className="flex space-x-2">
-            <button className="p-2 bg-gray-800 rounded-full hover:bg-gray-700">
-              <Bell className="w-5 h-5" />
-            </button>
-            <button className="p-2 bg-gray-800 rounded-full hover:bg-gray-700">
-              <Settings className="w-5 h-5" />
-            </button>
-          </div>
+          
         </div>
 
         {/* Stats Cards */}

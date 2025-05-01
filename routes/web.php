@@ -5,6 +5,10 @@ use App\Http\Controllers\AdminAuth\AdminController;
 use App\Http\Controllers\ChatBotController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\AdminAuth\DestinationController;
+use App\Http\Controllers\AdminAuth\OfferController;
+use App\Http\Controllers\AdminAuth\HeroSectionController;
+use App\Http\Controllers\AdminAuth\DashboardController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -90,8 +94,8 @@ Route::middleware('guest:admin')->prefix('admin')->name('admin.')->group(functio
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
-    Route::get('/dashboard', fn() => Inertia::render('Admin/Dashboard'))->name('dashboard');
-
+ // Dashboard
+ Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     // Users Management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
@@ -106,6 +110,19 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     // Profile
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
+
+    
+    // Destinations routes
+    Route::get('/destinations', [DestinationController::class, 'index'])->name('admin.destinations');
+    Route::delete('/destinations/{id}', [DestinationController::class, 'destroy'])->name('admin.destinations.delete');
+
+    // Offers routes
+    Route::get('/offers', [OfferController::class, 'index'])->name('admin.offers');
+    Route::delete('/offers/{id}', [OfferController::class, 'destroy'])->name('admin.offers.delete');
+
+    // Hero Sections routes
+    Route::get('/hero', [HeroSectionController::class, 'index'])->name('admin.hero');
+    Route::delete('/hero/{id}', [HeroSectionController::class, 'destroy'])->name('admin.hero.delete');
 });
 
 // ===================================================
