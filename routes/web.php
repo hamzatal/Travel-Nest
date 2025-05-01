@@ -9,19 +9,19 @@ use App\Http\Controllers\AdminAuth\DestinationController;
 use App\Http\Controllers\AdminAuth\OfferController;
 use App\Http\Controllers\AdminAuth\HeroSectionController;
 use App\Http\Controllers\AdminAuth\DashboardController;
+use App\Http\Controllers\HomeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
+
+//! Test Routes
 // ===================================================
-//! Test Route (For Debugging)
+
+
+
 // ===================================================
-
-
-
-
-
 
 
 
@@ -52,7 +52,7 @@ require __DIR__ . '/auth.php';
 // ===================================================
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
-    Route::get('/home', fn() => Inertia::render('Home'))->name('home');
+    Route::get('/home', [HomeController::class, 'index'])->name('home'); 
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -94,35 +94,38 @@ Route::middleware('guest:admin')->prefix('admin')->name('admin.')->group(functio
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
- // Dashboard
- Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
     // Users Management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::post('/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('toggle-status');
     });
-    Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
-
 
     // Contact Messages
+    Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
 
     // Profile
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
 
-    
     // Destinations routes
-    Route::get('/destinations', [DestinationController::class, 'index'])->name('admin.destinations');
-    Route::delete('/destinations/{id}', [DestinationController::class, 'destroy'])->name('admin.destinations.delete');
+    Route::get('/destinations', [DestinationController::class, 'index'])->name('destinations');
+    Route::post('/destinations', [DestinationController::class, 'store'])->name('destinations.store');
+    Route::delete('/destinations/{id}', [DestinationController::class, 'destroy'])->name('destinations.delete');
 
     // Offers routes
-    Route::get('/offers', [OfferController::class, 'index'])->name('admin.offers');
-    Route::delete('/offers/{id}', [OfferController::class, 'destroy'])->name('admin.offers.delete');
+    Route::get('/offers', [OfferController::class, 'index'])->name('offers');
+    Route::delete('/offers/{id}', [OfferController::class, 'destroy'])->name('offers.delete');
 
     // Hero Sections routes
-    Route::get('/hero', [HeroSectionController::class, 'index'])->name('admin.hero');
-    Route::delete('/hero/{id}', [HeroSectionController::class, 'destroy'])->name('admin.hero.delete');
+    Route::get('/hero', [HeroSectionController::class, 'index'])->name('hero');
+    Route::post('/hero', [HeroSectionController::class, 'store'])->name('hero.store');
+    Route::put('/hero/{id}', [HeroSectionController::class, 'update'])->name('hero.update'); 
+    Route::patch('/hero/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('hero.toggle');
+    Route::delete('/hero/{id}', [HeroSectionController::class, 'destroy'])->name('hero.delete');
 });
 
 // ===================================================

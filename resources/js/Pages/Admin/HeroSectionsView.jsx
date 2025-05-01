@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Head, usePage, useForm } from "@inertiajs/react";
-import { Search, Trash2, Plus, Edit2, CheckCircle, XCircle, Image, X } from "lucide-react";
+import { Search, Trash2, Plus, Edit2, CheckCircle, XCircle, Image, X, ToggleLeft, ToggleRight } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function HeroSectionsView() {
   const { props } = usePage();
@@ -11,13 +13,62 @@ export default function HeroSectionsView() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSection, setSelectedSection] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [validationErrors, setValidationErrors] = useState({});
 
-  const { data, setData, post, put, delete: deleteForm, processing, reset, errors } = useForm({
+  const { data, setData, post, put, delete: deleteForm, patch, processing, reset, errors } = useForm({
     title: "",
     subtitle: "",
-    cta_text: "",
     image: null,
   });
+
+  // Validate form fields (flexible for partial updates)
+  const validateForm = (isAdd = false) => {
+    const errors = {};
+    if (data.title && (data.title.length < 3 || data.title.length > 255)) {
+      errors.title = "Title must be between 3 and 255 characters.";
+    }
+    if (data.subtitle && (data.subtitle.length < 3 || data.subtitle.length > 255)) {
+      errors.subtitle = "Subtitle must be between 3 and 255 characters.";
+    }
+    if (isAdd && !data.title) {
+      errors.title = "Title is required.";
+    }
+    if (isAdd && !data.subtitle) {
+      errors.subtitle = "Subtitle is required.";
+    }
+    if (isAdd && !data.image) {
+      errors.image = "Image is required.";
+    }
+    if (data.image) {
+      const validTypes = ["image/jpeg", "image/png", "image/jpg", "image/gif"];
+      if (!validTypes.includes(data.image.type)) {
+        errors.image = "Image must be a JPEG, PNG, JPG, or GIF.";
+      }
+      if (data.image.size > 2 * 1024 * 1024) {
+        errors.image = "Image size must be less than 2MB.";
+      }
+    }
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle image preview
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setData("image", file);
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  // Remove selected image
+  const removeImage = () => {
+    setData("image", null);
+    setImagePreview(null);
+  };
 
   // Filter hero sections based on search query
   const filteredHeroSections = heroSections.filter(
@@ -29,11 +80,21 @@ export default function HeroSectionsView() {
   // Handle add hero section
   const handleAdd = (e) => {
     e.preventDefault();
+    if (!validateForm(true)) {
+      toast.error("Please fix the form errors.");
+      return;
+    }
     post(route("admin.hero.store"), {
       preserveScroll: true,
+      forceFormData: true,
       onSuccess: () => {
         setShowAddModal(false);
         reset();
+        setImagePreview(null);
+        toast.success("Hero section added successfully!");
+      },
+      onError: () => {
+        toast.error("Failed to add hero section. Please try again.");
       },
     });
   };
@@ -41,12 +102,22 @@ export default function HeroSectionsView() {
   // Handle edit hero section
   const handleEdit = (e) => {
     e.preventDefault();
+    if (!validateForm(false)) {
+      toast.error("Please fix the form errors.");
+      return;
+    }
     put(route("admin.hero.update", selectedSection.id), {
       preserveScroll: true,
+      forceFormData: true,
       onSuccess: () => {
         setShowEditModal(false);
         reset();
+        setImagePreview(null);
         setSelectedSection(null);
+        toast.success("Hero section updated successfully!");
+      },
+      onError: () => {
+        toast.error("Failed to update hero section. Please try again.");
       },
     });
   };
@@ -54,10 +125,31 @@ export default function HeroSectionsView() {
   // Handle delete hero section
   const handleDelete = (id) => {
     if (confirm("Are you sure you want to delete this hero section?")) {
-      deleteForm(route("admin.hero.delete", id), {
+      deleteForm(route("admin.hero.destroy", id), {
         preserveScroll: true,
+        onSuccess: () => {
+          toast.success("Hero section deleted successfully!");
+        },
+        onError: () => {
+          toast.error("Failed to delete hero section. Please try again.");
+        },
       });
     }
+  };
+
+  // Handle toggle active status
+  const handleToggleActive = (id) => {
+    patch(route("admin.hero.toggle", id), {
+      preserveScroll: true,
+      onSuccess: () => {
+        const hero = heroSections.find((h) => h.id === id);
+        const message = hero.is_active ? "Hero section deactivated successfully!" : "Hero section activated successfully!";
+        toast.success(message);
+      },
+      onError: () => {
+        toast.error("Failed to toggle hero section status. Please try again.");
+      },
+    });
   };
 
   // Open edit modal with hero section data
@@ -66,15 +158,35 @@ export default function HeroSectionsView() {
     setData({
       title: section.title || "",
       subtitle: section.subtitle || "",
-      cta_text: section.cta_text || "",
       image: null,
     });
+    setImagePreview(section.image ? `/storage/${section.image}` : null);
     setShowEditModal(true);
   };
+
+  // Show flash messages as toasts
+  useEffect(() => {
+    if (flash.success) {
+      toast.success(flash.success);
+    }
+    if (flash.error) {
+      toast.error(flash.error);
+    }
+  }, [flash]);
+
+  // Clean up image preview URL
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <Head title="Hero Sections - Travel Nest Admin" />
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       <div className="lg:ml-64 p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <h1 className="text-2xl font-bold text-white">Hero Sections</h1>
@@ -98,19 +210,6 @@ export default function HeroSectionsView() {
             </button>
           </div>
         </div>
-
-        {flash.success && (
-          <div className="bg-green-600/20 border border-green-500 text-green-200 px-4 py-3 rounded-lg mb-6 flex items-center">
-            <CheckCircle className="w-5 h-5 mr-2" />
-            {flash.success}
-          </div>
-        )}
-        {flash.error && (
-          <div className="bg-red-600/20 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6 flex items-center">
-            <XCircle className="w-5 h-5 mr-2" />
-            {flash.error}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredHeroSections.length > 0 ? (
@@ -148,11 +247,26 @@ export default function HeroSectionsView() {
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
+                      <button
+                        onClick={() => handleToggleActive(section.id)}
+                        className={`${
+                          section.is_active ? "text-green-400 hover:text-green-300" : "text-gray-400 hover:text-gray-300"
+                        }`}
+                        disabled={processing}
+                        title={section.is_active ? "Deactivate" : "Activate"}
+                      >
+                        {section.is_active ? (
+                          <ToggleRight className="w-5 h-5" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5" />
+                        )}
+                      </button>
                     </div>
                   </div>
                   <p className="text-sm text-gray-400 mb-2">{section.subtitle || "N/A"}</p>
-                  <p className="text-sm text-gray-400 mb-2">CTA: {section.cta_text || "N/A"}</p>
-                  <p className="text-xs text-gray-500 mt-2">ID: {section.id}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    ID: {section.id} | Status: {section.is_active ? "Active" : "Inactive"}
+                  </p>
                 </div>
               </div>
             ))
@@ -174,48 +288,80 @@ export default function HeroSectionsView() {
                 </div>
                 <form onSubmit={handleAdd} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Title</label>
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-400 mb-1">
+                      Title
+                    </label>
                     <input
                       type="text"
+                      id="title"
+                      name="title"
                       value={data.title}
                       onChange={(e) => setData("title", e.target.value)}
                       className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
                     />
+                    {validationErrors.title && (
+                      <p className="text-red-400 text-xs mt-1">{validationErrors.title}</p>
+                    )}
                     {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Subtitle</label>
+                    <label htmlFor="subtitle" className="block text-sm font-medium text-gray-400 mb-1">
+                      Subtitle
+                    </label>
                     <input
                       type="text"
+                      id="subtitle"
+                      name="subtitle"
                       value={data.subtitle}
                       onChange={(e) => setData("subtitle", e.target.value)}
                       className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                    {validationErrors.subtitle && (
+                      <p className="text-red-400 text-xs mt-1">{validationErrors.subtitle}</p>
+                    )}
+                    {errors.subtitle && <p className="text-red-400 text-xs mt-1">{errors.subtitle}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">CTA Text</label>
-                    <input
-                      type="text"
-                      value={data.cta_text}
-                      onChange={(e) => setData("cta_text", e.target.value)}
-                      className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Image</label>
+                    <label htmlFor="image" className="block text-sm font-medium text-gray-400 mb-1">
+                      Image
+                    </label>
                     <input
                       type="file"
+                      id="image"
+                      name="image"
                       accept="image/*"
-                      onChange={(e) => setData("image", e.target.files[0])}
+                      onChange={handleImageChange}
                       className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
                     />
+                    {imagePreview && (
+                      <div className="relative mt-2">
+                        <img
+                          src={imagePreview}
+                          alt="Image Preview"
+                          className="w-full h-40 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                    {validationErrors.image && (
+                      <p className="text-red-400 text-xs mt-1">{validationErrors.image}</p>
+                    )}
                     {errors.image && <p className="text-red-400 text-xs mt-1">{errors.image}</p>}
                   </div>
                   <div className="flex justify-end space-x-3">
                     <button
                       type="button"
-                      onClick={() => setShowAddModal(false)}
+                      onClick={() => {
+                        setShowAddModal(false);
+                        setImagePreview(null);
+                        reset();
+                      }}
                       className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                     >
                       Cancel
@@ -241,54 +387,93 @@ export default function HeroSectionsView() {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-white">Edit Hero Section</h3>
-                  <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-300">
+                  <button
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setImagePreview(null);
+                      reset();
+                    }}
+                    className="text-gray-400 hover:text-gray-300"
+                  >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
                 <form onSubmit={handleEdit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Title</label>
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-400 mb-1">
+                      Title
+                    </label>
                     <input
                       type="text"
+                      id="title"
+                      name="title"
                       value={data.title}
                       onChange={(e) => setData("title", e.target.value)}
                       className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
                     />
+                    {validationErrors.title && (
+                      <p className="text-red-400 text-xs mt-1">{validationErrors.title}</p>
+                    )}
                     {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Subtitle</label>
+                    <label htmlFor="subtitle" className="block text-sm font-medium text-gray-400 mb-1">
+                      Subtitle
+                    </label>
                     <input
                       type="text"
+                      id="subtitle"
+                      name="subtitle"
                       value={data.subtitle}
                       onChange={(e) => setData("subtitle", e.target.value)}
                       className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
+                    {validationErrors.subtitle && (
+                      <p className="text-red-400 text-xs mt-1">{validationErrors.subtitle}</p>
+                    )}
+                    {errors.subtitle && <p className="text-red-400 text-xs mt-1">{errors.subtitle}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">CTA Text</label>
-                    <input
-                      type="text"
-                      value={data.cta_text}
-                      onChange={(e) => setData("cta_text", e.target.value)}
-                      className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Image</label>
+                    <label htmlFor="image" className="block text-sm font-medium text-gray-400 mb-1">
+                      Image
+                    </label>
                     <input
                       type="file"
+                      id="image"
+                      name="image"
                       accept="image/*"
-                      onChange={(e) => setData("image", e.target.files[0])}
+                      onChange={handleImageChange}
                       className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
                     />
+                    {imagePreview && (
+                      <div className="relative mt-2">
+                        <img
+                          src={imagePreview}
+                          alt="Image Preview"
+                          className="w-full h-40 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                    {validationErrors.image && (
+                      <p className="text-red-400 text-xs mt-1">{validationErrors.image}</p>
+                    )}
                     {errors.image && <p className="text-red-400 text-xs mt-1">{errors.image}</p>}
                   </div>
                   <div className="flex justify-end space-x-3">
                     <button
                       type="button"
-                      onClick={() => setShowEditModal(false)}
+                      onClick={() => {
+                        setShowEditModal(false);
+                        setImagePreview(null);
+                        reset();
+                      }}
                       className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                     >
                       Cancel
