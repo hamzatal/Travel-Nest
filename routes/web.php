@@ -52,7 +52,7 @@ require __DIR__ . '/auth.php';
 // ===================================================
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
-    Route::get('/home', [HomeController::class, 'index'])->name('home'); 
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -97,6 +97,10 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Admin Profile
+    Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
+    Route::put('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
+    
     // Users Management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
@@ -106,7 +110,7 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     // Contact Messages
     Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
-
+    Route::patch('/messages/{id}/read', [AdminController::class, 'markAsRead'])->name('messages.read');
     // Profile
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
@@ -122,11 +126,11 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     Route::put('/offers/{id}', [OfferController::class, 'update'])->name('offers.update');
     Route::delete('/offers/{id}', [OfferController::class, 'destroy'])->name('offers.destroy');
     Route::patch('/offers/{id}/toggle', [OfferController::class, 'toggleActive'])->name('offers.toggle');
-    
+
     // Hero Sections routes
     Route::get('/hero', [HeroSectionController::class, 'index'])->name('hero');
     Route::post('/hero', [HeroSectionController::class, 'store'])->name('hero.store');
-    Route::put('/hero/{id}', [HeroSectionController::class, 'update'])->name('hero.update'); 
+    Route::put('/hero/{id}', [HeroSectionController::class, 'update'])->name('hero.update');
     Route::patch('/hero/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('hero.toggle');
     Route::delete('/hero/{id}', [HeroSectionController::class, 'destroy'])->name('hero.delete');
 });
@@ -135,14 +139,14 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
 //! API Routes (Authenticated)
 // ===================================================
 
-Route::middleware(['auth', 'web'])->prefix('api')->name('api.')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
-    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
-    Route::post('/update', [UserController::class, 'updateUser'])->name('user.update');
-    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
-    Route::put('/profile/deactivate', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
-});
+// Route::middleware(['auth', 'web'])->prefix('api')->name('api.')->group(function () {
+//     Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
+//     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+//     Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
+//     Route::post('/update', [UserController::class, 'updateUser'])->name('user.update');
+//     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+//     Route::put('/profile/deactivate', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
+// });
 
 // ===================================================
 //! Fallback Route

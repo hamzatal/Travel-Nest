@@ -5,9 +5,12 @@ namespace App\Http\Controllers\AdminAuth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Contact;
+use App\Models\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class AdminController extends Controller
@@ -20,7 +23,7 @@ class AdminController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -54,7 +57,7 @@ class AdminController extends Controller
         }
 
         $status = $user->is_active ? 'activated' : 'deactivated';
-        \Illuminate\Support\Facades\Log::info("User {$user->id} $status by admin " . \Illuminate\Support\Facades\Auth::guard('admin')->id());
+        Log::info("User {$user->id} $status by admin " . Auth::guard('admin')->id());
         return redirect()->route('admin.users.index')->with('success', "User $status successfully");
     }
 
@@ -66,8 +69,8 @@ class AdminController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('subject', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('subject', 'like', "%{$search}%");
             });
         }
 
@@ -82,7 +85,64 @@ class AdminController extends Controller
         ]);
     }
 
-     public function dashboard()
+    public function markAsRead($id)
+    {
+        $contact = Contact::findOrFail($id);
+        $contact->is_read = true;
+        $contact->save();
+
+        Log::info("Message {$id} marked as read by admin " . Auth::guard('admin')->id());
+
+        return redirect()->route('admin.contacts')->with('success', 'Message marked as read successfully');
+    }
+
+    public function getAdminProfile()
+    {
+        $admin = Auth::guard('admin')->user();
+
+        return Inertia::render('Admin/Profile', [
+            'admin' => [
+                'id' => $admin->id,
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'last_login' => $admin->last_login,
+                'avatar' => $admin->avatar,
+                'created_at' => $admin->created_at,
+                'updated_at' => $admin->updated_at,
+            ],
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
+            ],
+        ]);
+    }
+
+    public function updateAdminProfile(Request $request)
+    {
+        $admin = Auth::guard('admin')->user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:admins,email,' . $admin->id],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'], // 2MB max
+        ]);
+
+        if ($request->hasFile('avatar')) {
+            if ($admin->avatar) {
+                Storage::disk('public')->delete('avatars/' . $admin->avatar);
+            }
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $validated['avatar'] = basename($path);
+        }
+
+        $admin->update($validated);
+
+        Log::info("Admin {$admin->id} updated profile", ['admin_id' => $admin->id]);
+
+        return redirect()->route('admin.profile')->with('success', 'Profile updated successfully');
+    }
+
+    public function dashboard()
     {
         $stats = [
             'users' => User::count(),
