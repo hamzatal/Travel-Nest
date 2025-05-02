@@ -13,7 +13,7 @@ class OfferController extends Controller
     public function index()
     {
         $offers = Offer::all()->map(function ($offer) {
-            $offer->image = $offer->image ? asset('storage/offers/' . basename($offer->image)) : null;
+            $offer->image = $offer->image ? asset('storage/offers/' . $offer->image) : null;
             return $offer;
         });
         return Inertia::render('Admin/OffersView', ['offers' => $offers]);
@@ -32,8 +32,8 @@ class OfferController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        $imageName = $request->file('image')->store('offers', 'public');
-        $imageName = basename($imageName);
+        $imagePath = $request->file('image')->store('offers', 'public');
+        $imageName = basename($imagePath);
 
         Offer::create([
             'title' => $request->title,
@@ -76,8 +76,8 @@ class OfferController extends Controller
             if ($offer->image) {
                 Storage::disk('public')->delete('offers/' . $offer->image);
             }
-            $imageName = $request->file('image')->store('offers', 'public');
-            $data['image'] = basename($imageName);
+            $imagePath = $request->file('image')->store('offers', 'public');
+            $data['image'] = basename($imagePath);
         }
         if ($request->filled('price')) {
             $data['price'] = $request->price;

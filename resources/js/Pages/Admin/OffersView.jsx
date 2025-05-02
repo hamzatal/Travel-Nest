@@ -286,7 +286,7 @@ export default function OffersView() {
                             >
                                 {offer.image ? (
                                     <img
-                                        src={`/storage/${offer.image}`}
+                                        src={offer.image}
                                         alt={offer.title}
                                         className="w-full h-48 object-cover"
                                     />

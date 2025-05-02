@@ -1,29 +1,21 @@
 <?php
 
-use App\Http\Controllers\AdminAuth\LoginController;
 use App\Http\Controllers\AdminAuth\AdminController;
+use App\Http\Controllers\AdminAuth\DashboardController;
+use App\Http\Controllers\AdminAuth\DestinationController;
+use App\Http\Controllers\AdminAuth\HeroSectionController;
+use App\Http\Controllers\AdminAuth\LoginController;
+use App\Http\Controllers\AdminAuth\OfferController;
 use App\Http\Controllers\ChatBotController;
+use App\Http\Controllers\DealsController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\AdminAuth\DestinationController;
-use App\Http\Controllers\AdminAuth\OfferController;
-use App\Http\Controllers\AdminAuth\HeroSectionController;
-use App\Http\Controllers\AdminAuth\DashboardController;
-use App\Http\Controllers\HomeController;
+use App\Http\Controllers\SearchController;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-
-
-//! Test Routes
-// ===================================================
-
-
-
-// ===================================================
-
-
 
 // ===================================================
 //! Public Routes (No Authentication Required)
@@ -52,20 +44,25 @@ require __DIR__ . '/auth.php';
 // ===================================================
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
+    
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
+    
+    // Deals Routes
+    Route::get('/deals', [DealsController::class, 'index'])->name('deals');
+    Route::get('/offer/{id}', [DealsController::class, 'show'])->name('offer.show');
 
+    // Search Route
+    Route::get('/search', [SearchController::class, 'index'])->name('search');
+    Route::get('/search/live', [SearchController::class, 'live'])->name('search.live');
+    
+    // Profile Routes
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('edit');
         Route::patch('/', [ProfileController::class, 'update'])->name('update');
         Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
         Route::delete('/', [ProfileController::class, 'deactivate'])->name('deactivate');
         Route::post('/reactivate', [ProfileController::class, 'reactivate'])->name('reactivate');
-    });
-
-    Route::prefix('chatbot')->name('chatbot.')->group(function () {
-        Route::post('/message', [ChatBotController::class, 'processMessage'])->name('message');
-        Route::get('/history', [ChatBotController::class, 'getHistory'])->name('history');
     });
 });
 
@@ -79,18 +76,16 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
 });
 
 // ===================================================
-//! Admin Authentication (Guest: Admin Only)
+//! Admin Routes
 // ===================================================
 
+// Admin Authentication (Guest: Admin Only)
 Route::middleware('guest:admin')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store']);
 });
 
-// ===================================================
-//! Admin Protected Routes (Authenticated: Admin)
-// ===================================================
-
+// Admin Protected Routes (Authenticated: Admin)
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
@@ -100,7 +95,8 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     // Admin Profile
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::put('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
-    
+    Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
+
     // Users Management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
@@ -111,42 +107,45 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
     Route::patch('/messages/{id}/read', [AdminController::class, 'markAsRead'])->name('messages.read');
-    // Profile
-    Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
-    Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
 
-    // Destinations routes
-    Route::get('/destinations', [DestinationController::class, 'index'])->name('destinations');
-    Route::post('/destinations', [DestinationController::class, 'store'])->name('destinations.store');
-    Route::delete('/destinations/{id}', [DestinationController::class, 'destroy'])->name('destinations.delete');
+    // Destinations Routes
+    Route::prefix('destinations')->name('destinations.')->group(function () {
+        Route::get('/', [DestinationController::class, 'index'])->name('index');
+        Route::post('/', [DestinationController::class, 'store'])->name('store');
+        Route::delete('/{id}', [DestinationController::class, 'destroy'])->name('delete');
+    });
 
-    // Offers routes
-    Route::get('/offers', [OfferController::class, 'index'])->name('offers');
-    Route::post('/offers', [OfferController::class, 'store'])->name('offers.store');
-    Route::put('/offers/{id}', [OfferController::class, 'update'])->name('offers.update');
-    Route::delete('/offers/{id}', [OfferController::class, 'destroy'])->name('offers.destroy');
-    Route::patch('/offers/{id}/toggle', [OfferController::class, 'toggleActive'])->name('offers.toggle');
+    // Offers Routes
+    Route::prefix('offers')->name('offers.')->group(function () {
+        Route::get('/', [OfferController::class, 'index'])->name('index');
+        Route::post('/', [OfferController::class, 'store'])->name('store');
+        Route::put('/{id}', [OfferController::class, 'update'])->name('update');
+        Route::delete('/{id}', [OfferController::class, 'destroy'])->name('destroy');
+        Route::patch('/{id}/toggle', [OfferController::class, 'toggleActive'])->name('toggle');
+    });
 
-    // Hero Sections routes
-    Route::get('/hero', [HeroSectionController::class, 'index'])->name('hero');
-    Route::post('/hero', [HeroSectionController::class, 'store'])->name('hero.store');
-    Route::put('/hero/{id}', [HeroSectionController::class, 'update'])->name('hero.update');
-    Route::patch('/hero/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('hero.toggle');
-    Route::delete('/hero/{id}', [HeroSectionController::class, 'destroy'])->name('hero.delete');
+    // Hero Sections Routes
+    Route::prefix('hero')->name('hero.')->group(function () {
+        Route::get('/', [HeroSectionController::class, 'index'])->name('index');
+        Route::post('/', [HeroSectionController::class, 'store'])->name('store');
+        Route::put('/{id}', [HeroSectionController::class, 'update'])->name('update');
+        Route::patch('/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('toggle');
+        Route::delete('/{id}', [HeroSectionController::class, 'destroy'])->name('delete');
+    });
 });
 
 // ===================================================
-//! API Routes (Authenticated)
+//! API Routes (Optional)
 // ===================================================
 
-// Route::middleware(['auth', 'web'])->prefix('api')->name('api.')->group(function () {
-//     Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
-//     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
-//     Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
-//     Route::post('/update', [UserController::class, 'updateUser'])->name('user.update');
-//     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
-//     Route::put('/profile/deactivate', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
-// });
+Route::middleware(['auth', 'web'])->prefix('api')->name('api.')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
+    Route::post('/update', [UserController::class, 'updateUser'])->name('user.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+    Route::put('/profile/deactivate', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
+});
 
 // ===================================================
 //! Fallback Route

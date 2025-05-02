@@ -295,8 +295,8 @@ const HomePage = ({ auth }) => {
                         </div>
                     </>
                 )}
-        </section>
-        
+            </section>
+
             {/* Featured Promotions */}
             <section
                 className={`py-16 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
@@ -352,9 +352,8 @@ const HomePage = ({ auth }) => {
                                             <div className="relative">
                                                 <img
                                                     src={
-                                                        offer.image
-                                                            ? offer.image
-                                                            : "https://via.placeholder.com/640x480"
+                                                        offer.image ||
+                                                        "https://via.placeholder.com/640x480"
                                                     }
                                                     alt={offer.title}
                                                     className="w-full h-48 object-cover"
@@ -397,31 +396,74 @@ const HomePage = ({ auth }) => {
                                                 >
                                                     {offer.description}
                                                 </p>
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <span
-                                                            className={`block ${
-                                                                isDarkMode
-                                                                    ? "text-gray-400"
-                                                                    : "text-gray-500"
-                                                            } text-sm`}
-                                                        >
-                                                            From
-                                                        </span>
-                                                        <span className="text-blue-500 font-bold text-xl">
-                                                            ${offer.price}
-                                                        </span>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <span
+                                                                className={`block ${
+                                                                    isDarkMode
+                                                                        ? "text-gray-400"
+                                                                        : "text-gray-500"
+                                                                } text-sm`}
+                                                            >
+                                                                Original Price
+                                                            </span>
+                                                            <span
+                                                                className={`text-xl font-bold ${
+                                                                    offer.discount_price
+                                                                        ? "line-through text-gray-400"
+                                                                        : "text-blue-500"
+                                                                }`}
+                                                            >
+                                                                ${offer.price}
+                                                            </span>
+                                                        </div>
+                                                        {offer.discount_price && (
+                                                            <div>
+                                                                <span
+                                                                    className={`block ${
+                                                                        isDarkMode
+                                                                            ? "text-gray-400"
+                                                                            : "text-gray-500"
+                                                                    } text-sm`}
+                                                                >
+                                                                    Discounted
+                                                                    Price
+                                                                </span>
+                                                                <span className="text-blue-500 font-bold text-xl">
+                                                                    $
+                                                                    {
+                                                                        offer.discount_price
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <button
-                                                        className={`px-4 py-2 rounded-full ${
-                                                            isDarkMode
-                                                                ? "bg-blue-600 text-white hover:bg-blue-700"
-                                                                : "bg-blue-600 text-white hover:bg-blue-700"
-                                                        } transition-all duration-300`}
-                                                    >
-                                                        Book Now
-                                                    </button>
+                                                    {(offer.start_date ||
+                                                        offer.end_date) && (
+                                                        <div className="text-sm text-gray-400">
+                                                            <span>
+                                                                Valid from:{" "}
+                                                            </span>
+                                                            <span>
+                                                                {offer.start_date ||
+                                                                    "N/A"}{" "}
+                                                                to{" "}
+                                                                {offer.end_date ||
+                                                                    "N/A"}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
+                                                <button
+                                                    className={`mt-4 px-4 py-2 rounded-full ${
+                                                        isDarkMode
+                                                            ? "bg-blue-600 text-white hover:bg-blue-700"
+                                                            : "bg-blue-600 text-white hover:bg-blue-700"
+                                                    } transition-all duration-300`}
+                                                >
+                                                    Book Now
+                                                </button>
                                             </div>
                                         </motion.div>
                                     ))}
