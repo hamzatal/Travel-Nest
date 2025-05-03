@@ -1,39 +1,45 @@
 import React, { useState, useEffect } from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Head, usePage, Link } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
-    Home,
+    MapPin,
     ChevronLeft,
     ChevronRight,
     Filter,
     Tags,
-    Calendar,
+    Heart,
     Star,
 } from "lucide-react";
-import NavBar from "../Components/Nav";
+import Navbar from "../Components/Nav";
 import Footer from "../Components/Footer";
+import toast, { Toaster } from "react-hot-toast";
 
-export default function Deals({ offers = [], auth }) {
+const DestinationsPage = ({ auth }) => {
+    const { props } = usePage();
+    const { destinations = [], flash = {} } = props;
+    const user = auth?.user || null;
+
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [sortBy, setSortBy] = useState("newest");
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
 
-    const itemsPerPage = 6;
+    const [isDarkMode, setIsDarkMode] = useState(true);
 
-    // Categories for filtering (example categories)
+    const itemsPerPage = 8;
+
     const categories = [
-        "Hotel",
-        "Flight",
-        "Cruise",
-        "Package",
-        "Adventure",
-        "City Break",
+        "Beach",
+        "Mountain",
+        "City",
+        "Countryside",
+        "Island",
+        "Historic",
+        "Luxury",
     ];
 
-    // Animation variants
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -55,7 +61,6 @@ export default function Deals({ offers = [], auth }) {
         exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
     };
 
-    // Toggle category selection
     const toggleCategory = (category) => {
         if (selectedCategories.includes(category)) {
             setSelectedCategories(
@@ -64,10 +69,9 @@ export default function Deals({ offers = [], auth }) {
         } else {
             setSelectedCategories([...selectedCategories, category]);
         }
-        setCurrentPage(1); // Reset to first page on filter change
+        setCurrentPage(1);
     };
 
-    // Sort options
     const sortOptions = [
         { value: "newest", label: "Newest First" },
         { value: "priceAsc", label: "Price: Low to High" },
@@ -75,19 +79,18 @@ export default function Deals({ offers = [], auth }) {
         { value: "discount", label: "Biggest Discount" },
     ];
 
-    // Filter and sort offers based on search query and filters
-    const filteredOffers = offers
+    const filteredDestinations = destinations
         .filter(
-            (offer) =>
-                (offer.title
+            (destination) =>
+                (destination.name
                     ?.toLowerCase()
                     .includes(searchQuery.toLowerCase()) ||
-                    offer.description
+                    destination.location
                         ?.toLowerCase()
                         .includes(searchQuery.toLowerCase())) &&
                 (selectedCategories.length === 0 ||
-                    (offer.category &&
-                        selectedCategories.includes(offer.category)))
+                    (destination.tag &&
+                        selectedCategories.includes(destination.tag)))
         )
         .sort((a, b) => {
             switch (sortBy) {
@@ -111,24 +114,30 @@ export default function Deals({ offers = [], auth }) {
                     return discountB - discountA;
                 case "newest":
                 default:
-                    // Assuming newer items have higher IDs
                     return b.id - a.id;
             }
         });
 
-    // Pagination logic
-    const totalPages = Math.ceil(filteredOffers.length / itemsPerPage);
-    const paginatedOffers = filteredOffers.slice(
+    const totalPages = Math.ceil(filteredDestinations.length / itemsPerPage);
+    const paginatedDestinations = filteredDestinations.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
-    // Reset to page 1 when search query changes
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery]);
 
-    // Calculate discount percentage
+    // Show flash messages as toasts
+    useEffect(() => {
+        if (flash.success) {
+            toast.success(flash.success);
+        }
+        if (flash.error) {
+            toast.error(flash.error);
+        }
+    }, [flash]);
+
     const calculateDiscount = (original, discounted) => {
         if (!discounted) return null;
         const percentage = Math.round(
@@ -137,13 +146,42 @@ export default function Deals({ offers = [], auth }) {
         return percentage;
     };
 
+    const renderStars = (rating) => {
+        const stars = [];
+        const roundedRating = Math.round(rating * 2) / 2;
+        for (let i = 1; i <= 5; i++) {
+            stars.push(
+                <Star
+                    key={i}
+                    size={14}
+                    className={
+                        i <= roundedRating
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-500"
+                    }
+                />
+            );
+        }
+        return stars;
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
-            <Head title="Exclusive Travel Deals - Travel Nest" />
+            <Head>
+                <title>Destinations - Travel Nest</title>
+                <meta
+                    name="description"
+                    content="Explore our curated list of travel destinations with Travel Nest."
+                />
+            </Head>
+            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
 
-            <NavBar auth={auth} />
+            <Navbar
+                user={user}
+                isDarkMode={isDarkMode}
+                toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+            />
 
-            {/* Hero Section */}
             <div className="relative h-72 md:h-80 overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
                 <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-fill"></div>
@@ -155,8 +193,8 @@ export default function Deals({ offers = [], auth }) {
                             transition={{ duration: 0.7 }}
                             className="text-6xl font-extrabold mb-3 leading-tight"
                         >
-                            Exclusive{" "}
-                            <span className="text-green-400">Deals</span>
+                            Amazing{" "}
+                            <span className="text-blue-400">Destinations</span>
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0 }}
@@ -164,22 +202,21 @@ export default function Deals({ offers = [], auth }) {
                             transition={{ delay: 0.2, duration: 0.7 }}
                             className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
-                            Discover unbeatable offers for your next adventure
+                            Discover breathtaking places around the world for
+                            your next adventure
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.3, duration: 0.7 }}
                         >
-                            <div className="w-24 h-1 bg-green-500 mx-auto rounded-full"></div>
+                            <div className="w-24 h-1 bg-blue-500 mx-auto rounded-full"></div>
                         </motion.div>
                     </div>
                 </div>
             </div>
 
-            {/* Content */}
             <div className="max-w-7xl mx-auto px-6 md:px-16 py-12">
-                {/* Search and Filter Section */}
                 <motion.div
                     initial="hidden"
                     whileInView="visible"
@@ -191,10 +228,10 @@ export default function Deals({ offers = [], auth }) {
                         <div className="relative w-full md:w-96">
                             <input
                                 type="text"
-                                placeholder="Search for destinations, hotels, or deals..."
+                                placeholder="Search destinations or locations..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
+                                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
                             />
                             <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                         </div>
@@ -204,7 +241,7 @@ export default function Deals({ offers = [], auth }) {
                                 <select
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none transition-all duration-300"
+                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-all duration-300"
                                 >
                                     {sortOptions.map((option) => (
                                         <option
@@ -232,7 +269,6 @@ export default function Deals({ offers = [], auth }) {
                         </div>
                     </div>
 
-                    {/* Filters Section */}
                     <AnimatePresence>
                         {filterOpen && (
                             <motion.div
@@ -245,7 +281,7 @@ export default function Deals({ offers = [], auth }) {
                                 <div className="p-4 bg-gray-800 bg-opacity-70 rounded-lg mb-6 border border-gray-700">
                                     <div className="mb-4">
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Tags className="w-4 h-4 text-green-400" />
+                                            <Tags className="w-4 h-4 text-blue-400" />
                                             <h3 className="text-lg font-semibold">
                                                 Categories
                                             </h3>
@@ -261,7 +297,7 @@ export default function Deals({ offers = [], auth }) {
                                                         selectedCategories.includes(
                                                             category
                                                         )
-                                                            ? "bg-green-600 text-white"
+                                                            ? "bg-blue-600 text-white"
                                                             : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                                                     }`}
                                                 >
@@ -275,24 +311,23 @@ export default function Deals({ offers = [], auth }) {
                         )}
                     </AnimatePresence>
 
-                    {/* Results summary */}
                     <div className="flex justify-between items-center mb-6">
                         <p className="text-gray-400">
                             Showing{" "}
-                            {filteredOffers.length > 0
+                            {filteredDestinations.length > 0
                                 ? (currentPage - 1) * itemsPerPage + 1
                                 : 0}
                             -
                             {Math.min(
                                 currentPage * itemsPerPage,
-                                filteredOffers.length
+                                filteredDestinations.length
                             )}{" "}
-                            of {filteredOffers.length} deals
+                            of {filteredDestinations.length} destinations
                         </p>
                         {selectedCategories.length > 0 && (
                             <button
                                 onClick={() => setSelectedCategories([])}
-                                className="text-green-400 hover:text-green-300 text-sm"
+                                className="text-blue-400 hover:text-blue-300 text-sm"
                             >
                                 Clear filters
                             </button>
@@ -300,15 +335,14 @@ export default function Deals({ offers = [], auth }) {
                     </div>
                 </motion.div>
 
-                {/* Offers Grid */}
                 <motion.div
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
                 >
-                    <AnimatePresence mode="wait">
-                        {paginatedOffers.length === 0 ? (
+                    <AnimatePresence mode="popLayout">
+                        {paginatedDestinations.length === 0 ? (
                             <motion.div
                                 variants={fadeIn}
                                 className="col-span-full text-center py-16"
@@ -316,144 +350,147 @@ export default function Deals({ offers = [], auth }) {
                                 <div className="max-w-md mx-auto">
                                     <Search className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                     <h3 className="text-2xl font-bold mb-2">
-                                        No deals found
+                                        No destinations found
                                     </h3>
                                     <p className="text-gray-400 mb-6">
-                                        We couldn't find any deals matching your
-                                        search criteria. Try adjusting your
-                                        filters or search query.
+                                        We couldn't find any destinations
+                                        matching your search criteria. Try
+                                        adjusting your filters or search query.
                                     </p>
                                     <button
                                         onClick={() => {
                                             setSearchQuery("");
                                             setSelectedCategories([]);
                                         }}
-                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
                                     >
                                         Clear all filters
                                     </button>
                                 </div>
                             </motion.div>
                         ) : (
-                            paginatedOffers.map((offer) => (
+                            paginatedDestinations.map((destination) => (
+                                // This is the enhanced version of the destination card component
+                                // To use it, replace the card section in your DestinationsPage.jsx
+
                                 <motion.div
-                                    key={offer.id}
+                                    key={destination.id}
                                     variants={cardVariants}
+                                    layout
                                     whileHover={{
-                                        y: -10,
+                                        y: -8,
                                         transition: { duration: 0.3 },
                                     }}
-                                    className="bg-gray-800 bg-opacity-70 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border border-gray-700 flex flex-col"
+                                    className="bg-gray-800 bg-opacity-80 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group"
                                 >
-                                    <div className="relative">
+                                    <div className="relative overflow-hidden">
                                         <img
                                             src={
-                                                offer.image ||
-                                                "/api/placeholder/640/320"
+                                                destination.image ||
+                                                "https://via.placeholder.com/640x480?text=No+Image"
                                             }
-                                            alt={offer.title}
-                                            className="w-full h-48 object-cover"
+                                            alt={destination.name}
+                                            className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
                                         />
-                                        {offer.category && (
-                                            <span className="absolute top-2 left-2 px-2 py-1 bg-gray-900 bg-opacity-70 rounded text-xs font-medium text-gray-300">
-                                                {offer.category}
+                                        {destination.tag && (
+                                            <span className="absolute top-3 left-3 px-2 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
+                                                {destination.tag}
                                             </span>
                                         )}
                                         {calculateDiscount(
-                                            offer.price,
-                                            offer.discount_price
+                                            destination.price,
+                                            destination.discount_price
                                         ) && (
-                                            <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                            <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
                                                 {calculateDiscount(
-                                                    offer.price,
-                                                    offer.discount_price
+                                                    destination.price,
+                                                    destination.discount_price
                                                 )}
                                                 % OFF
                                             </div>
                                         )}
-                                        {offer.featured && (
-                                            <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-yellow-600 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-medium">
-                                                <Star className="w-3 h-3" />{" "}
-                                                Featured
-                                            </div>
-                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
+                                        <button
+                                            className="absolute top-3 right-3 bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300 transform translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0"
+                                            aria-label="Add to favorites"
+                                        >
+                                            <Heart
+                                                size={18}
+                                                className="text-white"
+                                            />
+                                        </button>
                                     </div>
-                                    <div className="p-6 flex flex-col flex-grow">
-                                        <h3 className="text-xl font-bold mb-2 text-white line-clamp-1">
-                                            {offer.title}
-                                        </h3>
-                                        <p className="text-gray-300 mb-4 line-clamp-2 flex-grow">
-                                            {offer.description}
+                                    <div className="p-5 flex flex-col flex-grow">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-xl font-bold text-white line-clamp-1">
+                                                {destination.name}
+                                            </h3>
+                                        </div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <MapPin
+                                                size={16}
+                                                className="text-blue-400"
+                                            />
+                                            <span className="text-gray-300 text-sm">
+                                                {destination.location}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 mb-3">
+                                            {renderStars(
+                                                destination.rating || 0
+                                            )}
+                                            <span className="text-gray-400 text-sm ml-2">
+                                                ({destination.rating || 0}/5)
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                                            {destination.description ||
+                                                "No description available."}
                                         </p>
-                                        <div className="space-y-3 mb-4">
-                                            <div className="flex items-center justify-between">
+                                        <div className="mt-auto">
+                                            <div className="flex items-center justify-between mb-4">
                                                 <div>
-                                                    <span className="block text-gray-400 text-sm">
-                                                        Price
+                                                    <span className="block text-gray-400 text-xs">
+                                                        Starting from
                                                     </span>
                                                     <div className="flex items-baseline gap-2">
-                                                        {offer.discount_price ? (
+                                                        {destination.discount_price ? (
                                                             <>
-                                                                <span className="text-lg font-bold text-green-400">
+                                                                <span className="text-lg font-bold text-blue-400">
                                                                     $
                                                                     {
-                                                                        offer.discount_price
+                                                                        destination.discount_price
                                                                     }
                                                                 </span>
                                                                 <span className="text-sm line-through text-gray-500">
                                                                     $
                                                                     {
-                                                                        offer.price
+                                                                        destination.price
                                                                     }
                                                                 </span>
                                                             </>
                                                         ) : (
-                                                            <span className="text-lg font-bold text-green-400">
-                                                                ${offer.price}
+                                                            <span className="text-lg font-bold text-blue-400">
+                                                                $
+                                                                {
+                                                                    destination.price
+                                                                }
                                                             </span>
                                                         )}
-                                                    </div>
-                                                </div>
-
-                                                {(offer.start_date ||
-                                                    offer.end_date) && (
-                                                    <div className="flex items-center gap-1 text-sm text-gray-400">
-                                                        <Calendar className="w-4 h-4" />
-                                                        <span>
-                                                            {(offer.start_date ||
-                                                                offer.end_date) && (
-                                                                <div className="text-sm text-gray-400">
-                                                                    <span>
-                                                                        Valid
-                                                                        from:{" "}
-                                                                    </span>
-                                                                    <span>
-                                                                        {offer.start_date?.slice(
-                                                                            0,
-                                                                            10
-                                                                        ) ||
-                                                                            "N/A"}{" "}
-                                                                        to{" "}
-                                                                        {offer.end_date?.slice(
-                                                                            0,
-                                                                            10
-                                                                        ) ||
-                                                                            "N/A"}
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                                        <span className="text-xs text-gray-400">
+                                                            / night
                                                         </span>
                                                     </div>
-                                                )}
+                                                </div>
                                             </div>
+                                            <Link
+                                                href={`/destinations/${destination.id}`}
+                                                className="w-full inline-block text-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all duration-300 transform group-hover:shadow-lg"
+                                            >
+                                                View Details
+                                            </Link>
                                         </div>
-                                        <Link
-                                            href={`/offer/${offer.id}`}
-                                            className="w-full inline-block text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-all duration-300 transform hover:scale-105"
-                                        >
-                                            View Details
-                                        </Link>
                                     </div>
                                 </motion.div>
                             ))
@@ -461,8 +498,7 @@ export default function Deals({ offers = [], auth }) {
                     </AnimatePresence>
                 </motion.div>
 
-                {/* Pagination */}
-                {filteredOffers.length > 0 && totalPages > 1 && (
+                {filteredDestinations.length > 0 && totalPages > 1 && (
                     <motion.div
                         initial="hidden"
                         whileInView="visible"
@@ -489,8 +525,7 @@ export default function Deals({ offers = [], auth }) {
                                 { length: totalPages },
                                 (_, i) => i + 1
                             ).map((page) => {
-                                // Show 5 page buttons max, with current page in the middle
-                                const pageRange = 2; // show 2 pages on each side of current page
+                                const pageRange = 2;
                                 const startPage = Math.max(
                                     1,
                                     currentPage - pageRange
@@ -511,7 +546,7 @@ export default function Deals({ offers = [], auth }) {
                                             onClick={() => setCurrentPage(page)}
                                             className={`flex items-center justify-center w-10 h-10 rounded-full ${
                                                 currentPage === page
-                                                    ? "bg-green-600 text-white"
+                                                    ? "bg-blue-600 text-white"
                                                     : "bg-gray-800 text-white hover:bg-gray-700"
                                             } transition-all duration-300`}
                                         >
@@ -520,7 +555,6 @@ export default function Deals({ offers = [], auth }) {
                                     );
                                 }
 
-                                // Add ellipsis
                                 if (page === startPage - 1 && page > 1) {
                                     return (
                                         <span
@@ -568,9 +602,8 @@ export default function Deals({ offers = [], auth }) {
             <Footer />
         </div>
     );
-}
+};
 
-// Add this to support ChevronDown icon
 const ChevronDown = ({ className }) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -585,3 +618,5 @@ const ChevronDown = ({ className }) => (
         <path d="m6 9 6 6 6-6" />
     </svg>
 );
+
+export default DestinationsPage;

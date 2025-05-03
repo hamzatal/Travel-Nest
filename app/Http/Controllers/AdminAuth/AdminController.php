@@ -151,6 +151,7 @@ class AdminController extends Controller
             'destinations' => 0,
             'offers' => 0,
             'hero_sections' => 0,
+            'packages' => 0,
         ];
 
         $latest_users = User::select('id', 'name', 'email', 'created_at')

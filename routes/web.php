@@ -1,12 +1,21 @@
 <?php
 
+// ===================================================
+//! Admin Authentication
+// ===================================================
+
 use App\Http\Controllers\AdminAuth\AdminController;
 use App\Http\Controllers\AdminAuth\DashboardController;
-use App\Http\Controllers\AdminAuth\DestinationController;
 use App\Http\Controllers\AdminAuth\HeroSectionController;
 use App\Http\Controllers\AdminAuth\LoginController;
 use App\Http\Controllers\AdminAuth\OfferController;
+
+// ===================================================
+//! User Authentication
+// ===================================================
+
 use App\Http\Controllers\ChatBotController;
+use App\Http\Controllers\DestinationController;
 use App\Http\Controllers\DealsController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
@@ -27,13 +36,17 @@ Route::get('/', function () {
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
+        'destinations' => app(DestinationController::class)->featured(), // Added: Fetch featured destinations
     ]);
 })->name('welcome');
 
 Route::get('/about-us', fn() => Inertia::render('about-us'))->name('about-us');
 Route::get('/ContactPage', fn() => Inertia::render('ContactPage'))->name('ContactPage');
 
-// ===================================================
+// Added: Routes for public destinations
+Route::get('/destinations', [DestinationController::class, 'allDestinations'])->name('destinations.index');
+Route::get('/destinations/{id}', [DestinationController::class, 'show'])->name('destinations.show');
+
 //! Authentication Routes
 // ===================================================
 
@@ -44,10 +57,10 @@ require __DIR__ . '/auth.php';
 // ===================================================
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
-    
+
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
-    
+
     // Deals Routes
     Route::get('/deals', [DealsController::class, 'index'])->name('deals');
     Route::get('/offer/{id}', [DealsController::class, 'show'])->name('offer.show');
@@ -55,7 +68,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     // Search Route
     Route::get('/search', [SearchController::class, 'index'])->name('search');
     Route::get('/search/live', [SearchController::class, 'live'])->name('search.live');
-    
+
     // Profile Routes
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('edit');
@@ -108,11 +121,12 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
     Route::patch('/messages/{id}/read', [AdminController::class, 'markAsRead'])->name('messages.read');
 
-    // Destinations Routes
+    // Added: Admin Destinations Routes
     Route::prefix('destinations')->name('destinations.')->group(function () {
-        Route::get('/', [DestinationController::class, 'index'])->name('index');
+        Route::get('/', [DestinationController::class, 'index'])->name('manage');
         Route::post('/', [DestinationController::class, 'store'])->name('store');
-        Route::delete('/{id}', [DestinationController::class, 'destroy'])->name('delete');
+        Route::put('/{id}', [DestinationController::class, 'update'])->name('update');
+        Route::delete('/{id}', [DestinationController::class, 'destroy'])->name('destroy');
     });
 
     // Offers Routes
@@ -132,10 +146,14 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::patch('/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('toggle');
         Route::delete('/{id}', [HeroSectionController::class, 'destroy'])->name('delete');
     });
+
+    // Packages Routes
+    
+    
 });
 
 // ===================================================
-//! API Routes (Optional)
+//! API Routes
 // ===================================================
 
 Route::middleware(['auth', 'web'])->prefix('api')->name('api.')->group(function () {

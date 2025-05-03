@@ -7,7 +7,6 @@ import {
     X,
     ArrowUp,
     Heart,
-    Star,
     TrendingUp,
     Shield,
     Tag,
@@ -21,6 +20,12 @@ import {
     UserCheck,
     Sun,
     ArrowLeft,
+    ArrowRight as ChevronRight,
+    StarsIcon,
+    Calendar1Icon,
+    Calendar,
+    CalendarX,
+    Users,
 } from "lucide-react";
 import { Head, usePage, Link } from "@inertiajs/react";
 import Navbar from "../Components/Nav";
@@ -29,7 +34,12 @@ import ChatBot from "../Components/ChatBot";
 
 const HomePage = ({ auth }) => {
     const { props } = usePage();
-    const { heroSections = [], flash = {}, offers = [] } = props;
+    const {
+        heroSections = [],
+        flash = {},
+        offers = [],
+        destinations = [],
+    } = props;
     const user = auth?.user || null;
     const successMessage = flash?.success || null;
     const searchRef = useRef(null);
@@ -42,7 +52,7 @@ const HomePage = ({ auth }) => {
     const [scrollPosition, setScrollPosition] = useState(0);
     const [activeTab, setActiveTab] = useState("popular");
 
-    // Mocked data for other sections (to be replaced with dynamic data later)
+    // Mocked data for inspiration section
     const inspirationItems = [
         {
             id: 1,
@@ -67,41 +77,6 @@ const HomePage = ({ auth }) => {
             title: "Urban Adventures",
             image: "https://images.unsplash.com/photo-1514565131-fce0801e5785",
             count: "1,890+ destinations",
-        },
-    ];
-
-    const trendingDestinations = [
-        {
-            name: "Bali, Indonesia",
-            image: "https://images.unsplash.com/photo-1558005530-a7958896ec60",
-            price: "$850",
-            rating: 4.8,
-            discount: "20% OFF",
-            tag: "Best Seller",
-        },
-        {
-            name: "Cancún, Mexico",
-            image: "https://images.unsplash.com/photo-1552074284-5e88ef1aef18",
-            price: "$920",
-            rating: 4.7,
-            discount: null,
-            tag: "Hot Deal",
-        },
-        {
-            name: "Cappadocia, Turkey",
-            image: "https://images.unsplash.com/photo-1524231757912-21f4fe3a7200",
-            price: "$750",
-            rating: 4.6,
-            discount: "15% OFF",
-            tag: null,
-        },
-        {
-            name: "Santorini, Greece",
-            image: "https://images.unsplash.com/photo-1602081593934-b723cf961d3e",
-            price: "$1,200",
-            rating: 4.9,
-            discount: null,
-            tag: "Luxury",
         },
     ];
 
@@ -138,6 +113,15 @@ const HomePage = ({ auth }) => {
         }
     }, [heroSections]);
 
+    // Calculate discount percentage
+    const calculateDiscount = (original, discounted) => {
+        if (!discounted) return null;
+        const percentage = Math.round(
+            ((original - discounted) / original) * 100
+        );
+        return percentage;
+    };
+
     return (
         <div
             className={`min-h-screen transition-all duration-300 ${
@@ -158,6 +142,7 @@ const HomePage = ({ auth }) => {
                 isDarkMode={isDarkMode}
                 toggleDarkMode={toggleDarkMode}
             />
+
             {/* Floating Back to Top Button */}
             {scrollPosition > 500 && (
                 <motion.button
@@ -173,6 +158,7 @@ const HomePage = ({ auth }) => {
                     <ArrowUp size={22} className="animate-bounce" />
                 </motion.button>
             )}
+
             {/* Hero Carousel Section */}
             <section className="relative h-screen w-full overflow-hidden">
                 {heroSections.length === 0 ? (
@@ -359,21 +345,16 @@ const HomePage = ({ auth }) => {
                                                     className="w-full h-48 object-cover"
                                                     loading="lazy"
                                                 />
-                                                {offer.discount_type && (
-                                                    <div
-                                                        className={`absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-bold text-white ${
-                                                            offer.discount_type.includes(
-                                                                "OFF"
-                                                            )
-                                                                ? "bg-red-500"
-                                                                : offer.discount_type.includes(
-                                                                      "LIMITED"
-                                                                  )
-                                                                ? "bg-blue-500"
-                                                                : "bg-green-500"
-                                                        }`}
-                                                    >
-                                                        {offer.discount_type}
+                                                {calculateDiscount(
+                                                    offer.price,
+                                                    offer.discount_price
+                                                ) && (
+                                                    <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                                        {calculateDiscount(
+                                                            offer.price,
+                                                            offer.discount_price
+                                                        )}
+                                                        % OFF
                                                     </div>
                                                 )}
                                             </div>
@@ -446,11 +427,15 @@ const HomePage = ({ auth }) => {
                                                                 Valid from:{" "}
                                                             </span>
                                                             <span>
-                                                                {offer.start_date ||
-                                                                    "N/A"}{" "}
-                                                                to{" "}
-                                                                {offer.end_date ||
-                                                                    "N/A"}
+                                                                {offer.start_date?.slice(
+                                                                    0,
+                                                                    10
+                                                                ) || "N/A"}{" "}
+                                                                TO{" "}
+                                                                {offer.end_date?.slice(
+                                                                    0,
+                                                                    10
+                                                                ) || "N/A"}
                                                             </span>
                                                         </div>
                                                     )}
@@ -473,204 +458,345 @@ const HomePage = ({ auth }) => {
                 </div>
             </section>
 
-            {/* Trending Destinations Section */}
+            {/* Trending Destinations Section - Improved Layout */}
             <section
-                className={`py-20 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}
+                className={`py-24 ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}
             >
-                <div className="max-w-7xl mx-auto px-6 md:px-16">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header with Animation */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.5 }}
+                        className="mb-12 text-center md:text-left"
                     >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10">
-                            <h2
-                                className={`text-3xl font-bold ${
-                                    isDarkMode ? "text-white" : "text-gray-900"
-                                }`}
-                            >
-                                <span className="text-blue-500">Trending</span>{" "}
-                                Destinations
-                            </h2>
-                            <div className="flex mt-4 md:mt-0 gap-6">
-                                <button
-                                    onClick={() => setActiveTab("popular")}
-                                    className={`px-4 py-2 rounded-full ${
-                                        activeTab === "popular"
-                                            ? "bg-blue-600 text-white"
-                                            : isDarkMode
-                                            ? "bg-gray-700 text-gray-300"
-                                            : "bg-white text-gray-700"
+                        <div className="flex flex-col md:flex-row md:items-center justify-between">
+                            <div>
+                                <h2
+                                    className={`text-3xl md:text-4xl font-extrabold ${
+                                        isDarkMode
+                                            ? "text-white"
+                                            : "text-gray-900"
                                     }`}
                                 >
-                                    Most Popular
+                                    <span className="text-blue-500">
+                                        Trending
+                                    </span>{" "}
+                                    Destinations
+                                </h2>
+                                <p
+                                    className={`mt-3 text-lg ${
+                                        isDarkMode
+                                            ? "text-gray-300"
+                                            : "text-gray-600"
+                                    }`}
+                                >
+                                    Discover our most popular vacation spots
+                                    loved by travelers worldwide
+                                </p>
+                            </div>
+
+                            <div className="mt-6 md:mt-0 flex items-center justify-center md:justify-end gap-4">
+                                <button
+                                    className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all"
+                                    aria-label="Previous destinations"
+                                >
+                                    <ArrowLeft
+                                        size={20}
+                                        className={
+                                            isDarkMode
+                                                ? "text-gray-300"
+                                                : "text-gray-700"
+                                        }
+                                    />
                                 </button>
                                 <button
-                                    onClick={() => setActiveTab("deals")}
-                                    className={`px-4 py-2 rounded-full ${
-                                        activeTab === "deals"
-                                            ? "bg-blue-600 text-white"
-                                            : isDarkMode
-                                            ? "bg-gray-700 text-gray-300"
-                                            : "bg-white text-gray-700"
-                                    }`}
+                                    className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all"
+                                    aria-label="Next destinations"
                                 >
-                                    Best Deals
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("hidden")}
-                                    className={`px-4 py-2 rounded-full ${
-                                        activeTab === "hidden"
-                                            ? "bg-blue-600 text-white"
-                                            : isDarkMode
-                                            ? "bg-gray-700 text-gray-300"
-                                            : "bg-white text-gray-700"
-                                    }`}
-                                >
-                                    Hidden Gems
+                                    <ChevronRight
+                                        size={20}
+                                        className={
+                                            isDarkMode
+                                                ? "text-gray-300"
+                                                : "text-gray-700"
+                                        }
+                                    />
                                 </button>
                             </div>
                         </div>
+                    </motion.div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {trendingDestinations.map((destination) => (
-                                <motion.div
-                                    key={destination.name}
-                                    whileHover={{
-                                        y: -10,
-                                        transition: { duration: 0.3 },
-                                    }}
-                                    className={`rounded-2xl overflow-hidden shadow-lg ${
-                                        isDarkMode ? "bg-gray-900" : "bg-white"
-                                    }`}
-                                >
-                                    <div className="relative">
-                                        <img
-                                            src={destination.image}
-                                            alt={destination.name}
-                                            className="w-full h-56 object-cover"
-                                            loading="lazy"
-                                        />
-                                        {destination.discount && (
-                                            <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                                {destination.discount}
-                                            </div>
-                                        )}
-                                        {destination.tag && (
-                                            <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                                {destination.tag}
-                                            </div>
-                                        )}
-                                        <button
-                                            className="absolute top-4 right-4 bg-white bg-opacity-30 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300"
-                                            aria-label="Add to favorites"
-                                        >
-                                            <Heart
-                                                size={18}
-                                                className={
-                                                    destination.name ===
-                                                    "Santorini, Greece"
-                                                        ? "text-red-500"
-                                                        : "text-white"
+                    {/* Categories Filter */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                        className="mb-10"
+                    ></motion.div>
+
+                    {/* Destinations Grid */}
+                    {destinations.length === 0 ? (
+                        <div className="text-center text-gray-400 py-16 bg-opacity-10 rounded-xl bg-gray-200 dark:bg-gray-800">
+                            <CalendarX
+                                size={48}
+                                className="mx-auto mb-4 opacity-50"
+                            />
+                            <p className="text-lg font-medium">
+                                No destinations available at the moment.
+                            </p>
+                            <p className="mt-2">
+                                Please check back later for new exciting
+                                locations.
+                            </p>
+                        </div>
+                    ) : (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: 0.3 }}
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+                        >
+                            {destinations
+                                .slice(0, 4)
+                                .map((destination, index) => (
+                                    <motion.div
+                                        key={destination.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{
+                                            duration: 0.5,
+                                            delay: 0.1 * index,
+                                        }}
+                                        whileHover={{
+                                            y: -8,
+                                            transition: { duration: 0.3 },
+                                        }}
+                                        className={`rounded-2xl overflow-hidden shadow-lg group ${
+                                            isDarkMode
+                                                ? "bg-gray-800 hover:bg-gray-750"
+                                                : "bg-white hover:shadow-xl"
+                                        } transition-all duration-300`}
+                                    >
+                                        <div className="relative overflow-hidden">
+                                            <img
+                                                src={
+                                                    destination.image ||
+                                                    "https://via.placeholder.com/640x480"
                                                 }
+                                                alt={destination.name}
+                                                className="w-full h-64 object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                                loading="lazy"
                                             />
-                                        </button>
-                                    </div>
-                                    <div className="p-5">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <h3
-                                                className={`font-bold ${
-                                                    isDarkMode
-                                                        ? "text-white"
-                                                        : "text-gray-900"
-                                                }`}
-                                            >
-                                                {destination.name}
-                                            </h3>
-                                            <div className="flex items-center">
-                                                <Star
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+
+                                            {/* Top elements */}
+                                            <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                                                {destination.tag && (
+                                                    <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                                                        {destination.tag}
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    className="bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-40 backdrop-blur-sm transition-all duration-300 transform hover:scale-110"
+                                                    aria-label="Add to favorites"
+                                                >
+                                                    <Heart
+                                                        size={18}
+                                                        className="text-white"
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {/* Discount tag */}
+                                            {calculateDiscount(
+                                                destination.price,
+                                                destination.discount_price
+                                            ) && (
+                                                <div className="absolute top-20 right-0 bg-red-500 text-white px-4 py-1 rounded-l-full text-sm font-bold shadow-lg">
+                                                    {calculateDiscount(
+                                                        destination.price,
+                                                        destination.discount_price
+                                                    )}
+                                                    % OFF
+                                                </div>
+                                            )}
+
+                                            {/* Rating */}
+                                            {/* <div className="absolute bottom-4 left-4 flex items-center bg-black bg-opacity-50 rounded-full px-2 py-1 backdrop-blur-sm">
+                                                <StarsIcon
+                                                    size={14}
+                                                    className="text-yellow-400 mr-1"
+                                                    fill="#FBBF24"
+                                                />
+                                                <span className="text-white text-xs font-medium">
+                                                    {destination.rating ||
+                                                        "4.8"}
+                                                </span>
+                                            </div> */}
+                                        </div>
+
+                                        <div className="p-5">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3
+                                                    className={`font-bold text-lg ${
+                                                        isDarkMode
+                                                            ? "text-white"
+                                                            : "text-gray-900"
+                                                    }`}
+                                                >
+                                                    {destination.name}
+                                                </h3>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <MapPin
                                                     size={16}
-                                                    className="text-yellow-500"
+                                                    className="text-blue-500 flex-shrink-0"
                                                 />
                                                 <span
-                                                    className={`ml-1 ${
+                                                    className={`text-sm ${
                                                         isDarkMode
                                                             ? "text-gray-300"
-                                                            : "text-gray-700"
+                                                            : "text-gray-600"
                                                     }`}
                                                 >
-                                                    {destination.rating}
+                                                    {destination.location}
                                                 </span>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <MapPin
-                                                size={16}
-                                                className="text-blue-500"
-                                            />
-                                            <span
-                                                className={`text-sm ${
-                                                    isDarkMode
-                                                        ? "text-gray-400"
-                                                        : "text-gray-500"
-                                                }`}
-                                            >
-                                                {destination.name
-                                                    .split(",")[1]
-                                                    .trim()}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <span
-                                                    className={`block text-sm ${
-                                                        isDarkMode
-                                                            ? "text-gray-400"
-                                                            : "text-gray-500"
-                                                    }`}
-                                                >
-                                                    Starting from
-                                                </span>
-                                                <span className="text-blue-500 font-bold">
-                                                    {destination.price}
-                                                </span>
-                                                <span className="text-sm text-gray-500">
-                                                    {" "}
-                                                    / night
-                                                </span>
-                                            </div>
-                                            <button
-                                                className={`flex items-center gap-1 text-sm ${
-                                                    isDarkMode
-                                                        ? "text-blue-400"
-                                                        : "text-blue-600"
-                                                } hover:underline`}
-                                                aria-label="View destination details"
-                                            >
-                                                View Details{" "}
-                                                <ArrowRight size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
 
-                        <div className="text-center mt-10">
-                            <button
-                                className={`px-6 py-3 rounded-full ${
-                                    isDarkMode
-                                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                                        : "bg-blue-600 text-white hover:bg-blue-700"
-                                } transition-all duration-300`}
-                            >
-                                Explore More Destinations
-                            </button>
-                        </div>
+                                            {/* Features */}
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="flex items-center">
+                                                    <CalendarX
+                                                        size={14}
+                                                        className={`${
+                                                            isDarkMode
+                                                                ? "text-gray-400"
+                                                                : "text-gray-500"
+                                                        } mr-1`}
+                                                    />
+                                                    <span
+                                                        className={`text-xs ${
+                                                            isDarkMode
+                                                                ? "text-gray-400"
+                                                                : "text-gray-500"
+                                                        }`}
+                                                    >
+                                                        {destination.duration ||
+                                                            "3-7 days"}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <Users
+                                                        size={14}
+                                                        className={`${
+                                                            isDarkMode
+                                                                ? "text-gray-400"
+                                                                : "text-gray-500"
+                                                        } mr-1`}
+                                                    />
+                                                    <span
+                                                        className={`text-xs ${
+                                                            isDarkMode
+                                                                ? "text-gray-400"
+                                                                : "text-gray-500"
+                                                        }`}
+                                                    >
+                                                        {destination.group_size ||
+                                                            "2-8 people"}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                                                <div>
+                                                    <span
+                                                        className={`block text-xs font-medium ${
+                                                            isDarkMode
+                                                                ? "text-gray-400"
+                                                                : "text-gray-500"
+                                                        }`}
+                                                    >
+                                                        Starting from
+                                                    </span>
+                                                    <div className="flex items-baseline">
+                                                        <span className="text-blue-500 font-bold text-lg">
+                                                            $
+                                                            {destination.discount_price ||
+                                                                destination.price}
+                                                        </span>
+
+                                                        {destination.discount_price && (
+                                                            <span className="text-sm text-gray-400 line-through ml-2">
+                                                                $
+                                                                {
+                                                                    destination.price
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        <span className="text-xs text-gray-500 ml-1">
+                                                            / night
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <Link
+                                                    href={`/destinations/${destination.id}`}
+                                                    className={`flex items-center gap-1 px-3 py-2 rounded-lg ${
+                                                        isDarkMode
+                                                            ? "bg-blue-600 text-white hover:bg-blue-700"
+                                                            : "bg-blue-600 text-white hover:bg-blue-700"
+                                                    } transition-all duration-300 text-sm font-medium`}
+                                                    aria-label="View destination details"
+                                                >
+                                                    Details{" "}
+                                                    <ArrowRight size={14} />
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                        </motion.div>
+                    )}
+
+                    {/* Footer - CTA */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.5 }}
+                        className="text-center mt-12"
+                    >
+                        <Link
+                            href="/destinations"
+                            className={`inline-flex items-center gap-2 px-8 py-4 rounded-full text-lg font-medium ${
+                                isDarkMode
+                                    ? "bg-gradient-to-r from-blue-700 to-blue-500 text-white hover:from-blue-800 hover:to-blue-600"
+                                    : "bg-gradient-to-r from-blue-700 to-blue-500 text-white hover:from-blue-800 hover:to-blue-600"
+                            } transition-all duration-300 shadow-lg hover:shadow-xl`}
+                        >
+                            Explore All Destinations <ArrowRight size={18} />
+                        </Link>
+
+                        <p
+                            className={`mt-4 text-sm ${
+                                isDarkMode ? "text-gray-400" : "text-gray-600"
+                            }`}
+                        >
+                            Over 200+ exotic locations to discover around the
+                            world
+                        </p>
                     </motion.div>
                 </div>
             </section>
+
             {/* Travel Inspiration Section */}
             <section
                 className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
@@ -723,6 +849,7 @@ const HomePage = ({ auth }) => {
                     </motion.div>
                 </div>
             </section>
+
             {/* Travel Categories Section */}
             <section
                 className={`py-20 ${isDarkMode ? "bg-gray-800" : "bg-blue-50"}`}
@@ -849,6 +976,7 @@ const HomePage = ({ auth }) => {
                     </motion.div>
                 </div>
             </section>
+
             {/* Benefits Section */}
             <section
                 className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
@@ -932,7 +1060,9 @@ const HomePage = ({ auth }) => {
                     </motion.div>
                 </div>
             </section>
+
             <Footer />
+
             {/* Chat Bot & Helpers */}
             <div className="fixed bottom-24 right-6 z-50 flex flex-col items-center">
                 {isTooltipVisible && (

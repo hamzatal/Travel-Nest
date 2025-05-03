@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\HeroSection;
 use App\Models\Offer;
+use App\Models\Destination;
 use Inertia\Inertia;
 
 class HomeController extends Controller
@@ -28,10 +29,38 @@ class HomeController extends Controller
                 return $offer;
             });
 
+        $destinations = Destination::select([
+            'id',
+            'name',
+            'location',
+            'description',
+            'image',
+            'price',
+            'discount_price',
+            'tag',
+            'rating',
+            'is_featured'
+        ])
+            ->where('is_featured', true)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($destination) {
+                $destination->image = $destination->image ? asset('storage/destinations/' . basename($destination->image)) : null;
+                $destination->name = $destination->name ?? 'Unknown Destination';
+                $destination->location = $destination->location ?? 'Unknown Location';
+                $destination->description = $destination->description ?? '';
+                $destination->price = $destination->price ?? 0;
+                $destination->discount_price = $destination->discount_price ?? null;
+                $destination->tag = $destination->tag ?? '';
+                $destination->rating = $destination->rating ?? 0;
+                $destination->is_featured = $destination->is_featured ?? false;
+                return $destination;
+            });
+
         return Inertia::render('Home', [
             'heroSections' => $heroSections,
             'offers' => $offers,
-            'isDarkMode' => true,
+            'destinations' => $destinations,
         ]);
     }
 }

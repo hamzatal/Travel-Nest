@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Head, Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
 import {
@@ -10,24 +10,12 @@ import {
     Star,
     Heart,
 } from "lucide-react";
-import NavBar from "../Components/Nav";
+import Navbar from "../Components/Nav";
 import Footer from "../Components/Footer";
-import toast, { Toaster } from "react-hot-toast";
 
-export default function OfferDetails({ offer = {}, auth, flash = {} }) {
+export default function DestinationDetails({ destination, auth }) {
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [isFavorite, setIsFavorite] = useState(false);
-
-    // Log offer object to debug incoming data
-    useEffect(() => {
-        console.log("Offer data:", offer);
-        console.log(
-            "Price:",
-            offer.price,
-            "Discount Price:",
-            offer.discount_price
-        );
-    }, [offer]);
 
     // Animation variants
     const fadeIn = {
@@ -35,42 +23,17 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
         visible: { opacity: 1, y: 0 },
     };
 
-    // Show flash messages as toasts
-    useEffect(() => {
-        if (flash.success) {
-            toast.success(flash.success);
-        }
-        if (flash.error) {
-            toast.error(flash.error);
-        }
-    }, [flash]);
-
-    // Format date to YYYY-MM-DD
-    const formatDate = (dateString) => {
-        if (!dateString) return null;
-        try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return null;
-            return date.toISOString().split("T")[0]; // Returns YYYY-MM-DD
-        } catch (error) {
-            console.error("Invalid date format:", dateString);
-            return null;
-        }
-    };
-
-    // Safely calculate discount percentage
     const calculateDiscount = (original, discounted) => {
-        const orig = parseFloat(original);
-        const disc = parseFloat(discounted);
-        if (isNaN(orig) || isNaN(disc) || orig <= disc) return null;
-        const percentage = Math.round(((orig - disc) / orig) * 100);
+        if (!discounted) return null;
+        const percentage = Math.round(
+            ((original - discounted) / original) * 100
+        );
         return percentage;
     };
 
-    // Render star ratings
     const renderStars = (rating) => {
         const stars = [];
-        const roundedRating = Math.round((rating || 4.5) * 2) / 2;
+        const roundedRating = Math.round(rating * 2) / 2;
         for (let i = 1; i <= 5; i++) {
             stars.push(
                 <Star
@@ -87,40 +50,23 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
         return stars;
     };
 
-    // Safe price formatting
-    const formatPrice = (price) => {
-        const parsed = parseFloat(price);
-        return isNaN(parsed) ? "0.00" : parsed.toFixed(2);
-    };
-
-    // Calculate total price with safety checks
+    // Calculate the actual total price
     const serviceFee = 25;
     const bookingFee = 15;
-    const basePrice = parseFloat(offer.discount_price || offer.price || 0);
-    const totalPrice = isNaN(basePrice)
-        ? 0
-        : basePrice + serviceFee + bookingFee;
-
-    // Check if offer is empty
-    if (!offer || Object.keys(offer).length === 0) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center">
-                <p className="text-xl">No offer details available.</p>
-            </div>
-        );
-    }
+    const basePrice = parseFloat(
+        destination.discount_price || destination.price || 0
+    );
+    const totalPrice = basePrice + serviceFee + bookingFee;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
-            <Head title={`${offer.title || "Offer"} - Travel Nest`} />
-            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+            <Head title={`${destination.name} - Travel Nest`} />
 
-            <NavBar
+            <Navbar
                 user={auth?.user}
                 isDarkMode={isDarkMode}
                 toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             />
-            <div className="absolute inset-0 bg-[url('/images/pattern.svg')] bg-repeat opacity-5 z-0"></div>
 
             {/* Hero Section */}
             <div className="relative h-64 md:h-72 overflow-hidden">
@@ -134,7 +80,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             transition={{ duration: 0.7 }}
                             className="text-4xl md:text-6xl font-extrabold mb-2 leading-tight"
                         >
-                            {offer.title || "Special Offer"}
+                            {destination.name}
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0 }}
@@ -142,14 +88,18 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             transition={{ delay: 0.2, duration: 0.7 }}
                             className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
-                            {offer.subtitle || "Exclusive Limited Time Offer"}
+                            <MapPin
+                                className="inline-block mr-1 mb-1"
+                                size={18}
+                            />
+                            {destination.location}
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.3, duration: 0.7 }}
                         >
-                            <div className="w-24 h-1 bg-green-500 mx-auto rounded-full"></div>
+                            <div className="w-24 h-1 bg-blue-500 mx-auto rounded-full"></div>
                         </motion.div>
                     </div>
                 </div>
@@ -166,11 +116,11 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                 >
                     <div className="flex items-center text-sm text-gray-400">
                         <Link
-                            href="/offers"
-                            className="hover:text-green-400 transition-colors duration-300 flex items-center"
+                            href="/destinations"
+                            className="hover:text-blue-400 transition-colors duration-300 flex items-center"
                         >
                             <ChevronLeft size={16} className="mr-1" />
-                            Back to Offers
+                            Back to Destinations
                         </Link>
                     </div>
                 </motion.div>
@@ -190,26 +140,25 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             <div className="relative">
                                 <img
                                     src={
-                                        offer.image ||
+                                        destination.image ||
                                         "https://via.placeholder.com/1200x800?text=No+Image"
                                     }
-                                    alt={offer.title || "Offer Image"}
+                                    alt={destination.name}
                                     className="w-full h-96 object-cover"
-                                    loading="lazy"
                                 />
-                                {offer.discount_type && (
+                                {destination.tag && (
                                     <span className="absolute top-4 left-4 px-3 py-1 bg-gray-900 bg-opacity-70 rounded-full text-sm font-medium text-gray-300">
-                                        {offer.discount_type}
+                                        {destination.tag}
                                     </span>
                                 )}
                                 {calculateDiscount(
-                                    offer.price,
-                                    offer.discount_price
+                                    destination.price,
+                                    destination.discount_price
                                 ) && (
                                     <div className="absolute top-4 right-12 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
                                         {calculateDiscount(
-                                            offer.price,
-                                            offer.discount_price
+                                            destination.price,
+                                            destination.discount_price
                                         )}
                                         % OFF
                                     </div>
@@ -218,8 +167,8 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                     onClick={() => setIsFavorite(!isFavorite)}
                                     className={`absolute top-3 ${
                                         calculateDiscount(
-                                            offer.price,
-                                            offer.discount_price
+                                            destination.price,
+                                            destination.discount_price
                                         )
                                             ? "right-2"
                                             : "right-4"
@@ -237,21 +186,21 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 </button>
                             </div>
 
-                            {/* Offer Details */}
+                            {/* Destination Details */}
                             <div className="p-6 md:p-8">
                                 <div className="flex flex-wrap gap-2 items-center mb-4">
                                     <div className="flex items-center">
-                                        {renderStars(offer.rating || 4.5)}
+                                        {renderStars(destination.rating || 0)}
                                         <span className="text-gray-400 text-sm ml-2">
-                                            ({offer.rating || 4.5}/5)
+                                            ({destination.rating || 0}/5)
                                         </span>
                                     </div>
-                                    {offer.discount_type && (
-                                        <span className="px-3 py-1 bg-green-600 bg-opacity-20 text-green-400 rounded-full text-xs">
-                                            {offer.discount_type}
+                                    {destination.tag && (
+                                        <span className="px-3 py-1 bg-blue-600 bg-opacity-20 text-blue-400 rounded-full text-xs">
+                                            {destination.tag}
                                         </span>
                                     )}
-                                    {offer.is_featured && (
+                                    {destination.is_featured && (
                                         <span className="px-3 py-1 bg-purple-600 bg-opacity-20 text-purple-400 rounded-full text-xs">
                                             Featured
                                         </span>
@@ -259,18 +208,17 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 </div>
 
                                 <h2 className="text-2xl font-bold text-white mb-4">
-                                    About this offer
+                                    About this destination
                                 </h2>
 
                                 <div className="prose prose-lg prose-invert">
                                     <p className="text-gray-300 leading-relaxed whitespace-pre-line mb-6">
-                                        {offer.description ||
-                                            "No description available."}
+                                        {destination.description}
                                     </p>
                                 </div>
 
                                 <div className="mt-8">
-                                    <h3 className="text-xl font-semibold mb-4 text-green-400">
+                                    <h3 className="text-xl font-semibold mb-4 text-blue-400">
                                         Price Details
                                     </h3>
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
@@ -279,43 +227,32 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                 Starting from
                                             </div>
                                             <div className="flex items-baseline gap-2">
-                                                {offer.discount_price != null &&
-                                                !isNaN(
-                                                    parseFloat(
-                                                        offer.discount_price
-                                                    )
-                                                ) ? (
+                                                {destination.discount_price ? (
                                                     <>
-                                                        <span className="text-2xl font-bold text-green-400">
+                                                        <span className="text-2xl font-bold text-blue-400">
                                                             $
-                                                            {formatPrice(
-                                                                offer.discount_price
-                                                            )}
+                                                            {
+                                                                destination.discount_price
+                                                            }
                                                         </span>
                                                         <span className="text-sm line-through text-gray-500">
-                                                            $
-                                                            {formatPrice(
-                                                                offer.price
-                                                            )}
+                                                            ${destination.price}
                                                         </span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-2xl font-bold text-green-400">
-                                                        $
-                                                        {formatPrice(
-                                                            offer.price
-                                                        )}
+                                                    <span className="text-2xl font-bold text-blue-400">
+                                                        ${destination.price}
                                                     </span>
                                                 )}
                                                 <span className="text-sm text-gray-400">
-                                                    / person
+                                                    / night
                                                 </span>
                                             </div>
                                         </div>
 
                                         {calculateDiscount(
-                                            offer.price,
-                                            offer.discount_price
+                                            destination.price,
+                                            destination.discount_price
                                         ) && (
                                             <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex-1">
                                                 <div className="text-gray-400 text-sm mb-1">
@@ -324,20 +261,16 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="text-2xl font-bold text-green-400">
                                                         $
-                                                        {formatPrice(
-                                                            parseFloat(
-                                                                offer.price
-                                                            ) -
-                                                                parseFloat(
-                                                                    offer.discount_price
-                                                                )
-                                                        )}
+                                                        {(
+                                                            destination.price -
+                                                            destination.discount_price
+                                                        ).toFixed(2)}
                                                     </span>
                                                     <span className="text-sm text-gray-400">
                                                         (
                                                         {calculateDiscount(
-                                                            offer.price,
-                                                            offer.discount_price
+                                                            destination.price,
+                                                            destination.discount_price
                                                         )}
                                                         % off)
                                                     </span>
@@ -349,7 +282,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             </div>
                         </div>
 
-                        {/* Offer Timeline Section */}
+                        {/* Location Information Section */}
                         <motion.div
                             initial="hidden"
                             whileInView="visible"
@@ -358,23 +291,22 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             variants={fadeIn}
                             className="mt-8 bg-gray-800 bg-opacity-70 rounded-xl p-6 md:p-8 shadow-xl backdrop-blur-sm border border-gray-700"
                         >
-                            <h3 className="text-xl font-semibold mb-4 text-green-400">
-                                Offer Availability
+                            <h3 className="text-xl font-semibold mb-4 text-blue-400">
+                                Location Information
                             </h3>
                             <p className="text-gray-300 mb-4">
-                                <Calendar
+                                <MapPin
                                     className="inline-block mr-2 mb-1"
                                     size={18}
                                 />
-                                Valid from{" "}
-                                {formatDate(offer.start_date) || "Today"} to{" "}
-                                {formatDate(offer.end_date) || "Limited Time"}
+                                {destination.location}
                             </p>
                             <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 mt-4">
                                 <p className="text-gray-400">
-                                    This is a limited time offer. Book now to
-                                    secure your spot and take advantage of these
-                                    special rates.
+                                    This destination is located in{" "}
+                                    {destination.location}. The exact address
+                                    and directions will be provided after
+                                    booking.
                                 </p>
                             </div>
                         </motion.div>
@@ -392,33 +324,28 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                         {/* Booking Card */}
                         <div className="bg-gray-800 bg-opacity-70 rounded-xl p-6 shadow-xl backdrop-blur-sm border border-gray-700 sticky top-24 z-10">
                             <h3 className="text-xl font-semibold mb-4">
-                                Book this offer
+                                Book this destination
                             </h3>
 
                             <div className="mb-6">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-gray-400">
-                                        Price per person
+                                        Price per night
                                     </span>
                                     <div className="flex items-baseline gap-2">
-                                        {offer.discount_price != null &&
-                                        !isNaN(
-                                            parseFloat(offer.discount_price)
-                                        ) ? (
+                                        {destination.discount_price ? (
                                             <>
-                                                <span className="text-lg font-bold text-green-400">
+                                                <span className="text-lg font-bold text-blue-400">
                                                     $
-                                                    {formatPrice(
-                                                        offer.discount_price
-                                                    )}
+                                                    {destination.discount_price}
                                                 </span>
                                                 <span className="text-sm line-through text-gray-500">
-                                                    ${formatPrice(offer.price)}
+                                                    ${destination.price}
                                                 </span>
                                             </>
                                         ) : (
-                                            <span className="text-lg font-bold text-green-400">
-                                                ${formatPrice(offer.price)}
+                                            <span className="text-lg font-bold text-blue-400">
+                                                ${destination.price}
                                             </span>
                                         )}
                                     </div>
@@ -429,7 +356,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                         Service fee
                                     </span>
                                     <span className="text-gray-300">
-                                        ${serviceFee.toFixed(2)}
+                                        ${serviceFee}
                                     </span>
                                 </div>
 
@@ -438,14 +365,17 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                         Booking fee
                                     </span>
                                     <span className="text-gray-300">
-                                        ${bookingFee.toFixed(2)}
+                                        ${bookingFee}
                                     </span>
                                 </div>
 
                                 <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
                                     <span className="font-semibold">Total</span>
                                     <span className="font-bold text-lg">
-                                        ${totalPrice.toFixed(2)}
+                                        $
+                                        {typeof totalPrice === "number"
+                                            ? totalPrice.toFixed(2)
+                                            : "0.00"}
                                     </span>
                                 </div>
                             </div>
@@ -453,13 +383,13 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             <div className="space-y-3">
                                 <Link
                                     href="/booking"
-                                    className="block w-full bg-green-600 hover:bg-green-500 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+                                    className="block w-full bg-blue-600 hover:bg-blue-500 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
                                 >
                                     Book Now
                                 </Link>
 
                                 <button
-                                    className="block w-full bg-transparent border border-green-500 text-green-400 hover:bg-green-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
+                                    className="block w-full bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
                                     onClick={() => setIsFavorite(!isFavorite)}
                                 >
                                     {isFavorite
@@ -472,93 +402,9 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 No payment required to book
                             </div>
                         </div>
+
                     </motion.div>
                 </div>
-
-                {/* Offer Details - Standalone Section */}
-                <motion.div
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.4 }}
-                    variants={fadeIn}
-                    className="bg-gray-800 bg-opacity-70 rounded-xl p-8 shadow-xl backdrop-blur-sm border border-gray-700 mt-8 max-w-4xl mx-auto"
-                >
-                    <h3 className="text-2xl font-semibold mb-6 text-center">
-                        <span className="text-green-400">Offer</span> Details
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {offer.discount_type && (
-                            <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 text-center">
-                                <Tag
-                                    size={24}
-                                    className="text-green-400 mx-auto mb-2"
-                                />
-                                <div>
-                                    <span className="block text-gray-300 mb-1">
-                                        Offer Type
-                                    </span>
-                                    <span className="font-medium text-lg">
-                                        {offer.discount_type}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-                        <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 text-center">
-                            <Calendar
-                                size={24}
-                                className="text-green-400 mx-auto mb-2"
-                            />
-                            <div>
-                                <span className="block text-gray-300 mb-1">
-                                    Valid Until
-                                </span>
-                                <span className="font-medium text-lg">
-                                    {formatDate(offer.end_date) ||
-                                        "Limited Time"}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 text-center">
-                            <DollarSign
-                                size={24}
-                                className="text-green-400 mx-auto mb-2"
-                            />
-                            <div>
-                                <span className="block text-gray-300 mb-1">
-                                    Savings
-                                </span>
-                                <span className="font-medium text-lg">
-                                    {offer.discount_price != null &&
-                                    !isNaN(parseFloat(offer.discount_price)) &&
-                                    offer.price != null &&
-                                    !isNaN(parseFloat(offer.price)) &&
-                                    parseFloat(offer.price) >
-                                        parseFloat(offer.discount_price)
-                                        ? `$${formatPrice(
-                                              parseFloat(offer.price) -
-                                                  parseFloat(
-                                                      offer.discount_price
-                                                  )
-                                          )} (${calculateDiscount(
-                                              offer.price,
-                                              offer.discount_price
-                                          )}% off)`
-                                        : "Standard Pricing"}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mt-6 p-4 bg-gray-900 bg-opacity-50 rounded-lg text-center text-gray-300">
-                        <p>
-                            <span className="font-bold text-green-400 mr-2">
-                                Note:
-                            </span>
-                            This special offer is subject to availability and
-                            may expire soon. Book now to secure this rate.
-                        </p>
-                    </div>
-                </motion.div>
 
                 {/* Call to Action */}
                 <motion.div
@@ -567,21 +413,24 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                     viewport={{ once: true }}
                     transition={{ duration: 0.5 }}
                     variants={fadeIn}
-                    className="text-center bg-green-900 bg-opacity-40 rounded-xl p-8 shadow-xl max-w-4xl mx-auto mt-16 border border-green-800"
+                    className="text-center bg-blue-900 bg-opacity-40 rounded-xl p-8 shadow-xl max-w-4xl mx-auto mt-16 border border-blue-800"
                 >
                     <h2 className="text-2xl font-bold mb-4">
-                        Don't Miss Out on This{" "}
-                        <span className="text-green-400">Special Offer</span>
+                        Ready to Experience{" "}
+                        <span className="text-blue-400">
+                            {destination.name}
+                        </span>
+                        ?
                     </h2>
                     <p className="text-gray-300 mb-6">
-                        Book now to secure this limited-time deal and enjoy
-                        incredible savings on your next adventure.
+                        Book your stay now and create unforgettable memories at
+                        this amazing destination.
                     </p>
                     <motion.a
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         href="/booking"
-                        className="inline-block bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded-lg transition-all duration-300"
+                        className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg transition-all duration-300"
                     >
                         Book Now
                     </motion.a>

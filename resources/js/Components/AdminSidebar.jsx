@@ -9,6 +9,7 @@ import {
     Image,
     LogOut,
     Home,
+    Package2Icon,
 } from "lucide-react";
 
 export default function AdminSidebar() {
@@ -62,6 +63,11 @@ export default function AdminSidebar() {
                             icon={<Grid className="w-5 h-5 text-blue-400" />}
                         />
                         <SidebarLink
+                            href="/admin/hero"
+                            label="Hero Sections"
+                            icon={<Image className="w-5 h-5 text-indigo-400" />}
+                        />
+                        <SidebarLink
                             href="/admin/users"
                             label="Users"
                             icon={<Users className="w-5 h-5 text-green-400" />}
@@ -71,6 +77,13 @@ export default function AdminSidebar() {
                             label="Messages"
                             icon={
                                 <MessageSquare className="w-5 h-5 text-yellow-400" />
+                            }
+                        />
+                        <SidebarLink
+                            href="/admin/packages"
+                            label="Packages"
+                            icon={
+                                <Package2Icon className="w-5 h-5 text-brown-400" />
                             }
                         />
                         <SidebarLink
@@ -84,11 +97,6 @@ export default function AdminSidebar() {
                             href="/admin/offers"
                             label="Offers"
                             icon={<Tag className="w-5 h-5 text-pink-400" />}
-                        />
-                        <SidebarLink
-                            href="/admin/hero"
-                            label="Hero Sections"
-                            icon={<Image className="w-5 h-5 text-indigo-400" />}
                         />
                     </nav>
                 </div>
