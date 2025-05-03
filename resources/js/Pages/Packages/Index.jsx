@@ -10,14 +10,15 @@ import {
     Tags,
     Heart,
     Star,
+    Calendar,
 } from "lucide-react";
-import Navbar from "../Components/Nav";
-import Footer from "../Components/Footer";
+import Navbar from "../../Components/Nav";
+import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
 
-const DestinationsPage = ({ auth }) => {
+const PackagesPage = ({ auth }) => {
     const { props } = usePage();
-    const { destinations = [], flash = {} } = props;
+    const { packages = [], flash = {} } = props;
     const user = auth?.user || null;
 
     const [searchQuery, setSearchQuery] = useState("");
@@ -31,13 +32,13 @@ const DestinationsPage = ({ auth }) => {
     const itemsPerPage = 8;
 
     const categories = [
-        "Beach",
-        "Mountain",
-        "City",
-        "Countryside",
-        "Island",
-        "Historic",
+        "Family",
+        "Adventure",
+        "Romantic",
+        "Cultural",
         "Luxury",
+        "Budget",
+        "Wellness",
     ];
 
     const fadeIn = {
@@ -79,18 +80,15 @@ const DestinationsPage = ({ auth }) => {
         { value: "discount", label: "Biggest Discount" },
     ];
 
-    const filteredDestinations = destinations
+    const filteredPackages = packages
         .filter(
-            (destination) =>
-                (destination.name
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                    destination.location
+            (pkg) =>
+                (pkg.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    pkg.subtitle
                         ?.toLowerCase()
                         .includes(searchQuery.toLowerCase())) &&
                 (selectedCategories.length === 0 ||
-                    (destination.tag &&
-                        selectedCategories.includes(destination.tag)))
+                    (pkg.tag && selectedCategories.includes(pkg.tag)))
         )
         .sort((a, b) => {
             switch (sortBy) {
@@ -118,8 +116,8 @@ const DestinationsPage = ({ auth }) => {
             }
         });
 
-    const totalPages = Math.ceil(filteredDestinations.length / itemsPerPage);
-    const paginatedDestinations = filteredDestinations.slice(
+    const totalPages = Math.ceil(filteredPackages.length / itemsPerPage);
+    const paginatedPackages = filteredPackages.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
@@ -165,13 +163,23 @@ const DestinationsPage = ({ auth }) => {
         return stars;
     };
 
+    const formatDate = (dateString) => {
+        if (!dateString) return "";
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+        });
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
             <Head>
-                <title>Destinations - Travel Nest</title>
+                <title>Packages - Travel Nest</title>
                 <meta
                     name="description"
-                    content="Explore our curated list of travel destinations with Travel Nest."
+                    content="Explore our curated travel packages with Travel Nest."
                 />
             </Head>
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
@@ -194,7 +202,7 @@ const DestinationsPage = ({ auth }) => {
                             className="text-6xl font-extrabold mb-3 leading-tight"
                         >
                             Amazing{" "}
-                            <span className="text-blue-400">Destinations</span>
+                            <span className="text-blue-400">Packages</span>
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0 }}
@@ -202,8 +210,8 @@ const DestinationsPage = ({ auth }) => {
                             transition={{ delay: 0.2, duration: 0.7 }}
                             className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
-                            Discover breathtaking places around the world for
-                            your next adventure
+                            Discover our exclusive travel packages for
+                            unforgettable experiences
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -228,7 +236,7 @@ const DestinationsPage = ({ auth }) => {
                         <div className="relative w-full md:w-96">
                             <input
                                 type="text"
-                                placeholder="Search destinations or locations..."
+                                placeholder="Search packages or destinations..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -314,15 +322,15 @@ const DestinationsPage = ({ auth }) => {
                     <div className="flex justify-between items-center mb-6">
                         <p className="text-gray-400">
                             Showing{" "}
-                            {filteredDestinations.length > 0
+                            {filteredPackages.length > 0
                                 ? (currentPage - 1) * itemsPerPage + 1
                                 : 0}
                             -
                             {Math.min(
                                 currentPage * itemsPerPage,
-                                filteredDestinations.length
+                                filteredPackages.length
                             )}{" "}
-                            of {filteredDestinations.length} destinations
+                            of {filteredPackages.length} packages
                         </p>
                         {selectedCategories.length > 0 && (
                             <button
@@ -342,7 +350,7 @@ const DestinationsPage = ({ auth }) => {
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
                 >
                     <AnimatePresence mode="popLayout">
-                        {paginatedDestinations.length === 0 ? (
+                        {paginatedPackages.length === 0 ? (
                             <motion.div
                                 variants={fadeIn}
                                 className="col-span-full text-center py-16"
@@ -350,12 +358,12 @@ const DestinationsPage = ({ auth }) => {
                                 <div className="max-w-md mx-auto">
                                     <Search className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                     <h3 className="text-2xl font-bold mb-2">
-                                        No destinations found
+                                        No packages found
                                     </h3>
                                     <p className="text-gray-400 mb-6">
-                                        We couldn't find any destinations
-                                        matching your search criteria. Try
-                                        adjusting your filters or search query.
+                                        We couldn't find any packages matching
+                                        your search criteria. Try adjusting your
+                                        filters or search query.
                                     </p>
                                     <button
                                         onClick={() => {
@@ -369,11 +377,9 @@ const DestinationsPage = ({ auth }) => {
                                 </div>
                             </motion.div>
                         ) : (
-                            paginatedDestinations.map((destination) => (
-                            
-
+                            paginatedPackages.map((pkg) => (
                                 <motion.div
-                                    key={destination.id}
+                                    key={pkg.id}
                                     variants={cardVariants}
                                     layout
                                     whileHover={{
@@ -385,26 +391,26 @@ const DestinationsPage = ({ auth }) => {
                                     <div className="relative overflow-hidden">
                                         <img
                                             src={
-                                                destination.image ||
+                                                pkg.image ||
                                                 "https://via.placeholder.com/640x480?text=No+Image"
                                             }
-                                            alt={destination.name}
+                                            alt={pkg.title}
                                             className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
                                         />
-                                        {destination.tag && (
+                                        {pkg.tag && (
                                             <span className="absolute top-3 left-3 px-2 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
-                                                {destination.tag}
+                                                {pkg.tag}
                                             </span>
                                         )}
                                         {calculateDiscount(
-                                            destination.price,
-                                            destination.discount_price
+                                            pkg.price,
+                                            pkg.discount_price
                                         ) && (
                                             <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
                                                 {calculateDiscount(
-                                                    destination.price,
-                                                    destination.discount_price
+                                                    pkg.price,
+                                                    pkg.discount_price
                                                 )}
                                                 % OFF
                                             </div>
@@ -423,68 +429,85 @@ const DestinationsPage = ({ auth }) => {
                                     <div className="p-5 flex flex-col flex-grow">
                                         <div className="flex items-center justify-between mb-2">
                                             <h3 className="text-xl font-bold text-white line-clamp-1">
-                                                {destination.name}
+                                                {pkg.title}
                                             </h3>
                                         </div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <MapPin
-                                                size={16}
-                                                className="text-blue-400"
-                                            />
-                                            <span className="text-gray-300 text-sm">
-                                                {destination.location}
-                                            </span>
-                                        </div>
+                                        {pkg.subtitle && (
+                                            <p className="text-gray-400 text-sm mb-2 line-clamp-1">
+                                                {pkg.subtitle}
+                                            </p>
+                                        )}
+                                        {pkg.location && (
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <MapPin
+                                                    size={16}
+                                                    className="text-blue-400"
+                                                />
+                                                <span className="text-gray-300 text-sm">
+                                                    {pkg.location}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {(pkg.start_date || pkg.end_date) && (
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Calendar
+                                                    size={16}
+                                                    className="text-blue-400"
+                                                />
+                                                <span className="text-gray-300 text-sm">
+                                                    {formatDate(pkg.start_date)}
+                                                    {pkg.start_date &&
+                                                        pkg.end_date &&
+                                                        " - "}
+                                                    {formatDate(pkg.end_date)}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="flex items-center gap-1 mb-3">
-                                            {renderStars(
-                                                destination.rating || 0
-                                            )}
+                                            {renderStars(pkg.rating || 0)}
                                             <span className="text-gray-400 text-sm ml-2">
-                                                ({destination.rating || 0}/5)
+                                                ({pkg.rating || 0}/5)
                                             </span>
                                         </div>
                                         <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                                            {destination.description ||
+                                            {pkg.description ||
                                                 "No description available."}
                                         </p>
                                         <div className="mt-auto">
                                             <div className="flex items-center justify-between mb-4">
                                                 <div>
                                                     <span className="block text-gray-400 text-xs">
-                                                        Starting from
+                                                        Price
                                                     </span>
                                                     <div className="flex items-baseline gap-2">
-                                                        {destination.discount_price ? (
+                                                        {pkg.discount_price ? (
                                                             <>
                                                                 <span className="text-lg font-bold text-blue-400">
                                                                     $
                                                                     {
-                                                                        destination.discount_price
+                                                                        pkg.discount_price
                                                                     }
                                                                 </span>
                                                                 <span className="text-sm line-through text-gray-500">
-                                                                    $
-                                                                    {
-                                                                        destination.price
-                                                                    }
+                                                                    ${pkg.price}
                                                                 </span>
                                                             </>
                                                         ) : (
                                                             <span className="text-lg font-bold text-blue-400">
-                                                                $
-                                                                {
-                                                                    destination.price
-                                                                }
+                                                                ${pkg.price}
                                                             </span>
                                                         )}
-                                                        <span className="text-xs text-gray-400">
-                                                            / night
-                                                        </span>
+                                                        {pkg.price_type && (
+                                                            <span className="text-xs text-gray-400">
+                                                                /{" "}
+                                                                {pkg.price_type}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
                                             <Link
-                                                href={`/destinations/${destination.id}`}
+                                                href={`/packages/${pkg.id}`}
                                                 className="w-full inline-block text-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all duration-300 transform group-hover:shadow-lg"
                                             >
                                                 View Details
@@ -497,7 +520,7 @@ const DestinationsPage = ({ auth }) => {
                     </AnimatePresence>
                 </motion.div>
 
-                {filteredDestinations.length > 0 && totalPages > 1 && (
+                {filteredPackages.length > 0 && totalPages > 1 && (
                     <motion.div
                         initial="hidden"
                         whileInView="visible"
@@ -618,4 +641,4 @@ const ChevronDown = ({ className }) => (
     </svg>
 );
 
-export default DestinationsPage;
+export default PackagesPage;

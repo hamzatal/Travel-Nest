@@ -13,6 +13,7 @@ import {
     X,
     Search,
     PlaneIcon,
+    PackageCheck,
 } from "lucide-react";
 import { Link, usePage, router } from "@inertiajs/react";
 import axios from "axios";
@@ -132,7 +133,7 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
 
     const navItems = [
         { label: "Home", href: "/home", icon: Hotel },
-        { label: "Packages", href: "/Packages", icon: Bookmark },
+        { label: "Packages", href: "/packages", icon: PackageCheck },
         { label: "Destinations", href: "/destinations", icon: Map },
         { label: "Deals", href: "/deals", icon: Bookmark },
         { label: "About Us", href: "/about-us", icon: BookOpen },

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Contact;
 use App\Models\Admin;
+use App\Models\Package;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -151,7 +152,7 @@ class AdminController extends Controller
             'destinations' => 0,
             'offers' => 0,
             'hero_sections' => 0,
-            'packages' => 0,
+            'packages' => Package::count(),
         ];
 
         $latest_users = User::select('id', 'name', 'email', 'created_at')
