@@ -22,6 +22,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SearchController;
+use App\Http\Controllers\BookingController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +53,9 @@ Route::get('/destinations/{id}', [DestinationController::class, 'show'])->name('
 Route::get('/packages', [PackagesController::class, 'indexPublic'])->name('packages.index');
 Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
 
+//? Booking Routes
+Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
 // ===================================================
 //! Authentication Routes
 // ===================================================

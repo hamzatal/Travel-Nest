@@ -1,0 +1,838 @@
+import React, { useState, useEffect } from "react";
+import { Head, usePage, Link } from "@inertiajs/react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+    Search,
+    MapPin,
+    ChevronLeft,
+    ChevronRight,
+    Filter,
+    Tags,
+    Heart,
+    Star,
+    Calendar,
+    Users,
+    Plane,
+    Package,
+    Hotel,
+    Briefcase,
+    Compass,
+    Tag,
+} from "lucide-react";
+import Navbar from "../../Components/Nav";
+import Footer from "../../Components/Footer";
+import toast, { Toaster } from "react-hot-toast";
+
+const BookNowPage = ({ auth }) => {
+    const { props } = usePage();
+    const { destinations = [], packages = [], deals = [], flash = {} } = props;
+    const user = auth?.user || null;
+
+    // State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [sortBy, setSortBy] = useState("newest");
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [selectedCategories, setSelectedCategories] = useState([]);
+    const [selectedTypes, setSelectedTypes] = useState(["all"]);
+    const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
+    const [isDarkMode, setIsDarkMode] = useState(true);
+
+    const itemsPerPage = 8;
+
+    // Combined data
+    const allData = [
+        ...destinations.map((item) => ({ ...item, type: "destination" })),
+        ...packages.map((item) => ({ ...item, type: "package" })),
+        ...deals.map((item) => ({ ...item, type: "deal" })),
+    ];
+
+    const categories = [
+        "Beach",
+        "Mountain",
+        "City",
+        "Countryside",
+        "Island",
+        "Historic",
+        "Luxury",
+        "Adventure",
+        "Cultural",
+        "Wildlife",
+    ];
+
+    const types = [
+        { id: "all", label: "All", icon: <Compass className="w-4 h-4" /> },
+        {
+            id: "destination",
+            label: "Destinations",
+            icon: <MapPin className="w-4 h-4" />,
+        },
+        {
+            id: "package",
+            label: "Packages",
+            icon: <Package className="w-4 h-4" />,
+        },
+        { id: "deal", label: "Deals", icon: <Tag className="w-4 h-4" /> },
+    ];
+
+    // Animation variants
+    const fadeIn = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+    };
+
+    const staggerContainer = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+            },
+        },
+    };
+
+    const cardVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+        exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
+    };
+
+    // Filter by type
+    const toggleType = (type) => {
+        if (type === "all") {
+            setSelectedTypes(["all"]);
+        } else {
+            const newTypes = selectedTypes.includes("all")
+                ? [type]
+                : selectedTypes.includes(type)
+                ? selectedTypes.filter((t) => t !== type)
+                : [...selectedTypes, type];
+
+            // If no types selected, default to "all"
+            setSelectedTypes(newTypes.length === 0 ? ["all"] : newTypes);
+        }
+        setCurrentPage(1);
+    };
+
+    // Filter by category
+    const toggleCategory = (category) => {
+        if (selectedCategories.includes(category)) {
+            setSelectedCategories(
+                selectedCategories.filter((c) => c !== category)
+            );
+        } else {
+            setSelectedCategories([...selectedCategories, category]);
+        }
+        setCurrentPage(1);
+    };
+
+    const sortOptions = [
+        { value: "newest", label: "Newest First" },
+        { value: "priceAsc", label: "Price: Low to High" },
+        { value: "priceDesc", label: "Price: High to Low" },
+        { value: "discount", label: "Biggest Discount" },
+    ];
+
+    // Filter and sort data
+    const filteredData = allData
+        .filter((item) => {
+            // Type filter
+            const typeMatch =
+                selectedTypes.includes("all") ||
+                selectedTypes.includes(item.type);
+
+            // Search filter
+            const searchMatch =
+                item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.location
+                    ?.toLowerCase()
+                    .includes(searchQuery.toLowerCase()) ||
+                item.description
+                    ?.toLowerCase()
+                    .includes(searchQuery.toLowerCase());
+
+            // Category filter
+            const categoryMatch =
+                selectedCategories.length === 0 ||
+                (item.tag && selectedCategories.includes(item.tag));
+
+            // Price filter
+            const itemPrice = item.discount_price || item.price;
+            const priceMatch =
+                itemPrice >= priceRange.min && itemPrice <= priceRange.max;
+
+            return typeMatch && searchMatch && categoryMatch && priceMatch;
+        })
+        .sort((a, b) => {
+            switch (sortBy) {
+                case "priceAsc":
+                    return (
+                        (a.discount_price || a.price) -
+                        (b.discount_price || b.price)
+                    );
+                case "priceDesc":
+                    return (
+                        (b.discount_price || b.price) -
+                        (a.discount_price || a.price)
+                    );
+                case "discount":
+                    const discountA = a.discount_price
+                        ? (a.price - a.discount_price) / a.price
+                        : 0;
+                    const discountB = b.discount_price
+                        ? (b.price - b.discount_price) / b.price
+                        : 0;
+                    return discountB - discountA;
+                case "newest":
+                default:
+                    return b.id - a.id;
+            }
+        });
+
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const paginatedData = filteredData.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, selectedTypes, selectedCategories, priceRange]);
+
+    // Show flash messages as toasts
+    useEffect(() => {
+        if (flash.success) {
+            toast.success(flash.success);
+        }
+        if (flash.error) {
+            toast.error(flash.error);
+        }
+    }, [flash]);
+
+    const calculateDiscount = (original, discounted) => {
+        if (!discounted) return null;
+        const percentage = Math.round(
+            ((original - discounted) / original) * 100
+        );
+        return percentage;
+    };
+
+    const renderStars = (rating) => {
+        const stars = [];
+        const roundedRating = Math.round((rating || 0) * 2) / 2;
+        for (let i = 1; i <= 5; i++) {
+            stars.push(
+                <Star
+                    key={i}
+                    size={14}
+                    className={
+                        i <= roundedRating
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-500"
+                    }
+                />
+            );
+        }
+        return stars;
+    };
+
+    // Get type-specific details
+    const getTypeIcon = (type) => {
+        switch (type) {
+            case "destination":
+                return <MapPin className="w-5 h-5 text-blue-400" />;
+            case "package":
+                return <Package className="w-5 h-5 text-green-400" />;
+            case "deal":
+                return <Tag className="w-5 h-5 text-purple-400" />;
+            default:
+                return <Compass className="w-5 h-5 text-blue-400" />;
+        }
+    };
+
+    const getTypeBadgeClass = (type) => {
+        switch (type) {
+            case "destination":
+                return "bg-blue-600";
+            case "package":
+                return "bg-green-600";
+            case "deal":
+                return "bg-purple-600";
+            default:
+                return "bg-blue-600";
+        }
+    };
+
+    const getTypeLabel = (type) => {
+        switch (type) {
+            case "destination":
+                return "Destination";
+            case "package":
+                return "Package";
+            case "deal":
+                return "Deal";
+            default:
+                return "Unknown";
+        }
+    };
+
+    const getItemDetailUrl = (item) => {
+        switch (item.type) {
+            case "destination":
+                return `/destinations/${item.id}`;
+            case "package":
+                return `/packages/${item.id}`;
+            case "deal":
+                return `/deals/${item.id}`;
+            default:
+                return "#";
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
+            <Head>
+                <title>Book Now - Travel Nest</title>
+                <meta
+                    name="description"
+                    content="Book your next adventure with Travel Nest. Explore our destinations, packages, and special deals."
+                />
+            </Head>
+            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+
+            <Navbar
+                user={user}
+                isDarkMode={isDarkMode}
+                toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+            />
+
+            <div className="relative h-72 md:h-80 overflow-hidden">
+                <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
+                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-fill"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center px-4">
+                        <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.7 }}
+                            className="text-6xl font-extrabold mb-3 leading-tight"
+                        >
+                            Book Your{" "}
+                            <span className="text-green-400">Adventure</span>
+                        </motion.h1>
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2, duration: 0.7 }}
+                            className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
+                        >
+                            Explore our destinations, packages, and special
+                            deals to find your perfect getaway
+                        </motion.p>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3, duration: 0.7 }}
+                        >
+                            <div className="w-24 h-1 bg-green-500 mx-auto rounded-full"></div>
+                        </motion.div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-6 md:px-16 py-12">
+                <motion.div
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    variants={fadeIn}
+                    className="mb-8"
+                >
+                    {/* Type Selection */}
+                    <div className="flex flex-wrap justify-center gap-4 mb-8">
+                        {types.map((type) => (
+                            <button
+                                key={type.id}
+                                onClick={() => toggleType(type.id)}
+                                className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 
+                                    ${
+                                        selectedTypes.includes(type.id)
+                                            ? "bg-green-600 text-white shadow-lg shadow-green-900/30"
+                                            : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                    }`}
+                            >
+                                {type.icon}
+                                <span>{type.label}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
+                        <div className="relative w-full md:w-96">
+                            <input
+                                type="text"
+                                placeholder="Search destinations, packages, deals..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
+                            />
+                            <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+                        </div>
+
+                        <div className="flex items-center gap-3 w-full md:w-auto">
+                            <div className="relative w-full md:w-48">
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none transition-all duration-300"
+                                >
+                                    {sortOptions.map((option) => (
+                                        <option
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setFilterOpen(!filterOpen)}
+                                className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 hover:bg-gray-700 transition-all duration-300"
+                            >
+                                <Filter className="w-4 h-4" />
+                                <span className="hidden sm:inline">
+                                    Filters
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <AnimatePresence>
+                        {filterOpen && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="p-6 bg-gray-800 bg-opacity-70 rounded-lg mb-6 border border-gray-700">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Tags className="w-4 h-4 text-green-400" />
+                                                <h3 className="text-lg font-semibold">
+                                                    Categories
+                                                </h3>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {categories.map((category) => (
+                                                    <button
+                                                        key={category}
+                                                        onClick={() =>
+                                                            toggleCategory(
+                                                                category
+                                                            )
+                                                        }
+                                                        className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 ${
+                                                            selectedCategories.includes(
+                                                                category
+                                                            )
+                                                                ? "bg-green-600 text-white"
+                                                                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                                        }`}
+                                                    >
+                                                        {category}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Tag className="w-4 h-4 text-green-400" />
+                                                <h3 className="text-lg font-semibold">
+                                                    Price Range
+                                                </h3>
+                                            </div>
+                                            <div className="px-2">
+                                                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                                                    <span>
+                                                        ${priceRange.min}
+                                                    </span>
+                                                    <span>
+                                                        ${priceRange.max}
+                                                    </span>
+                                                </div>
+                                                <div className="flex gap-4 items-center">
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="10000"
+                                                        step="100"
+                                                        value={priceRange.min}
+                                                        onChange={(e) =>
+                                                            setPriceRange({
+                                                                ...priceRange,
+                                                                min: parseInt(
+                                                                    e.target
+                                                                        .value
+                                                                ),
+                                                            })
+                                                        }
+                                                        className="w-full accent-green-500"
+                                                    />
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="10000"
+                                                        step="100"
+                                                        value={priceRange.max}
+                                                        onChange={(e) =>
+                                                            setPriceRange({
+                                                                ...priceRange,
+                                                                max: parseInt(
+                                                                    e.target
+                                                                        .value
+                                                                ),
+                                                            })
+                                                        }
+                                                        className="w-full accent-green-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <div className="flex justify-between items-center mb-6">
+                        <p className="text-gray-400">
+                            Showing{" "}
+                            {filteredData.length > 0
+                                ? (currentPage - 1) * itemsPerPage + 1
+                                : 0}
+                            -
+                            {Math.min(
+                                currentPage * itemsPerPage,
+                                filteredData.length
+                            )}{" "}
+                            of {filteredData.length} items
+                        </p>
+                        {(selectedCategories.length > 0 ||
+                            !selectedTypes.includes("all") ||
+                            priceRange.min > 0 ||
+                            priceRange.max < 10000) && (
+                            <button
+                                onClick={() => {
+                                    setSelectedCategories([]);
+                                    setSelectedTypes(["all"]);
+                                    setPriceRange({ min: 0, max: 10000 });
+                                }}
+                                className="text-green-400 hover:text-green-300 text-sm"
+                            >
+                                Clear all filters
+                            </button>
+                        )}
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={staggerContainer}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+                >
+                    <AnimatePresence mode="popLayout">
+                        {paginatedData.length === 0 ? (
+                            <motion.div
+                                variants={fadeIn}
+                                className="col-span-full text-center py-16"
+                            >
+                                <div className="max-w-md mx-auto">
+                                    <Search className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                                    <h3 className="text-2xl font-bold mb-2">
+                                        No results found
+                                    </h3>
+                                    <p className="text-gray-400 mb-6">
+                                        We couldn't find any items matching your
+                                        search criteria. Try adjusting your
+                                        filters or search query.
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            setSearchQuery("");
+                                            setSelectedCategories([]);
+                                            setSelectedTypes(["all"]);
+                                            setPriceRange({
+                                                min: 0,
+                                                max: 10000,
+                                            });
+                                        }}
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
+                                    >
+                                        Clear all filters
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            paginatedData.map((item) => (
+                                <motion.div
+                                    key={`${item.type}-${item.id}`}
+                                    variants={cardVariants}
+                                    layout
+                                    whileHover={{
+                                        y: -8,
+                                        transition: { duration: 0.3 },
+                                    }}
+                                    className="bg-gray-800 bg-opacity-80 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group"
+                                >
+                                    <div className="relative overflow-hidden">
+                                        <img
+                                            src={
+                                                item.image ||
+                                                "https://via.placeholder.com/640x480?text=No+Image"
+                                            }
+                                            alt={item.name}
+                                            className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
+                                            loading="lazy"
+                                        />
+                                        <div className="absolute top-3 left-3 flex gap-2">
+                                            <span
+                                                className={`px-2 py-1 ${getTypeBadgeClass(
+                                                    item.type
+                                                )} rounded-full text-xs font-medium text-white`}
+                                            >
+                                                {getTypeLabel(item.type)}
+                                            </span>
+                                            {item.tag && (
+                                                <span className="px-2 py-1 bg-gray-700 bg-opacity-80 rounded-full text-xs font-medium text-white">
+                                                    {item.tag}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {calculateDiscount(
+                                            item.price,
+                                            item.discount_price
+                                        ) && (
+                                            <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                                {calculateDiscount(
+                                                    item.price,
+                                                    item.discount_price
+                                                )}
+                                                % OFF
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
+                                        <button
+                                            className="absolute top-3 right-3 bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300 transform translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0"
+                                            aria-label="Add to favorites"
+                                        >
+                                            <Heart
+                                                size={18}
+                                                className="text-white"
+                                            />
+                                        </button>
+                                    </div>
+                                    <div className="p-5 flex flex-col flex-grow">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-xl font-bold text-white line-clamp-1">
+                                                {item.name}
+                                            </h3>
+                                        </div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            {getTypeIcon(item.type)}
+                                            <span className="text-gray-300 text-sm">
+                                                {item.location}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 mb-3">
+                                            {renderStars(item.rating || 0)}
+                                            <span className="text-gray-400 text-sm ml-2">
+                                                ({item.rating || 0}/5)
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                                            {item.description ||
+                                                "No description available."}
+                                        </p>
+                                        <div className="mt-auto">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div>
+                                                    <span className="block text-gray-400 text-xs">
+                                                        {item.type ===
+                                                        "destination"
+                                                            ? "Starting from"
+                                                            : "Price"}
+                                                    </span>
+                                                    <div className="flex items-baseline gap-2">
+                                                        {item.discount_price ? (
+                                                            <>
+                                                                <span className="text-lg font-bold text-green-400">
+                                                                    $
+                                                                    {
+                                                                        item.discount_price
+                                                                    }
+                                                                </span>
+                                                                <span className="text-sm line-through text-gray-500">
+                                                                    $
+                                                                    {item.price}
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-lg font-bold text-green-400">
+                                                                ${item.price}
+                                                            </span>
+                                                        )}
+                                                        {item.type ===
+                                                            "destination" && (
+                                                            <span className="text-xs text-gray-400">
+                                                                / night
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Link
+                                                href={getItemDetailUrl(item)}
+                                                className="w-full inline-block text-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-all duration-300 transform group-hover:shadow-lg"
+                                            >
+                                                View Details
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+
+                {filteredData.length > 0 && totalPages > 1 && (
+                    <motion.div
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true }}
+                        variants={fadeIn}
+                        className="flex justify-center items-center gap-2 mb-16"
+                    >
+                        <button
+                            onClick={() =>
+                                setCurrentPage((prev) => Math.max(prev - 1, 1))
+                            }
+                            disabled={currentPage === 1}
+                            className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                                currentPage === 1
+                                    ? "bg-gray-800 text-gray-600 cursor-not-allowed"
+                                    : "bg-gray-800 text-white hover:bg-gray-700"
+                            } transition-all duration-300`}
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                            {Array.from(
+                                { length: totalPages },
+                                (_, i) => i + 1
+                            ).map((page) => {
+                                const pageRange = 2;
+                                const startPage = Math.max(
+                                    1,
+                                    currentPage - pageRange
+                                );
+                                const endPage = Math.min(
+                                    totalPages,
+                                    currentPage + pageRange
+                                );
+
+                                if (
+                                    (page >= startPage && page <= endPage) ||
+                                    page === 1 ||
+                                    page === totalPages
+                                ) {
+                                    return (
+                                        <button
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                                                currentPage === page
+                                                    ? "bg-green-600 text-white"
+                                                    : "bg-gray-800 text-white hover:bg-gray-700"
+                                            } transition-all duration-300`}
+                                        >
+                                            {page}
+                                        </button>
+                                    );
+                                }
+
+                                if (page === startPage - 1 && page > 1) {
+                                    return (
+                                        <span
+                                            key={`ellipsis-start`}
+                                            className="text-gray-500"
+                                        >
+                                            ...
+                                        </span>
+                                    );
+                                }
+
+                                if (page === endPage + 1 && page < totalPages) {
+                                    return (
+                                        <span
+                                            key={`ellipsis-end`}
+                                            className="text-gray-500"
+                                        >
+                                            ...
+                                        </span>
+                                    );
+                                }
+
+                                return null;
+                            })}
+                        </div>
+
+                        <button
+                            onClick={() =>
+                                setCurrentPage((prev) =>
+                                    Math.min(prev + 1, totalPages)
+                                )
+                            }
+                            disabled={currentPage === totalPages}
+                            className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                                currentPage === totalPages
+                                    ? "bg-gray-800 text-gray-600 cursor-not-allowed"
+                                    : "bg-gray-800 text-white hover:bg-gray-700"
+                            } transition-all duration-300`}
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+                    </motion.div>
+                )}
+            </div>
+            <Footer />
+        </div>
+    );
+};
+
+const ChevronDown = ({ className }) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+    >
+        <path d="m6 9 6 6 6-6" />
+    </svg>
+);
+
+export default BookNowPage;
