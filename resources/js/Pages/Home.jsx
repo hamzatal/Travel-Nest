@@ -21,11 +21,10 @@ import {
     Sun,
     ArrowLeft,
     ArrowRight as ChevronRight,
-    StarsIcon,
-    Calendar1Icon,
-    Calendar,
     CalendarX,
     Users,
+    Search,
+    Sparkles,
 } from "lucide-react";
 import { Head, usePage, Link } from "@inertiajs/react";
 import Navbar from "../Components/Nav";
@@ -50,7 +49,11 @@ const HomePage = ({ auth }) => {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [scrollPosition, setScrollPosition] = useState(0);
-    const [activeTab, setActiveTab] = useState("popular");
+
+    // Journey Planner states
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [suggestions, setSuggestions] = useState([]);
 
     // Mocked data for inspiration section
     const inspirationItems = [
@@ -113,6 +116,27 @@ const HomePage = ({ auth }) => {
         }
     }, [heroSections]);
 
+    // Journey Planner: Filter suggestions based on search query and category
+    useEffect(() => {
+        const filterSuggestions = () => {
+            const lowerQuery = searchQuery.toLowerCase();
+            const filtered = [...destinations, ...offers].filter((item) => {
+                const matchesQuery =
+                    (item.name?.toLowerCase().includes(lowerQuery) ||
+                        item.title?.toLowerCase().includes(lowerQuery) ||
+                        item.description?.toLowerCase().includes(lowerQuery) ||
+                        item.location?.toLowerCase().includes(lowerQuery) ||
+                        item.destination?.toLowerCase().includes(lowerQuery)) &&
+                    (selectedCategory === "all" ||
+                        item.category?.toLowerCase() ===
+                            selectedCategory.toLowerCase());
+                return matchesQuery;
+            });
+            setSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
+        };
+        filterSuggestions();
+    }, [searchQuery, selectedCategory, destinations, offers]);
+
     // Calculate discount percentage
     const calculateDiscount = (original, discounted) => {
         if (!discounted) return null;
@@ -120,6 +144,22 @@ const HomePage = ({ auth }) => {
             ((original - discounted) / original) * 100
         );
         return percentage;
+    };
+
+    // Handle "Surprise Me" button
+    const handleSurpriseMe = () => {
+        const randomItem = [...destinations, ...offers][
+            Math.floor(Math.random() * (destinations.length + offers.length))
+        ];
+        if (randomItem) {
+            setSuggestions([randomItem]);
+        }
+    };
+
+    // Clear search input
+    const clearSearch = () => {
+        setSearchQuery("");
+        setSuggestions([]);
     };
 
     return (
@@ -144,7 +184,7 @@ const HomePage = ({ auth }) => {
             />
 
             {/* Floating Back to Top Button */}
-            {scrollPosition > 500 && (
+            {/* {scrollPosition > 500 && (
                 <motion.button
                     initial={{ opacity: 0, y: 50 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -157,7 +197,7 @@ const HomePage = ({ auth }) => {
                 >
                     <ArrowUp size={22} className="animate-bounce" />
                 </motion.button>
-            )}
+            )} */}
 
             {/* Hero Carousel Section */}
             <section className="relative h-screen w-full overflow-hidden">
@@ -212,24 +252,26 @@ const HomePage = ({ auth }) => {
                                     {heroSections[currentSlide]?.title ||
                                         "Welcome to Travel Nest"}
                                 </h1>
-
                                 <p className="text-xl md:text-2xl text-gray-100 mb-10 max-w-3xl mx-auto font-light">
                                     {heroSections[currentSlide]?.subtitle ||
                                         "Plan your next adventure with us."}
                                 </p>
-
                                 <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
-                                    <button className="px-8 py-4 bg-white text-gray-900 rounded-full shadow-lg hover:bg-gray-100 transition-all duration-300 font-semibold text-lg min-w-48">
+                                    <Link
+                                        href="/booking"
+                                        className="px-8 py-4 bg-white text-gray-900 rounded-full shadow-lg hover:bg-gray-100 transition-all duration-300 font-semibold text-lg min-w-48 text-center"
+                                    >
                                         {heroSections[currentSlide]?.cta_text ||
                                             "Start Planning"}
-                                    </button>
-                                    <button
+                                    </Link>
+                                    <Link
+                                        href="/destinations"
                                         className="flex items-center gap-2 px-8 py-4 border-2 border-white/80 rounded-full hover:bg-white/10 transition-all duration-300 font-medium text-white"
                                         aria-label="Explore Map"
                                     >
                                         <MapPin size={20} />
                                         Explore Destinations
-                                    </button>
+                                    </Link>
                                 </div>
                             </motion.div>
                         </div>
@@ -283,6 +325,199 @@ const HomePage = ({ auth }) => {
                 )}
             </section>
 
+            {/* Journey Planner (Modern Filter) Section */}
+            <section
+                className="relative py-8 bg-white -mt-0 z-20"
+                ref={searchRef}
+            >
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <motion.div
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="relative bg-white rounded-3xl p-6 shadow-lg border border-gray-200"
+                    >
+                        <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-4">
+                            Discover Your{" "}
+                            <span className="text-blue-600">
+                                Next Adventure
+                            </span>
+                        </h2>
+                        <p className="text-lg text-gray-600 text-center mb-6 max-w-2xl mx-auto">
+                            Filter destinations by category or search for your
+                            dream trip.
+                        </p>
+
+                        {/* Search Bar */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0.2 }}
+                            className="relative flex items-center mb-6"
+                        >
+                            <div className="relative w-full max-w-3xl mx-auto">
+                                <Search
+                                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-600"
+                                    size={24}
+                                />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
+                                    placeholder="Search destinations, experiences, or keywords..."
+                                    className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-full text-gray-800 text-lg font-light placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all duration-300"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={clearSearch}
+                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-all duration-300"
+                                        aria-label="Clear search"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+
+                        {/* Category Filters and Surprise Me */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.4 }}
+                            className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6"
+                        >
+                            <div className="flex flex-wrap justify-center gap-3">
+                                {[
+                                    "All",
+                                    "Beach",
+                                    "Adventure",
+                                    "Cultural",
+                                    "Urban",
+                                ].map((category) => (
+                                    <motion.button
+                                        key={category}
+                                        whileHover={{
+                                            scale: 1.1,
+                                            boxShadow:
+                                                "0 0 10px rgba(59, 130, 246, 0.3)",
+                                        }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() =>
+                                            setSelectedCategory(
+                                                category.toLowerCase()
+                                            )
+                                        }
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                                            selectedCategory ===
+                                            category.toLowerCase()
+                                                ? "bg-blue-600 text-white shadow-md"
+                                                : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
+                                        }`}
+                                    >
+                                        {category === "All" && (
+                                            <Compass size={16} />
+                                        )}
+                                        {category === "Beach" && (
+                                            <Sun size={16} />
+                                        )}
+                                        {category === "Adventure" && (
+                                            <MapPin size={16} />
+                                        )}
+                                        {category === "Cultural" && (
+                                            <Globe size={16} />
+                                        )}
+                                        {category === "Urban" && (
+                                            <Briefcase size={16} />
+                                        )}
+                                        {category}
+                                    </motion.button>
+                                ))}
+                            </div>
+                            <motion.button
+                                whileHover={{
+                                    scale: 1.1,
+                                    boxShadow:
+                                        "0 0 15px rgba(59, 130, 246, 0.5)",
+                                }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={handleSurpriseMe}
+                                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-semibold"
+                            >
+                                <Sparkles size={20} />
+                                Surprise Me
+                            </motion.button>
+                        </motion.div>
+
+                        {/* Suggestions */}
+                        <AnimatePresence>
+                            {suggestions.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    transition={{ duration: 0.4 }}
+                                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                                >
+                                    {suggestions.map((item) => (
+                                        <Link
+                                            key={item.id}
+                                            href={
+                                                item.name
+                                                    ? `/destinations/${item.id}`
+                                                    : `/offers/${item.id}`
+                                            }
+                                            className="relative bg-white rounded-xl p-4 hover:bg-gray-50 transition-all duration-300 shadow-md border border-gray-200 group"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <img
+                                                    src={
+                                                        item.image ||
+                                                        "https://via.placeholder.com/64x64"
+                                                    }
+                                                    alt={
+                                                        item.name || item.title
+                                                    }
+                                                    className="w-16 h-16 object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+                                                />
+                                                <div>
+                                                    <h3 className="text-gray-800 font-semibold text-lg">
+                                                        {item.name ||
+                                                            item.title}
+                                                    </h3>
+                                                    <p className="text-gray-600 text-sm">
+                                                        {item.location ||
+                                                            item.destination}
+                                                    </p>
+                                                    <p className="text-blue-600 text-sm font-medium">
+                                                        $
+                                                        {item.discount_price ||
+                                                            item.price}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {calculateDiscount(
+                                                item.price,
+                                                item.discount_price
+                                            ) && (
+                                                <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                                    {calculateDiscount(
+                                                        item.price,
+                                                        item.discount_price
+                                                    )}
+                                                    % OFF
+                                                </div>
+                                            )}
+                                        </Link>
+                                    ))}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </motion.div>
+                </div>
+            </section>
+
             {/* Featured Promotions */}
             <section
                 className={`py-16 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
@@ -301,7 +536,7 @@ const HomePage = ({ auth }) => {
                                 }`}
                             >
                                 Special{" "}
-                                <span className="text-blue-500">Offers</span>
+                                <span className="text-blue-600">Offers</span>
                             </h2>
                             <Link
                                 href="/deals"
@@ -349,7 +584,7 @@ const HomePage = ({ auth }) => {
                                                     offer.price,
                                                     offer.discount_price
                                                 ) && (
-                                                    <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                                    <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
                                                         {calculateDiscount(
                                                             offer.price,
                                                             offer.discount_price
@@ -393,7 +628,7 @@ const HomePage = ({ auth }) => {
                                                                 className={`text-xl font-bold ${
                                                                     offer.discount_price
                                                                         ? "line-through text-gray-400"
-                                                                        : "text-blue-500"
+                                                                        : "text-blue-600"
                                                                 }`}
                                                             >
                                                                 ${offer.price}
@@ -411,7 +646,7 @@ const HomePage = ({ auth }) => {
                                                                     Discounted
                                                                     Price
                                                                 </span>
-                                                                <span className="text-blue-500 font-bold text-xl">
+                                                                <span className="text-blue-600 font-bold text-xl">
                                                                     $
                                                                     {
                                                                         offer.discount_price
@@ -458,12 +693,11 @@ const HomePage = ({ auth }) => {
                 </div>
             </section>
 
-            {/* Trending Destinations Section - Improved Layout */}
+            {/* Trending Destinations Section */}
             <section
                 className={`py-24 ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    {/* Header with Animation */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -480,7 +714,7 @@ const HomePage = ({ auth }) => {
                                             : "text-gray-900"
                                     }`}
                                 >
-                                    <span className="text-blue-500">
+                                    <span className="text-blue-600">
                                         Trending
                                     </span>{" "}
                                     Destinations
@@ -496,7 +730,6 @@ const HomePage = ({ auth }) => {
                                     loved by travelers worldwide
                                 </p>
                             </div>
-
                             <div className="mt-6 md:mt-0 flex items-center justify-center md:justify-end gap-4">
                                 <button
                                     className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all"
@@ -528,16 +761,6 @@ const HomePage = ({ auth }) => {
                         </div>
                     </motion.div>
 
-                    {/* Categories Filter */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                        className="mb-10"
-                    ></motion.div>
-
-                    {/* Destinations Grid */}
                     {destinations.length === 0 ? (
                         <div className="text-center text-gray-400 py-16 bg-opacity-10 rounded-xl bg-gray-200 dark:bg-gray-800">
                             <CalendarX
@@ -593,15 +816,12 @@ const HomePage = ({ auth }) => {
                                                 loading="lazy"
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
-
-                                            {/* Top elements */}
                                             <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
                                                 {destination.tag && (
                                                     <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
                                                         {destination.tag}
                                                     </div>
                                                 )}
-
                                                 <button
                                                     className="bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-40 backdrop-blur-sm transition-all duration-300 transform hover:scale-110"
                                                     aria-label="Add to favorites"
@@ -612,8 +832,6 @@ const HomePage = ({ auth }) => {
                                                     />
                                                 </button>
                                             </div>
-
-                                            {/* Discount tag */}
                                             {calculateDiscount(
                                                 destination.price,
                                                 destination.discount_price
@@ -626,21 +844,7 @@ const HomePage = ({ auth }) => {
                                                     % OFF
                                                 </div>
                                             )}
-
-                                            {/* Rating */}
-                                            {/* <div className="absolute bottom-4 left-4 flex items-center bg-black bg-opacity-50 rounded-full px-2 py-1 backdrop-blur-sm">
-                                                <StarsIcon
-                                                    size={14}
-                                                    className="text-yellow-400 mr-1"
-                                                    fill="#FBBF24"
-                                                />
-                                                <span className="text-white text-xs font-medium">
-                                                    {destination.rating ||
-                                                        "4.8"}
-                                                </span>
-                                            </div> */}
                                         </div>
-
                                         <div className="p-5">
                                             <div className="flex items-center justify-between mb-3">
                                                 <h3
@@ -653,11 +857,10 @@ const HomePage = ({ auth }) => {
                                                     {destination.name}
                                                 </h3>
                                             </div>
-
                                             <div className="flex items-center gap-2 mb-4">
                                                 <MapPin
                                                     size={16}
-                                                    className="text-blue-500 flex-shrink-0"
+                                                    className="text-blue-600 flex-shrink-0"
                                                 />
                                                 <span
                                                     className={`text-sm ${
@@ -669,8 +872,6 @@ const HomePage = ({ auth }) => {
                                                     {destination.location}
                                                 </span>
                                             </div>
-
-                                            {/* Features */}
                                             <div className="flex items-center gap-3 mb-4">
                                                 <div className="flex items-center">
                                                     <CalendarX
@@ -713,7 +914,6 @@ const HomePage = ({ auth }) => {
                                                     </span>
                                                 </div>
                                             </div>
-
                                             <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
                                                 <div>
                                                     <span
@@ -726,12 +926,11 @@ const HomePage = ({ auth }) => {
                                                         Starting from
                                                     </span>
                                                     <div className="flex items-baseline">
-                                                        <span className="text-blue-500 font-bold text-lg">
+                                                        <span className="text-blue-600 font-bold text-lg">
                                                             $
                                                             {destination.discount_price ||
                                                                 destination.price}
                                                         </span>
-
                                                         {destination.discount_price && (
                                                             <span className="text-sm text-gray-400 line-through ml-2">
                                                                 $
@@ -740,13 +939,11 @@ const HomePage = ({ auth }) => {
                                                                 }
                                                             </span>
                                                         )}
-
                                                         <span className="text-xs text-gray-500 ml-1">
                                                             / night
                                                         </span>
                                                     </div>
                                                 </div>
-
                                                 <Link
                                                     href={`/destinations/${destination.id}`}
                                                     className={`flex items-center gap-1 px-3 py-2 rounded-lg ${
@@ -765,8 +962,6 @@ const HomePage = ({ auth }) => {
                                 ))}
                         </motion.div>
                     )}
-
-                    {/* Footer - CTA */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -779,12 +974,11 @@ const HomePage = ({ auth }) => {
                             className={`inline-flex items-center gap-2 px-8 py-4 rounded-full text-lg font-medium ${
                                 isDarkMode
                                     ? "bg-gradient-to-r from-blue-700 to-blue-500 text-white hover:from-blue-800 hover:to-blue-600"
-                                    : "bg-gradient-to-r from-blue-700 to-blue-500 text-white hover:from-blue-800 hover:to-blue-600"
+                                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
                             } transition-all duration-300 shadow-lg hover:shadow-xl`}
                         >
                             Explore All Destinations <ArrowRight size={18} />
                         </Link>
-
                         <p
                             className={`mt-4 text-sm ${
                                 isDarkMode ? "text-gray-400" : "text-gray-600"
@@ -814,10 +1008,9 @@ const HomePage = ({ auth }) => {
                             }`}
                         >
                             Find{" "}
-                            <span className="text-blue-500">Inspiration</span>{" "}
+                            <span className="text-blue-600">Inspiration</span>{" "}
                             For Your Next Trip
                         </h2>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {inspirationItems.map((item) => (
                                 <motion.div
@@ -850,133 +1043,6 @@ const HomePage = ({ auth }) => {
                 </div>
             </section>
 
-            {/* Travel Categories Section */}
-            <section
-                className={`py-20 ${isDarkMode ? "bg-gray-800" : "bg-blue-50"}`}
-            >
-                <div className="max-w-7xl mx-auto px-6 md:px-16">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
-                    >
-                        <h2
-                            className={`text-3xl font-bold mb-4 text-center ${
-                                isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                        >
-                            Plan Your{" "}
-                            <span className="text-blue-500">Perfect</span>{" "}
-                            Journey
-                        </h2>
-                        <p
-                            className={`text-center mb-12 max-w-2xl mx-auto ${
-                                isDarkMode ? "text-gray-300" : "text-gray-600"
-                            }`}
-                        >
-                            Whatever your travel style or budget, we have the
-                            perfect options for your next adventure
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {[
-                                {
-                                    icon: <Globe size={24} />,
-                                    title: "International Tours",
-                                    description:
-                                        "Explore famous landmarks worldwide",
-                                },
-                                {
-                                    icon: <Coffee size={24} />,
-                                    title: "Cultural Experiences",
-                                    description:
-                                        "Immerse in local traditions and cuisine",
-                                },
-                                {
-                                    icon: <Compass size={24} />,
-                                    title: "Adventure Travel",
-                                    description:
-                                        "Thrilling experiences for the bold",
-                                },
-                                {
-                                    icon: <Gift size={24} />,
-                                    title: "Honeymoon Packages",
-                                    description:
-                                        "Romantic getaways for couples",
-                                },
-                                {
-                                    icon: <UserCheck size={24} />,
-                                    title: "Solo Traveling",
-                                    description:
-                                        "Make friends and explore independently",
-                                },
-                                {
-                                    icon: <Briefcase size={24} />,
-                                    title: "Business Travel",
-                                    description:
-                                        "Comfortable and convenient options",
-                                },
-                                {
-                                    icon: <Sun size={24} />,
-                                    title: "Beach Vacations",
-                                    description:
-                                        "Relax on pristine sandy shores",
-                                },
-                                {
-                                    icon: <Image size={24} />,
-                                    title: "Photography Tours",
-                                    description:
-                                        "Capture stunning landscapes and moments",
-                                },
-                            ].map((category, index) => (
-                                <motion.div
-                                    key={index}
-                                    whileHover={{
-                                        y: -5,
-                                        boxShadow:
-                                            "0 10px 30px -15px rgba(0, 0, 0, 0.3)",
-                                    }}
-                                    className={`p-6 rounded-lg ${
-                                        isDarkMode
-                                            ? "bg-gray-700 hover:bg-gray-600"
-                                            : "bg-white hover:bg-gray-50"
-                                    } transition-all duration-300 text-center`}
-                                >
-                                    <div
-                                        className={`inline-flex items-center justify-center p-3 rounded-full mb-4 ${
-                                            isDarkMode
-                                                ? "bg-blue-900 text-blue-300"
-                                                : "bg-blue-100 text-blue-600"
-                                        }`}
-                                    >
-                                        {category.icon}
-                                    </div>
-                                    <h3
-                                        className={`text-lg font-semibold mb-2 ${
-                                            isDarkMode
-                                                ? "text-white"
-                                                : "text-gray-900"
-                                        }`}
-                                    >
-                                        {category.title}
-                                    </h3>
-                                    <p
-                                        className={`text-sm ${
-                                            isDarkMode
-                                                ? "text-gray-400"
-                                                : "text-gray-600"
-                                        }`}
-                                    >
-                                        {category.description}
-                                    </p>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </motion.div>
-                </div>
-            </section>
-
             {/* Benefits Section */}
             <section
                 className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
@@ -994,9 +1060,8 @@ const HomePage = ({ auth }) => {
                             }`}
                         >
                             Why Choose{" "}
-                            <span className="text-blue-500">Travel Nest</span>
+                            <span className="text-blue-600">Travel Nest</span>
                         </h2>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                             {[
                                 {
@@ -1075,7 +1140,7 @@ const HomePage = ({ auth }) => {
                             <X size={18} />
                         </button>
                         <div className="flex items-center">
-                            <MessageCircle className="mr-2 text-blue-500" />
+                            <MessageCircle className="mr-2 text-blue-600" />
                             <p>
                                 Need help planning your trip? Chat with our AI
                                 assistant

@@ -25,7 +25,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 const BookNowPage = ({ auth }) => {
     const { props } = usePage();
-    const { destinations = [], packages = [], deals = [], flash = {} } = props;
+    const { destinations = [], packages = [], offers = [], flash = {} } = props;
     const user = auth?.user || null;
 
     // State
@@ -44,7 +44,7 @@ const BookNowPage = ({ auth }) => {
     const allData = [
         ...destinations.map((item) => ({ ...item, type: "destination" })),
         ...packages.map((item) => ({ ...item, type: "package" })),
-        ...deals.map((item) => ({ ...item, type: "deal" })),
+        ...offers.map((item) => ({ ...item, type: "deal" })),
     ];
 
     const categories = [
@@ -283,7 +283,7 @@ const BookNowPage = ({ auth }) => {
             case "package":
                 return `/packages/${item.id}`;
             case "deal":
-                return `/deals/${item.id}`;
+                return `/offer/${item.id}`;
             default:
                 return "#";
         }
