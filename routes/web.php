@@ -23,6 +23,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BookController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +57,10 @@ Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('pa
 //? Booking Routes
 Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
 Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
+
+//? Booking Form
+Route::get('/book', [BookController::class, 'create'])->name('book.create');
+Route::post('/book', [BookController::class, 'store'])->name('book.store');
 // ===================================================
 //! Authentication Routes
 // ===================================================

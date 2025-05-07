@@ -6,13 +6,13 @@ import {
     Users,
     MessageSquare,
     ChevronLeft,
-    PlaneIcon,
+    MapPin,
 } from "lucide-react";
 import axios from "axios";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 
-export default function Booking({ auth }) {
+export default function Book({ auth }) {
     const { props } = usePage();
     const { destination } = props; // Assuming destination is passed via props
     const [isDarkMode, setIsDarkMode] = useState(true);
@@ -79,7 +79,7 @@ export default function Booking({ auth }) {
         setSuccess(null);
 
         try {
-            const response = await axios.post("/booking", {
+            const response = await axios.post("/book", {
                 destination_id: destination?.id,
                 check_in: formData.checkIn,
                 check_out: formData.checkOut,
@@ -155,7 +155,7 @@ export default function Booking({ auth }) {
                             </span>
                         </h1>
                         <p className="text-gray-300 mb-6">
-                            <PlaneIcon
+                            <MapPin
                                 className="inline-block mr-2 mb-1"
                                 size={18}
                             />

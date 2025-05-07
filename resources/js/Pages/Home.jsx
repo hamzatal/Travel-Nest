@@ -992,7 +992,7 @@ const HomePage = ({ auth }) => {
             </section>
 
             {/* Travel Inspiration Section */}
-            <section
+            {/* <section
                 className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
             >
                 <div className="max-w-7xl mx-auto px-6 md:px-16">
@@ -1041,7 +1041,7 @@ const HomePage = ({ auth }) => {
                         </div>
                     </motion.div>
                 </div>
-            </section>
+            </section> */}
 
             {/* Benefits Section */}
             <section

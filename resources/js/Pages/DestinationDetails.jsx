@@ -382,7 +382,7 @@ export default function DestinationDetails({ destination, auth }) {
 
                             <div className="space-y-3">
                                 <Link
-                                    href={`/booking?destination_id=${destination.id}`}
+                                    href={`/book?destination_id=${destination.id}`}
                                     className="block w-full bg-blue-600 hover:bg-blue-500 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
                                 >
                                     Book Now
@@ -428,7 +428,7 @@ export default function DestinationDetails({ destination, auth }) {
                     <motion.a
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        href={`/booking?destination_id=${destination.id}`}
+                        href={`/book?destination_id=${destination.id}`}
                         className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg transition-all duration-300"
                     >
                         Book Now
