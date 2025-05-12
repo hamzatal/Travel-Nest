@@ -54,6 +54,10 @@ Route::get('/destinations/{id}', [DestinationController::class, 'show'])->name('
 Route::get('/packages', [PackagesController::class, 'indexPublic'])->name('packages.index');
 Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
 
+//? Deals Routes
+Route::get('/deals', [DealsController::class, 'index'])->name('deals');
+Route::get('/offers/{offer}', [App\Http\Controllers\DealsController::class, 'show'])->name('offers.show');
+
 //? Booking Routes
 Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
 Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
@@ -75,9 +79,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
-    //? Deals Routes
-    Route::get('/deals', [DealsController::class, 'index'])->name('deals');
-    Route::get('/offer/{id}', [DealsController::class, 'show'])->name('offer.show');
+   
 
     //? Search Route
     Route::get('/search', [SearchController::class, 'index'])->name('search');
