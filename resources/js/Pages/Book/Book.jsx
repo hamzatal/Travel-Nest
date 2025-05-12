@@ -48,8 +48,8 @@ export default function Book({ auth }) {
     }, [formData.checkIn, formData.checkOut]);
 
     // Calculate prices
-    const serviceFee = 25;
-    const bookingFee = 15;
+    const serviceFee = 9.99;
+    const bookingFee = 4.99;
     const basePrice = parseFloat(
         destination?.discount_price || destination?.price || 0
     );

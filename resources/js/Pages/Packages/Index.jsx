@@ -10,7 +10,6 @@ import {
     Tags,
     Heart,
     Star,
-    Calendar,
 } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
@@ -26,19 +25,18 @@ const PackagesPage = ({ auth }) => {
     const [sortBy, setSortBy] = useState("newest");
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
-
     const [isDarkMode, setIsDarkMode] = useState(true);
 
     const itemsPerPage = 8;
 
     const categories = [
-        "Family",
-        "Adventure",
-        "Romantic",
-        "Cultural",
+        "Beach",
+        "Mountain",
+        "City",
+        "Countryside",
+        "Island",
+        "Historic",
         "Luxury",
-        "Budget",
-        "Wellness",
     ];
 
     const fadeIn = {
@@ -84,7 +82,7 @@ const PackagesPage = ({ auth }) => {
         .filter(
             (pkg) =>
                 (pkg.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    pkg.subtitle
+                    pkg.location
                         ?.toLowerCase()
                         .includes(searchQuery.toLowerCase())) &&
                 (selectedCategories.length === 0 ||
@@ -126,7 +124,6 @@ const PackagesPage = ({ auth }) => {
         setCurrentPage(1);
     }, [searchQuery]);
 
-    // Show flash messages as toasts
     useEffect(() => {
         if (flash.success) {
             toast.success(flash.success);
@@ -163,15 +160,7 @@ const PackagesPage = ({ auth }) => {
         return stars;
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return "";
-        const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-        });
-    };
+    const baseUrl = "/storage/";
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
@@ -179,7 +168,7 @@ const PackagesPage = ({ auth }) => {
                 <title>Packages - Travel Nest</title>
                 <meta
                     name="description"
-                    content="Explore our curated travel packages with Travel Nest."
+                    content="Explore our curated selection of travel packages with Travel Nest."
                 />
             </Head>
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
@@ -210,8 +199,8 @@ const PackagesPage = ({ auth }) => {
                             transition={{ delay: 0.2, duration: 0.7 }}
                             className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
-                            Discover our exclusive travel packages for
-                            unforgettable experiences
+                            Discover incredible packages worldwide for your next
+                            adventure
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -236,7 +225,7 @@ const PackagesPage = ({ auth }) => {
                         <div className="relative w-full md:w-96">
                             <input
                                 type="text"
-                                placeholder="Search packages or destinations..."
+                                placeholder="Search packages or locations..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -337,7 +326,7 @@ const PackagesPage = ({ auth }) => {
                                 onClick={() => setSelectedCategories([])}
                                 className="text-blue-400 hover:text-blue-300 text-sm"
                             >
-                                Clear filters
+                                Clear Filters
                             </button>
                         )}
                     </div>
@@ -358,12 +347,12 @@ const PackagesPage = ({ auth }) => {
                                 <div className="max-w-md mx-auto">
                                     <Search className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                     <h3 className="text-2xl font-bold mb-2">
-                                        No packages found
+                                        No Packages Found
                                     </h3>
                                     <p className="text-gray-400 mb-6">
                                         We couldn't find any packages matching
-                                        your search criteria. Try adjusting your
-                                        filters or search query.
+                                        your search criteria. Try adjusting the
+                                        filters or search term.
                                     </p>
                                     <button
                                         onClick={() => {
@@ -372,7 +361,7 @@ const PackagesPage = ({ auth }) => {
                                         }}
                                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
                                     >
-                                        Clear all filters
+                                        Clear All Filters
                                     </button>
                                 </div>
                             </motion.div>
@@ -391,8 +380,9 @@ const PackagesPage = ({ auth }) => {
                                     <div className="relative overflow-hidden">
                                         <img
                                             src={
-                                                pkg.image ||
-                                                "https://via.placeholder.com/640x480?text=No+Image"
+                                                pkg.image
+                                                    ? `${baseUrl}${pkg.image}`
+                                                    : "https://via.placeholder.com/640x480?text=No+Image"
                                             }
                                             alt={pkg.title}
                                             className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
@@ -432,11 +422,6 @@ const PackagesPage = ({ auth }) => {
                                                 {pkg.title}
                                             </h3>
                                         </div>
-                                        {pkg.subtitle && (
-                                            <p className="text-gray-400 text-sm mb-2 line-clamp-1">
-                                                {pkg.subtitle}
-                                            </p>
-                                        )}
                                         {pkg.location && (
                                             <div className="flex items-center gap-2 mb-2">
                                                 <MapPin
@@ -445,21 +430,6 @@ const PackagesPage = ({ auth }) => {
                                                 />
                                                 <span className="text-gray-300 text-sm">
                                                     {pkg.location}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {(pkg.start_date || pkg.end_date) && (
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Calendar
-                                                    size={16}
-                                                    className="text-blue-400"
-                                                />
-                                                <span className="text-gray-300 text-sm">
-                                                    {formatDate(pkg.start_date)}
-                                                    {pkg.start_date &&
-                                                        pkg.end_date &&
-                                                        " - "}
-                                                    {formatDate(pkg.end_date)}
                                                 </span>
                                             </div>
                                         )}
@@ -477,7 +447,7 @@ const PackagesPage = ({ auth }) => {
                                             <div className="flex items-center justify-between mb-4">
                                                 <div>
                                                     <span className="block text-gray-400 text-xs">
-                                                        Price
+                                                        Starting from
                                                     </span>
                                                     <div className="flex items-baseline gap-2">
                                                         {pkg.discount_price ? (
@@ -497,12 +467,9 @@ const PackagesPage = ({ auth }) => {
                                                                 ${pkg.price}
                                                             </span>
                                                         )}
-                                                        {pkg.price_type && (
-                                                            <span className="text-xs text-gray-400">
-                                                                /{" "}
-                                                                {pkg.price_type}
-                                                            </span>
-                                                        )}
+                                                        <span className="text-xs text-gray-400">
+                                                            / person
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>

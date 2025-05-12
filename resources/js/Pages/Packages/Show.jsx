@@ -9,8 +9,6 @@ import {
     ChevronLeft,
     Star,
     Heart,
-    Clock,
-    Users,
 } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
@@ -19,7 +17,6 @@ export default function PackageDetails({ package: pkg, auth }) {
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [isFavorite, setIsFavorite] = useState(false);
 
-    // Animation variants
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0 },
@@ -52,21 +49,15 @@ export default function PackageDetails({ package: pkg, auth }) {
         return stars;
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return "";
-        const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-        });
-    };
-
-    // Calculate the actual total price
-    const serviceFee = 25;
-    const bookingFee = 15;
+    const serviceFee = 9.99;
+    const bookingFee = 4.99;
     const basePrice = parseFloat(pkg.discount_price || pkg.price || 0);
     const totalPrice = basePrice + serviceFee + bookingFee;
+
+    const baseUrl = "/storage/";
+    const imageSrc = pkg.image
+        ? `${baseUrl}${pkg.image}`
+        : "https://via.placeholder.com/1200x800?text=No+Image";
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
@@ -78,7 +69,6 @@ export default function PackageDetails({ package: pkg, auth }) {
                 toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             />
 
-            {/* Hero Section */}
             <div className="relative h-64 md:h-72 overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
                 <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-fill"></div>
@@ -102,7 +92,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                                 className="inline-block mr-1 mb-1"
                                 size={18}
                             />
-                            {pkg.location}
+                            {pkg.location || "Location not specified"}
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -115,9 +105,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                 </div>
             </div>
 
-            {/* Content */}
             <div className="max-w-7xl mx-auto px-6 md:px-16 py-12">
-                {/* Breadcrumb */}
                 <motion.div
                     initial="hidden"
                     animate="visible"
@@ -136,7 +124,6 @@ export default function PackageDetails({ package: pkg, auth }) {
                 </motion.div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Main Content - Left Side */}
                     <motion.div
                         initial="hidden"
                         whileInView="visible"
@@ -146,13 +133,9 @@ export default function PackageDetails({ package: pkg, auth }) {
                         className="lg:col-span-2"
                     >
                         <div className="bg-gray-800 bg-opacity-70 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border border-gray-700">
-                            {/* Main Image */}
                             <div className="relative">
                                 <img
-                                    src={
-                                        pkg.image ||
-                                        "https://via.placeholder.com/1200x800?text=No+Image"
-                                    }
+                                    src={imageSrc}
                                     alt={pkg.title}
                                     className="w-full h-96 object-cover"
                                 />
@@ -196,7 +179,6 @@ export default function PackageDetails({ package: pkg, auth }) {
                                 </button>
                             </div>
 
-                            {/* Package Details */}
                             <div className="p-6 md:p-8">
                                 <div className="flex flex-wrap gap-2 items-center mb-4">
                                     <div className="flex items-center">
@@ -223,7 +205,8 @@ export default function PackageDetails({ package: pkg, auth }) {
 
                                 <div className="prose prose-lg prose-invert">
                                     <p className="text-gray-300 leading-relaxed whitespace-pre-line mb-6">
-                                        {pkg.description}
+                                        {pkg.description ||
+                                            "No description available."}
                                     </p>
                                 </div>
 
@@ -287,124 +270,9 @@ export default function PackageDetails({ package: pkg, auth }) {
                                         )}
                                     </div>
                                 </div>
-
-                                {/* Package Details Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 bg-gray-900 bg-opacity-30 p-6 rounded-xl">
-                                    {pkg.duration && (
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-blue-900 bg-opacity-30 rounded-md">
-                                                <Clock
-                                                    size={20}
-                                                    className="text-blue-400"
-                                                />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-sm text-gray-400">
-                                                    Duration
-                                                </h3>
-                                                <p className="text-white">
-                                                    {pkg.duration}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {(pkg.start_date || pkg.end_date) && (
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-blue-900 bg-opacity-30 rounded-md">
-                                                <Calendar
-                                                    size={20}
-                                                    className="text-blue-400"
-                                                />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-sm text-gray-400">
-                                                    Dates
-                                                </h3>
-                                                <p className="text-white">
-                                                    {formatDate(pkg.start_date)}
-                                                    {pkg.start_date &&
-                                                        pkg.end_date &&
-                                                        " - "}
-                                                    {formatDate(pkg.end_date)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {pkg.group_size && (
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-blue-900 bg-opacity-30 rounded-md">
-                                                <Users
-                                                    size={20}
-                                                    className="text-blue-400"
-                                                />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-sm text-gray-400">
-                                                    Group Size
-                                                </h3>
-                                                <p className="text-white">
-                                                    {pkg.group_size}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* What's Included Section */}
-                                {pkg.inclusions &&
-                                    pkg.inclusions.length > 0 && (
-                                        <div className="mt-8">
-                                            <h3 className="text-xl font-semibold mb-4 text-blue-400">
-                                                What's Included
-                                            </h3>
-                                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                {pkg.inclusions.map(
-                                                    (item, index) => (
-                                                        <li
-                                                            key={index}
-                                                            className="flex items-center gap-2"
-                                                        >
-                                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                            <span className="text-gray-300">
-                                                                {item}
-                                                            </span>
-                                                        </li>
-                                                    )
-                                                )}
-                                            </ul>
-                                        </div>
-                                    )}
-
-                                {/* Itinerary Section */}
-                                {pkg.itinerary && pkg.itinerary.length > 0 && (
-                                    <div className="mt-8">
-                                        <h3 className="text-xl font-semibold mb-4 text-blue-400">
-                                            Itinerary
-                                        </h3>
-                                        <div className="space-y-6">
-                                            {pkg.itinerary.map((day, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="border-l-2 border-blue-500 pl-4 pb-4"
-                                                >
-                                                    <h4 className="text-lg font-semibold mb-1">
-                                                        Day {index + 1} -{" "}
-                                                        {day.title}
-                                                    </h4>
-                                                    <p className="text-gray-300">
-                                                        {day.description}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
 
-                        {/* Location Information Section */}
                         <motion.div
                             initial="hidden"
                             whileInView="visible"
@@ -421,19 +289,19 @@ export default function PackageDetails({ package: pkg, auth }) {
                                     className="inline-block mr-2 mb-1"
                                     size={18}
                                 />
-                                {pkg.location}
+                                {pkg.location || "Location not specified"}
                             </p>
                             <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 mt-4">
                                 <p className="text-gray-400">
-                                    This package takes place in {pkg.location}.
-                                    The exact meeting point and detailed
-                                    directions will be provided after booking.
+                                    This package is located in{" "}
+                                    {pkg.location || "the specified location"}.
+                                    The exact details and itinerary will be
+                                    provided after booking.
                                 </p>
                             </div>
                         </motion.div>
                     </motion.div>
 
-                    {/* Sidebar - Right Side */}
                     <motion.div
                         initial="hidden"
                         whileInView="visible"
@@ -442,7 +310,6 @@ export default function PackageDetails({ package: pkg, auth }) {
                         variants={fadeIn}
                         className="space-y-6"
                     >
-                        {/* Booking Card */}
                         <div className="bg-gray-800 bg-opacity-70 rounded-xl p-6 shadow-xl backdrop-blur-sm border border-gray-700 sticky top-24 z-10">
                             <h3 className="text-xl font-semibold mb-4">
                                 Book this package
@@ -501,34 +368,8 @@ export default function PackageDetails({ package: pkg, auth }) {
                             </div>
 
                             <div className="space-y-3">
-                                <div className="mb-4">
-                                    <label className="block text-gray-300 mb-2">
-                                        Travel date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-
-                                <div className="mb-4">
-                                    <label className="block text-gray-300 mb-2">
-                                        Number of guests
-                                    </label>
-                                    <select
-                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        defaultValue="2"
-                                    >
-                                        <option value="1">1 guest</option>
-                                        <option value="2">2 guests</option>
-                                        <option value="3">3 guests</option>
-                                        <option value="4">4 guests</option>
-                                        <option value="5">5 guests</option>
-                                    </select>
-                                </div>
-
                                 <Link
-                                    href="/booking"
+                                    href={`/book?package_id=${pkg.id}`}
                                     className="block w-full bg-blue-600 hover:bg-blue-500 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
                                 >
                                     Book Now
@@ -551,7 +392,6 @@ export default function PackageDetails({ package: pkg, auth }) {
                     </motion.div>
                 </div>
 
-                {/* Call to Action */}
                 <motion.div
                     initial="hidden"
                     whileInView="visible"
@@ -565,91 +405,18 @@ export default function PackageDetails({ package: pkg, auth }) {
                         <span className="text-blue-400">{pkg.title}</span>?
                     </h2>
                     <p className="text-gray-300 mb-6">
-                        Book your adventure now and create unforgettable
-                        memories with this amazing package.
+                        Book your package now and create unforgettable memories
+                        with this amazing experience.
                     </p>
                     <motion.a
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        href="/booking"
+                        href={`/book?package_id=${pkg.id}`}
                         className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg transition-all duration-300"
                     >
                         Book Now
                     </motion.a>
                 </motion.div>
-
-                {/* Related Packages Section */}
-                {pkg.related_packages && pkg.related_packages.length > 0 && (
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true }}
-                        variants={fadeIn}
-                        className="mt-16"
-                    >
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-bold mb-2">
-                                Similar Packages You Might Like
-                            </h2>
-                            <div className="w-24 h-1 bg-blue-500 rounded-full"></div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {pkg.related_packages.map((relatedPkg) => (
-                                <div
-                                    key={relatedPkg.id}
-                                    className="bg-gray-800 bg-opacity-70 rounded-xl overflow-hidden border border-gray-700 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
-                                >
-                                    <div className="relative">
-                                        <img
-                                            src={
-                                                relatedPkg.image ||
-                                                "https://via.placeholder.com/640x480?text=No+Image"
-                                            }
-                                            alt={relatedPkg.title}
-                                            className="w-full h-48 object-cover"
-                                        />
-                                        {relatedPkg.tag && (
-                                            <span className="absolute top-3 left-3 px-2 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
-                                                {relatedPkg.tag}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="p-5">
-                                        <h3 className="text-lg font-bold text-white mb-1">
-                                            {relatedPkg.title}
-                                        </h3>
-                                        <div className="flex items-center gap-1 mb-3">
-                                            <MapPin
-                                                size={14}
-                                                className="text-blue-400"
-                                            />
-                                            <span className="text-gray-400 text-sm">
-                                                {relatedPkg.location}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <span className="block text-gray-400 text-xs">
-                                                    From
-                                                </span>
-                                                <span className="text-lg font-bold text-blue-400">
-                                                    ${relatedPkg.price}
-                                                </span>
-                                            </div>
-                                            <Link
-                                                href={`/packages/${relatedPkg.id}`}
-                                                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all duration-300 text-sm"
-                                            >
-                                                View Details
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
             </div>
             <Footer />
         </div>
