@@ -1,6 +1,6 @@
 # 🌴 Travel Nest | Modern Travel & Destination Platform
 
-![Travel Nest Banner](/api/placeholder/1200/400 "Travel Nest - Discover Your Perfect Getaway")
+![Travel Nest Banner](https://assico.ae/wp-content/uploads/2024/11/Travel-1-01.webp)
 
 <div align="center">
   
