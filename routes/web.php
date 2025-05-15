@@ -156,6 +156,7 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{destination}', [DestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [DestinationController::class, 'toggleFeatured'])->name('toggle-featured');
     });
+    
     // Offers Routes
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [OfferController::class, 'index'])->name('index');

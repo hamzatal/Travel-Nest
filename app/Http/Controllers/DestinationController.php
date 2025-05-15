@@ -56,7 +56,7 @@ class DestinationController extends Controller
 
         Destination::create($data);
 
-        return redirect()->route('admin.destinations.index')->with('success', 'Destination created successfully.');
+        return redirect()->route('admin.destinations')->with('success', 'Destination created successfully.');
     }
 
     // Update an existing destination
@@ -101,7 +101,7 @@ class DestinationController extends Controller
 
         $destination->update($data);
 
-        return redirect()->route('admin.destinations.index')->with('success', 'Destination updated successfully.');
+        return redirect()->route('admin.destinations')->with('success', 'Destination updated successfully.');
     }
 
     // Delete a destination
@@ -112,7 +112,7 @@ class DestinationController extends Controller
             Storage::disk('public')->delete($destination->image);
         }
         $destination->delete();
-        return redirect()->route('admin.destinations.index')->with('success', 'Destination deleted successfully.');
+        return redirect()->route('admin.destinations')->with('success', 'Destination deleted successfully.');
     }
 
     // Toggle featured status
@@ -122,7 +122,7 @@ class DestinationController extends Controller
         $destination->is_featured = !$destination->is_featured;
         $destination->save();
 
-        return redirect()->route('admin.destinations.index')->with(
+        return redirect()->route('admin.destinations')->with(
             'success',
             $destination->is_featured
                 ? 'Destination set as featured successfully.'

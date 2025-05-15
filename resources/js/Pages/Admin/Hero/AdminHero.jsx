@@ -5,12 +5,11 @@ import {
     Trash2,
     Plus,
     Edit2,
-    CheckCircle,
-    XCircle,
     Image,
     X,
     ToggleLeft,
     ToggleRight,
+    AlertTriangle,
 } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
 import toast, { Toaster } from "react-hot-toast";
@@ -19,13 +18,16 @@ export default function HeroSectionsView() {
     const { props } = usePage();
     const { heroSections = [], flash = {} } = props;
 
+    // State for UI controls
     const [searchQuery, setSearchQuery] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedSection, setSelectedSection] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [validationErrors, setValidationErrors] = useState({});
 
+    // Form state for add/edit
     const {
         data,
         setData,
@@ -42,24 +44,34 @@ export default function HeroSectionsView() {
         image: null,
     });
 
-    // Validate form fields (flexible for partial updates)
+    // Helper: Reset form and UI state
+    const resetForm = () => {
+        reset();
+        setImagePreview(null);
+        setValidationErrors({});
+    };
+
+    // Form validation
     const validateForm = (isAdd = false) => {
         const errors = {};
-        if (data.title && (data.title.length < 3 || data.title.length > 255)) {
+        if (isAdd && !data.title) {
+            errors.title = "Title is required.";
+        } else if (
+            data.title &&
+            (data.title.length < 3 || data.title.length > 255)
+        ) {
             errors.title = "Title must be between 3 and 255 characters.";
         }
-        if (
+
+        if (isAdd && !data.subtitle) {
+            errors.subtitle = "Subtitle is required.";
+        } else if (
             data.subtitle &&
             (data.subtitle.length < 3 || data.subtitle.length > 255)
         ) {
             errors.subtitle = "Subtitle must be between 3 and 255 characters.";
         }
-        if (isAdd && !data.title) {
-            errors.title = "Title is required.";
-        }
-        if (isAdd && !data.subtitle) {
-            errors.subtitle = "Subtitle is required.";
-        }
+
         if (isAdd && !data.image) {
             errors.image = "Image is required.";
         }
@@ -77,19 +89,16 @@ export default function HeroSectionsView() {
                 errors.image = "Image size must be less than 2MB.";
             }
         }
+
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
-    // Handle image preview
+    // Handle image selection and preview
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         setData("image", file);
-        if (file) {
-            setImagePreview(URL.createObjectURL(file));
-        } else {
-            setImagePreview(null);
-        }
+        setImagePreview(file ? URL.createObjectURL(file) : null);
     };
 
     // Remove selected image
@@ -98,14 +107,14 @@ export default function HeroSectionsView() {
         setImagePreview(null);
     };
 
-    // Filter hero sections based on search query
+    // Filter hero sections for search
     const filteredHeroSections = heroSections.filter(
         (section) =>
             section.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             section.subtitle?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Handle add hero section
+    // Add hero section
     const handleAdd = (e) => {
         e.preventDefault();
         if (!validateForm(true)) {
@@ -117,54 +126,62 @@ export default function HeroSectionsView() {
             forceFormData: true,
             onSuccess: () => {
                 setShowAddModal(false);
-                reset();
-                setImagePreview(null);
+                resetForm();
             },
-            onError: () => {},
+            onError: (err) => {
+                console.error("Add errors:", err);
+                setValidationErrors(err);
+                toast.error("Failed to create hero section.");
+            },
         });
     };
 
-    // Handle edit hero section
+    // Edit hero section
     const handleEdit = (e) => {
         e.preventDefault();
         if (!validateForm(false)) {
             toast.error("Please fix the form errors.");
             return;
         }
+
+        // Debug: Log FormData contents
+        const formData = new FormData();
+        formData.append("title", data.title || "");
+        formData.append("subtitle", data.subtitle || "");
+        if (data.image instanceof File) {
+            formData.append("image", data.image);
+        }
+        formData.append("_method", "PUT");
+        console.log("Sending FormData:", Object.fromEntries(formData));
+
         put(`/admin/hero/${selectedSection.id}`, {
             preserveScroll: true,
-            forceFormData: true,
-            onSuccess: () => {
+            data: {
+                title: data.title || null,
+                subtitle: data.subtitle || null,
+                _method: "PUT",
+            },
+            onSuccess: (page) => {
+                console.log("Edit success, response:", page);
                 setShowEditModal(false);
-                reset();
-                setImagePreview(null);
+                resetForm();
                 setSelectedSection(null);
             },
-            onError: () => {},
+            onError: (err) => {
+                console.error("Edit errors:", err);
+                setValidationErrors(err);
+                toast.error(
+                    "Failed to update hero section: " +
+                        (err.title ||
+                            err.subtitle ||
+                            err.image ||
+                            "Unknown error")
+                );
+            },
         });
     };
 
-    // Handle delete hero section
-    const handleDelete = (id) => {
-        if (confirm("Are you sure you want to delete this hero section?")) {
-            deleteForm(`/admin/hero/${id}`, {
-                preserveScroll: true,
-                onSuccess: () => {},
-                onError: () => {},
-            });
-        }
-    };
-
-    // Handle toggle active status
-    const handleToggleActive = (id) => {
-        patch(`/admin/hero/${id}/toggle`, {
-            preserveScroll: true,
-            onSuccess: () => {},
-            onError: () => {},
-        });
-    };
-
-    // Open edit modal with hero section data
+    // Open edit modal
     const openEditModal = (section) => {
         setSelectedSection(section);
         setData({
@@ -173,23 +190,62 @@ export default function HeroSectionsView() {
             image: null,
         });
         setImagePreview(section.image ? `/storage/${section.image}` : null);
+        setValidationErrors({});
         setShowEditModal(true);
     };
 
-    // Show flash messages as toasts
-    useEffect(() => {
-        if (flash.success) {
-            toast.success(flash.success);
-        }
-        if (flash.error) {
-            toast.error(flash.error);
-        }
-    }, [flash]);
+    // Delete hero section
+    const handleDelete = () => {
+        deleteForm(`/admin/hero/${selectedSection.id}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setShowDeleteModal(false);
+                setSelectedSection(null);
+            },
+            onError: (err) => {
+                console.error("Delete errors:", err);
+                toast.error("Failed to delete hero section.");
+            },
+        });
+    };
 
-    // Clean up image preview URL
+    // Open delete modal
+    const openDeleteModal = (section) => {
+        setSelectedSection(section);
+        setShowDeleteModal(true);
+    };
+
+    // Toggle active status
+    const handleToggleActive = (id) => {
+        patch(`/admin/hero/${id}/toggle`, {
+            preserveScroll: true,
+            onSuccess: () => {},
+            onError: (err) => {
+                console.error("Toggle errors:", err);
+                toast.error("Failed to update active status.");
+            },
+        });
+    };
+
+    // Handle flash messages with debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (flash.success) {
+                console.log("Flash success:", flash.success);
+                toast.success(flash.success);
+            }
+            if (flash.error) {
+                console.log("Flash error:", flash.error);
+                toast.error(flash.error);
+            }
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [flash.success, flash.error]);
+
+    // Clean up image preview
     useEffect(() => {
         return () => {
-            if (imagePreview) {
+            if (imagePreview && !imagePreview.startsWith("/storage")) {
                 URL.revokeObjectURL(imagePreview);
             }
         };
@@ -200,6 +256,7 @@ export default function HeroSectionsView() {
             <Head title="Hero Sections - Travel Nest Admin" />
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
             <div className="lg:ml-64 p-6 lg:p-8">
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <h1 className="text-2xl font-bold text-white">
                         Hero Sections
@@ -216,7 +273,10 @@ export default function HeroSectionsView() {
                             <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
                         </div>
                         <button
-                            onClick={() => setShowAddModal(true)}
+                            onClick={() => {
+                                resetForm();
+                                setShowAddModal(true);
+                            }}
                             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
                             <Plus className="w-5 h-5 mr-2" />
@@ -225,6 +285,7 @@ export default function HeroSectionsView() {
                     </div>
                 </div>
 
+                {/* Hero Sections Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredHeroSections.length > 0 ? (
                         filteredHeroSections.map((section) => (
@@ -260,7 +321,7 @@ export default function HeroSectionsView() {
                                             </button>
                                             <button
                                                 onClick={() =>
-                                                    handleDelete(section.id)
+                                                    openDeleteModal(section)
                                                 }
                                                 className="text-red-400 hover:text-red-300"
                                                 disabled={processing}
@@ -273,11 +334,11 @@ export default function HeroSectionsView() {
                                                         section.id
                                                     )
                                                 }
-                                                className={`${
+                                                className={
                                                     section.is_active
                                                         ? "text-green-400 hover:text-green-300"
                                                         : "text-gray-400 hover:text-gray-300"
-                                                }`}
+                                                }
                                                 disabled={processing}
                                                 title={
                                                     section.is_active
@@ -312,7 +373,7 @@ export default function HeroSectionsView() {
                     )}
                 </div>
 
-                {/* Add Hero Section Modal */}
+                {/* Add Modal */}
                 {showAddModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div className="bg-gray-800 rounded-lg max-w-lg w-full">
@@ -322,7 +383,10 @@ export default function HeroSectionsView() {
                                         Add Hero Section
                                     </h3>
                                     <button
-                                        onClick={() => setShowAddModal(false)}
+                                        onClick={() => {
+                                            setShowAddModal(false);
+                                            resetForm();
+                                        }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
                                         <X className="w-6 h-6" />
@@ -333,44 +397,39 @@ export default function HeroSectionsView() {
                                     className="space-y-4"
                                 >
                                     <div>
-                                        <label
-                                            htmlFor="title"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Title
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">
+                                            Title{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
                                         </label>
                                         <input
                                             type="text"
                                             id="title"
-                                            name="title"
                                             value={data.title}
                                             onChange={(e) =>
                                                 setData("title", e.target.value)
                                             }
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full p-2 bg-gray-700 border border-gray-600 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
-                                        {validationErrors.title && (
+                                        {(validationErrors.title ||
+                                            errors.title) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.title}
-                                            </p>
-                                        )}
-                                        {errors.title && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.title}
+                                                {validationErrors.title ||
+                                                    errors.title}
                                             </p>
                                         )}
                                     </div>
                                     <div>
-                                        <label
-                                            htmlFor="subtitle"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Subtitle
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">
+                                            Subtitle{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
                                         </label>
                                         <input
                                             type="text"
                                             id="subtitle"
-                                            name="subtitle"
                                             value={data.subtitle}
                                             onChange={(e) =>
                                                 setData(
@@ -378,33 +437,29 @@ export default function HeroSectionsView() {
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full p-2 bg-gray-700 border border-gray-600 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
-                                        {validationErrors.subtitle && (
+                                        {(validationErrors.subtitle ||
+                                            errors.subtitle) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.subtitle}
-                                            </p>
-                                        )}
-                                        {errors.subtitle && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.subtitle}
+                                                {validationErrors.subtitle ||
+                                                    errors.subtitle}
                                             </p>
                                         )}
                                     </div>
                                     <div>
-                                        <label
-                                            htmlFor="image"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Image
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">
+                                            Image{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
                                         </label>
                                         <input
                                             type="file"
                                             id="image"
-                                            name="image"
                                             accept="image/*"
                                             onChange={handleImageChange}
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
+                                            className="w-full p-2 bg-gray-700 border border-gray-600 text-gray-300 rounded-lg"
                                         />
                                         {imagePreview && (
                                             <div className="relative mt-2">
@@ -422,14 +477,11 @@ export default function HeroSectionsView() {
                                                 </button>
                                             </div>
                                         )}
-                                        {validationErrors.image && (
+                                        {(validationErrors.image ||
+                                            errors.image) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.image}
-                                            </p>
-                                        )}
-                                        {errors.image && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.image}
+                                                {validationErrors.image ||
+                                                    errors.image}
                                             </p>
                                         )}
                                     </div>
@@ -438,8 +490,7 @@ export default function HeroSectionsView() {
                                             type="button"
                                             onClick={() => {
                                                 setShowAddModal(false);
-                                                setImagePreview(null);
-                                                reset();
+                                                resetForm();
                                             }}
                                             className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                         >
@@ -459,7 +510,7 @@ export default function HeroSectionsView() {
                     </div>
                 )}
 
-                {/* Edit Hero Section Modal */}
+                {/* Edit Modal */}
                 {showEditModal && selectedSection && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div className="bg-gray-800 rounded-lg max-w-lg w-full">
@@ -471,8 +522,8 @@ export default function HeroSectionsView() {
                                     <button
                                         onClick={() => {
                                             setShowEditModal(false);
-                                            setImagePreview(null);
-                                            reset();
+                                            resetForm();
+                                            setSelectedSection(null);
                                         }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
@@ -484,44 +535,33 @@ export default function HeroSectionsView() {
                                     className="space-y-4"
                                 >
                                     <div>
-                                        <label
-                                            htmlFor="title"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">
                                             Title
                                         </label>
                                         <input
                                             type="text"
-                                            id="title"
-                                            name="title"
+                                            id="edit-title"
                                             value={data.title}
                                             onChange={(e) =>
                                                 setData("title", e.target.value)
                                             }
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full p-2 bg-gray-700 border border-gray-600 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
-                                        {validationErrors.title && (
+                                        {(validationErrors.title ||
+                                            errors.title) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.title}
-                                            </p>
-                                        )}
-                                        {errors.title && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.title}
+                                                {validationErrors.title ||
+                                                    errors.title}
                                             </p>
                                         )}
                                     </div>
                                     <div>
-                                        <label
-                                            htmlFor="subtitle"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">
                                             Subtitle
                                         </label>
                                         <input
                                             type="text"
-                                            id="subtitle"
-                                            name="subtitle"
+                                            id="edit-subtitle"
                                             value={data.subtitle}
                                             onChange={(e) =>
                                                 setData(
@@ -529,33 +569,26 @@ export default function HeroSectionsView() {
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full p-2 bg-gray-700 border border-gray-600 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
-                                        {validationErrors.subtitle && (
+                                        {(validationErrors.subtitle ||
+                                            errors.subtitle) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.subtitle}
-                                            </p>
-                                        )}
-                                        {errors.subtitle && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.subtitle}
+                                                {validationErrors.subtitle ||
+                                                    errors.subtitle}
                                             </p>
                                         )}
                                     </div>
                                     <div>
-                                        <label
-                                            htmlFor="image"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">
                                             Image
                                         </label>
                                         <input
                                             type="file"
-                                            id="image"
-                                            name="image"
+                                            id="edit-image"
                                             accept="image/*"
                                             onChange={handleImageChange}
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
+                                            className="w-full p-2 bg-gray-700 border border-gray-600 text-gray-300 rounded-lg"
                                         />
                                         {imagePreview && (
                                             <div className="relative mt-2">
@@ -573,14 +606,11 @@ export default function HeroSectionsView() {
                                                 </button>
                                             </div>
                                         )}
-                                        {validationErrors.image && (
+                                        {(validationErrors.image ||
+                                            errors.image) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.image}
-                                            </p>
-                                        )}
-                                        {errors.image && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.image}
+                                                {validationErrors.image ||
+                                                    errors.image}
                                             </p>
                                         )}
                                     </div>
@@ -589,8 +619,8 @@ export default function HeroSectionsView() {
                                             type="button"
                                             onClick={() => {
                                                 setShowEditModal(false);
-                                                setImagePreview(null);
-                                                reset();
+                                                resetForm();
+                                                setSelectedSection(null);
                                             }}
                                             className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                         >
@@ -605,6 +635,46 @@ export default function HeroSectionsView() {
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete Modal */}
+                {showDeleteModal && selectedSection && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-gray-800 rounded-lg max-w-md w-full">
+                            <div className="p-6">
+                                <div className="flex items-center mb-4 text-red-500">
+                                    <AlertTriangle className="w-6 h-6 mr-2 flex-shrink-0" />
+                                    <h3 className="text-lg font-semibold text-white">
+                                        Confirm Deletion
+                                    </h3>
+                                </div>
+                                <p className="text-gray-300 mb-6">
+                                    Are you sure you want to delete the hero
+                                    section "{selectedSection.title}"? This
+                                    action cannot be undone.
+                                </p>
+                                <div className="flex justify-end space-x-3">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowDeleteModal(false)
+                                        }
+                                        className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDelete}
+                                        disabled={processing}
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
