@@ -159,24 +159,63 @@ export default function AdminDestinations() {
 
     const handleEdit = (e) => {
         e.preventDefault();
+
         if (!validateForm(false)) {
             toast.error("Please fix the form errors.");
             return;
         }
-        put(route("admin.destinations.update", selectedDestination.id), {
-            preserveScroll: true,
-            forceFormData: true,
-            onSuccess: () => {
+
+        const formData = new FormData();
+        formData.append("name", data.name);
+        formData.append("location", data.location);
+        formData.append("description", data.description);
+        formData.append("price", data.price);
+        formData.append("discount_price", data.discount_price);
+        formData.append("tag", data.tag);
+        formData.append("rating", data.rating);
+        formData.append("is_featured", data.is_featured ? 1 : 0);
+
+        if (data.image instanceof File) {
+            formData.append("image", data.image);
+        }
+
+        formData.append("_method", "PUT");
+
+        axios
+            .post(
+                route("admin.destinations.update", selectedDestination.id),
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            )
+            .then((response) => {
                 setShowEditModal(false);
                 reset();
                 setImagePreview(null);
                 setSelectedDestination(null);
                 setCharCount(0);
-            },
-            onError: () => {},
-        });
-    };
+                toast.success("Destination updated successfully."); // ✅ عرض التوست
 
+                // تأخير إعادة التحميل 1.5 ثانية لإتاحة وقت لعرض الرسالة
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            })
+            .catch((error) => {
+                if (
+                    error.response &&
+                    error.response.data &&
+                    error.response.data.errors
+                ) {
+                    setValidationErrors(error.response.data.errors);
+                }
+                toast.error("Failed to update destination.");
+            });
+    };
+    
     const handleDelete = () => {
         deleteForm(
             route("admin.destinations.destroy", selectedDestination.id),

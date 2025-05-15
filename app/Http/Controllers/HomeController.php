@@ -12,7 +12,7 @@ class HomeController extends Controller
 {
     public function index()
     {
-        $heroSections = HeroSection::select(['id', 'title', 'subtitle', 'image', 'cta_text'])
+        $heroSections = HeroSection::select(['id', 'title', 'subtitle', 'image'])
             ->where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->get()

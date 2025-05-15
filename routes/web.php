@@ -125,30 +125,30 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
 // ===================================================
 
 
-// Admin Protected Routes (Authenticated: Admin)
+//! Admin Protected Routes (Authenticated: Admin)
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
-    // Dashboard
+    //? Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Admin Profile
+    //? Admin Profile
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::put('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
     Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
 
-    // Users Management
+    //? Users Management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::post('/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('toggle-status');
     });
 
-    // Contact Messages
+    //? Contact Messages
     Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
     Route::patch('/messages/{id}/read', [AdminController::class, 'markAsRead'])->name('messages.read');
 
-    // Admin Destinations Routes
+    //? Destinations Routes
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [DestinationController::class, 'index'])->name('index');
         Route::post('/', [DestinationController::class, 'store'])->name('store');
@@ -156,8 +156,8 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{destination}', [DestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [DestinationController::class, 'toggleFeatured'])->name('toggle-featured');
     });
-    
-    // Offers Routes
+
+    //? Offers Routes
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [OfferController::class, 'index'])->name('index');
         Route::post('/', [OfferController::class, 'store'])->name('store');
@@ -166,7 +166,7 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::patch('/{id}/toggle', [OfferController::class, 'toggleActive'])->name('toggle');
     });
 
-    // Hero Sections Routes
+    //? Hero Sections Routes
     Route::prefix('hero')->name('hero.')->group(function () {
         Route::get('/', [HeroSectionController::class, 'index'])->name('index');
         Route::post('/', [HeroSectionController::class, 'store'])->name('store');
@@ -175,7 +175,7 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{id}', [HeroSectionController::class, 'destroy'])->name('delete');
     });
 
-    // Packages Routes
+    //? Packages Routes
     Route::prefix('packages')->name('packages.')->group(function () {
         Route::get('/', [PackagesController::class, 'index'])->name('index');
         Route::post('/', [PackagesController::class, 'store'])->name('store');
