@@ -47,6 +47,6 @@ class Package extends Model
     // Relationship with Bookings
     public function bookings()
     {
-        return $this->hasMany(Book::class);
+        return $this->hasMany(UserBooking::class, 'package_id');
     }
 }

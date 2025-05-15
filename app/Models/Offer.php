@@ -23,4 +23,14 @@ class Offer extends Model
         'start_date' => 'date',
         'end_date' => 'date',
     ];
+    public function bookings()
+    {
+        return $this->hasMany(UserBooking::class, 'offer_id');
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class, 'offer_id');
+    }
 }
+

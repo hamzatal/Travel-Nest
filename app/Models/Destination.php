@@ -20,4 +20,13 @@ class Destination extends Model
         'rating',
         'is_featured',
     ];
+    public function bookings()
+    {
+        return $this->hasMany(UserBooking::class, 'destination_id');
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class, 'destination_id');
+    }
 }

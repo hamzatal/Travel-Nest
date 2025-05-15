@@ -141,6 +141,12 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
     ];
 
     const dropdownItems = [
+        {
+            label: "My Bookings",
+            href: "/UserBookings",
+            icon: Plane,
+            method: "get",
+        },
         { label: "Profile", href: "/UserProfile", icon: User },
         {
             label: "Logout",

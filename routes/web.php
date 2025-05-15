@@ -24,6 +24,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\UserBookingsController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -52,8 +53,12 @@ Route::post('/admin/logout', [LoginController::class, 'destroy'])->name('admin.l
 // ===================================================
 //! Frontend Routes
 // ===================================================
-
+//? User Booking Page
+Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
+//? About Us Page
 Route::get('/about-us', fn() => Inertia::render('about-us'))->name('about-us');
+
+//? Contact Us Page
 Route::get('/ContactPage', fn() => Inertia::render('ContactPage'))->name('ContactPage');
 
 //? Destinations Routes
