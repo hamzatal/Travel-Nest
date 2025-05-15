@@ -9,6 +9,10 @@ import {
     ToggleRight,
     Image,
     X,
+    DollarSign,
+    Tag,
+    Calendar,
+    Text,
 } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
 import toast, { Toaster } from "react-hot-toast";
@@ -44,6 +48,18 @@ export default function OffersView() {
         start_date: "",
         end_date: "",
     });
+
+    // Format date to YYYY-MM-DD
+    const formatDate = (dateStr) => {
+        if (!dateStr) return "N/A";
+        try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return "N/A";
+            return date.toISOString().split("T")[0]; // e.g., "2025-05-16"
+        } catch {
+            return "N/A";
+        }
+    };
 
     // Validate form fields
     const validateForm = (isAdd = false) => {
@@ -223,14 +239,14 @@ export default function OffersView() {
             price: offer.price || "",
             discount_price: offer.discount_price || "",
             discount_type: offer.discount_type || "",
-            start_date: offer.start_date || "",
-            end_date: offer.end_date || "",
+            start_date: formatDate(offer.start_date) || "",
+            end_date: formatDate(offer.end_date) || "",
         });
-        setImagePreview(offer.image ? `/storage/${offer.image}` : null);
+        setImagePreview(offer.image ? offer.image : null);
         setShowEditModal(true);
     };
 
-    // Show flash messages as toasts
+    // Show flash messages as toasts - FIXED: only show once when component mounts
     useEffect(() => {
         if (flash.success) {
             toast.success(flash.success);
@@ -238,7 +254,7 @@ export default function OffersView() {
         if (flash.error) {
             toast.error(flash.error);
         }
-    }, [flash]);
+    }, []);
 
     // Clean up image preview URL
     useEffect(() => {
@@ -343,17 +359,44 @@ export default function OffersView() {
                                             </button>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-400 mb-2">
-                                        {offer.description || "N/A"}
-                                    </p>
+                                    <div className="flex items-start mb-2">
+                                        <Text className="w-4 h-4 text-gray-400 mr-1 mt-1" />
+                                        <p className="text-sm text-gray-400 line-clamp-2">
+                                            {offer.description || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <DollarSign className="w-4 h-4 text-green-400 mr-1" />
+                                        {offer.discount_price ? (
+                                            <span>
+                                                <span className="font-semibold text-green-400">
+                                                    ${offer.discount_price}
+                                                </span>
+                                                <span className="text-gray-400 text-sm line-through ml-2">
+                                                    ${offer.price}
+                                                </span>
+                                            </span>
+                                        ) : (
+                                            <span className="font-semibold text-green-400">
+                                                ${offer.price}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <Tag className="w-4 h-4 text-gray-400 mr-1" />
+                                        <span className="text-sm text-gray-400">
+                                            {offer.discount_type || "None"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <Calendar className="w-4 h-4 text-gray-400 mr-1" />
+                                        <span className="text-sm text-gray-400">
+                                            {formatDate(offer.start_date)} -{" "}
+                                            {formatDate(offer.end_date)}
+                                        </span>
+                                    </div>
                                     <p className="text-xs text-gray-500 mt-2">
-                                        Price: ${offer.price} | Discount Price:{" "}
-                                        {offer.discount_price
-                                            ? `$${offer.discount_price}`
-                                            : "N/A"}{" "}
-                                        |{offer.discount_type || "No Discount"}{" "}
-                                        | Start: {offer.start_date || "N/A"} |
-                                        End: {offer.end_date || "N/A"} | Status:{" "}
+                                        Status:{" "}
                                         {offer.is_active
                                             ? "Active"
                                             : "Inactive"}
@@ -684,323 +727,417 @@ export default function OffersView() {
                     </div>
                 )}
 
-                {/* Edit Offer Modal */}
+                {/* Edit Offer Modal - IMPROVED LAYOUT */}
                 {showEditModal && selectedOffer && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-gray-800 rounded-lg w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto">
-                            <div className="p-4 sm:p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-semibold text-white">
-                                        Edit Offer
-                                    </h3>
-                                    <button
-                                        onClick={() => {
-                                            setShowEditModal(false);
-                                            setImagePreview(null);
-                                            reset();
-                                        }}
-                                        className="text-gray-400 hover:text-gray-300"
-                                    >
-                                        <X className="w-6 h-6" />
-                                    </button>
-                                </div>
-                                <form
-                                    onSubmit={handleEdit}
-                                    className="space-y-4"
-                                >
-                                    <div>
-                                        <label
-                                            htmlFor="title"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Title
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="title"
-                                            name="title"
-                                            value={data.title}
-                                            onChange={(e) =>
-                                                setData("title", e.target.value)
-                                            }
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        {validationErrors.title && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.title}
-                                            </p>
-                                        )}
-                                        {errors.title && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.title}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label
-                                            htmlFor="description"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Description
-                                        </label>
-                                        <textarea
-                                            id="description"
-                                            name="description"
-                                            value={data.description}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "description",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            rows="4"
-                                        />
-                                        {validationErrors.description && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.description}
-                                            </p>
-                                        )}
-                                        {errors.description && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.description}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label
-                                            htmlFor="image"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Image
-                                        </label>
-                                        <input
-                                            type="file"
-                                            id="image"
-                                            name="image"
-                                            accept="image/*"
-                                            onChange={handleImageChange}
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
-                                        />
-                                        {imagePreview && (
-                                            <div className="relative mt-2">
-                                                <img
-                                                    src={imagePreview}
-                                                    alt="Image Preview"
-                                                    className="w-full h-40 object-cover rounded-lg"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={removeImage}
-                                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        )}
-                                        {validationErrors.image && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.image}
-                                            </p>
-                                        )}
-                                        {errors.image && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.image}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="price"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Price ($)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                id="price"
-                                                name="price"
-                                                value={data.price}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "price",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                step="0.01"
-                                            />
-                                            {validationErrors.price && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.price}
-                                                </p>
-                                            )}
-                                            {errors.price && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {errors.price}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label
-                                                htmlFor="discount_price"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Discount Price ($)
-                                            </label>
-                                            <input
-                                                type="number"
-                                                id="discount_price"
-                                                name="discount_price"
-                                                value={data.discount_price}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "discount_price",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                step="0.01"
-                                            />
-                                            {validationErrors.discount_price && (
-                                                <p className="text-red考价400 text-xs mt-1">
-                                                    {
-                                                        validationErrors.discount_price
-                                                    }
-                                                </p>
-                                            )}
-                                            {errors.discount_price && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {errors.discount_price}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label
-                                            htmlFor="discount_type"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Discount Type (e.g., 30% OFF)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="discount_type"
-                                            name="discount_type"
-                                            value={data.discount_type}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "discount_type",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        {validationErrors.discount_type && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.discount_type}
-                                            </p>
-                                        )}
-                                        {errors.discount_type && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {errors.discount_type}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="start_date"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Start Date (YYYY-MM-DD)
-                                            </label>
-                                            <input
-                                                type="date"
-                                                id="start_date"
-                                                name="start_date"
-                                                value={data.start_date}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "start_date",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            {validationErrors.start_date && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {
-                                                        validationErrors.start_date
-                                                    }
-                                                </p>
-                                            )}
-                                            {errors.start_date && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {errors.start_date}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label
-                                                htmlFor="end_date"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                End Date (YYYY-MM-DD)
-                                            </label>
-                                            <input
-                                                type="date"
-                                                id="end_date"
-                                                name="end_date"
-                                                value={data.end_date}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "end_date",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            {validationErrors.end_date && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.end_date}
-                                                </p>
-                                            )}
-                                            {errors.end_date && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {errors.end_date}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end space-x-3 pt-4">
+                    <>
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                            <div className="bg-gray-800 rounded-lg w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                                <div className="p-4 sm:p-6">
+                                    {/* Header */}
+                                    <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                                        <h3 className="text-xl font-semibold text-white">
+                                            Edit Offer
+                                        </h3>
                                         <button
-                                            type="button"
                                             onClick={() => {
                                                 setShowEditModal(false);
                                                 setImagePreview(null);
                                                 reset();
                                             }}
-                                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                            className="text-gray-400 hover:text-gray-300 transition-colors"
                                         >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                        >
-                                            Save
+                                            <X className="w-6 h-6" />
                                         </button>
                                     </div>
-                                </form>
+
+                                    {/* Form */}
+                                    <form
+                                        onSubmit={handleEdit}
+                                        className="space-y-5"
+                                    >
+                                        <div className="space-y-5">
+                                            {/* Basic Information Section */}
+                                            <div className="bg-gray-700 bg-opacity-30 p-4 rounded-lg">
+                                                <h4 className="text-sm uppercase font-medium text-blue-400 mb-3">
+                                                    Basic Information
+                                                </h4>
+
+                                                {/* Title */}
+                                                <div className="mb-4">
+                                                    <label
+                                                        htmlFor="title"
+                                                        className="block text-sm font-medium text-gray-300 mb-1"
+                                                    >
+                                                        Title
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        id="title"
+                                                        name="title"
+                                                        value={data.title}
+                                                        onChange={(e) =>
+                                                            setData(
+                                                                "title",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="Enter offer title"
+                                                    />
+                                                    {validationErrors.title && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {
+                                                                validationErrors.title
+                                                            }
+                                                        </p>
+                                                    )}
+                                                    {errors.title && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {errors.title}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Description */}
+                                                <div>
+                                                    <label
+                                                        htmlFor="description"
+                                                        className="block text-sm font-medium text-gray-300 mb-1"
+                                                    >
+                                                        Description
+                                                    </label>
+                                                    <textarea
+                                                        id="description"
+                                                        name="description"
+                                                        value={data.description}
+                                                        onChange={(e) =>
+                                                            setData(
+                                                                "description",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        rows="4"
+                                                        placeholder="Enter offer description"
+                                                    />
+                                                    {validationErrors.description && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {
+                                                                validationErrors.description
+                                                            }
+                                                        </p>
+                                                    )}
+                                                    {errors.description && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {errors.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Image Section */}
+                                            <div className="bg-gray-700 bg-opacity-30 p-4 rounded-lg">
+                                                <h4 className="text-sm uppercase font-medium text-blue-400 mb-3">
+                                                    Offer Image
+                                                </h4>
+                                                <div>
+                                                    <label
+                                                        htmlFor="image"
+                                                        className="block text-sm font-medium text-gray-300 mb-1"
+                                                    >
+                                                        Image (Optional for
+                                                        edit)
+                                                    </label>
+                                                    <input
+                                                        type="file"
+                                                        id="image"
+                                                        name="image"
+                                                        accept="image/*"
+                                                        onChange={
+                                                            handleImageChange
+                                                        }
+                                                        className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg"
+                                                    />
+                                                    {imagePreview && (
+                                                        <div className="relative mt-2">
+                                                            <img
+                                                                src={
+                                                                    imagePreview
+                                                                }
+                                                                alt="Image Preview"
+                                                                className="w-full h-40 object-cover rounded-lg"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={
+                                                                    removeImage
+                                                                }
+                                                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
+                                                            >
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {validationErrors.image && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {
+                                                                validationErrors.image
+                                                            }
+                                                        </p>
+                                                    )}
+                                                    {errors.image && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {errors.image}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Pricing Section */}
+                                            <div className="bg-gray-700 bg-opacity-30 p-4 rounded-lg">
+                                                <h4 className="text-sm uppercase font-medium text-blue-400 mb-3">
+                                                    Pricing Information
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label
+                                                            htmlFor="price"
+                                                            className="block text-sm font-medium text-gray-300 mb-1"
+                                                        >
+                                                            Price ($)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            id="price"
+                                                            name="price"
+                                                            value={data.price}
+                                                            onChange={(e) =>
+                                                                setData(
+                                                                    "price",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            step="0.01"
+                                                        />
+                                                        {validationErrors.price && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {
+                                                                    validationErrors.price
+                                                                }
+                                                            </p>
+                                                        )}
+                                                        {errors.price && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {errors.price}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label
+                                                            htmlFor="discount_price"
+                                                            className="block text-sm font-medium text-gray-300 mb-1"
+                                                        >
+                                                            Discount Price ($)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            id="discount_price"
+                                                            name="discount_price"
+                                                            value={
+                                                                data.discount_price
+                                                            }
+                                                            onChange={(e) =>
+                                                                setData(
+                                                                    "discount_price",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            step="0.01"
+                                                        />
+                                                        {validationErrors.discount_price && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {
+                                                                    validationErrors.discount_price
+                                                                }
+                                                            </p>
+                                                        )}
+                                                        {errors.discount_price && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {
+                                                                    errors.discount_price
+                                                                }
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <label
+                                                        htmlFor="discount_type"
+                                                        className="block text-sm font-medium text-gray-300 mb-1"
+                                                    >
+                                                        Discount Type (e.g., 30%
+                                                        OFF)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        id="discount_type"
+                                                        name="discount_type"
+                                                        value={
+                                                            data.discount_type
+                                                        }
+                                                        onChange={(e) =>
+                                                            setData(
+                                                                "discount_type",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="e.g., Summer Sale, Flash Deal"
+                                                    />
+                                                    {validationErrors.discount_type && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {
+                                                                validationErrors.discount_type
+                                                            }
+                                                        </p>
+                                                    )}
+                                                    {errors.discount_type && (
+                                                        <p className="text-red-400 text-xs mt-1">
+                                                            {
+                                                                errors.discount_type
+                                                            }
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Duration Section */}
+                                            <div className="bg-gray-700 bg-opacity-30 p-4 rounded-lg">
+                                                <h4 className="text-sm uppercase font-medium text-blue-400 mb-3">
+                                                    Offer Duration
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label
+                                                            htmlFor="start_date"
+                                                            className="block text-sm font-medium text-gray-300 mb-1"
+                                                        >
+                                                            Start Date
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            id="start_date"
+                                                            name="start_date"
+                                                            value={
+                                                                data.start_date
+                                                            }
+                                                            onChange={(e) =>
+                                                                setData(
+                                                                    "start_date",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        />
+                                                        {validationErrors.start_date && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {
+                                                                    validationErrors.start_date
+                                                                }
+                                                            </p>
+                                                        )}
+                                                        {errors.start_date && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {
+                                                                    errors.start_date
+                                                                }
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label
+                                                            htmlFor="end_date"
+                                                            className="block text-sm font-medium text-gray-300 mb-1"
+                                                        >
+                                                            End Date
+                                                        </label>
+                                                        <input
+                                                            type="date"
+                                                            id="end_date"
+                                                            name="end_date"
+                                                            value={
+                                                                data.end_date
+                                                            }
+                                                            onChange={(e) =>
+                                                                setData(
+                                                                    "end_date",
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        />
+                                                        {validationErrors.end_date && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {
+                                                                    validationErrors.end_date
+                                                                }
+                                                            </p>
+                                                        )}
+                                                        {errors.end_date && (
+                                                            <p className="text-red-400 text-xs mt-1">
+                                                                {
+                                                                    errors.end_date
+                                                                }
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setShowEditModal(false);
+                                                    setImagePreview(null);
+                                                    reset();
+                                                }}
+                                                className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={processing}
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                            >
+                                                {processing ? (
+                                                    <span className="inline-block mr-2 animate-spin">
+                                                        ⟳
+                                                    </span>
+                                                ) : (
+                                                    <Edit2 className="w-4 h-4 mr-2" />
+                                                )}
+                                                Update Offer
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        <AdminSidebar />
+                    </>
                 )}
+                <AdminSidebar />
             </div>
-            <AdminSidebar />
         </div>
     );
 }

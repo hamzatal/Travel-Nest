@@ -47,7 +47,7 @@ class OfferController extends Controller
             'is_active' => true,
         ]);
 
-        return redirect()->route('admin.offers')->with('success', 'Offer created successfully.');
+        return redirect()->route('admin.offers.index')->with('success', '...');
     }
 
     public function update(Request $request, $id)
@@ -99,7 +99,7 @@ class OfferController extends Controller
             $offer->update($data);
         }
 
-        return redirect()->route('admin.offers')->with('success', 'Offer updated successfully.');
+        return redirect()->route('admin.offers.index')->with('success', 'Offer updated successfully.');
     }
 
     public function destroy($id)
@@ -110,7 +110,7 @@ class OfferController extends Controller
         }
         $offer->delete();
 
-        return redirect()->route('admin.offers')->with('success', 'Offer deleted successfully.');
+        return redirect()->route('admin.offers.index')->with('success', 'Offer deleted successfully.');
     }
 
     public function toggleActive($id)
@@ -120,6 +120,6 @@ class OfferController extends Controller
         $offer->save();
 
         $message = $offer->is_active ? 'Offer activated successfully.' : 'Offer deactivated successfully.';
-        return redirect()->route('admin.offers')->with('success', $message);
+        return redirect()->route('admin.offers.index')->with('success', $message);
     }
 }
