@@ -22,15 +22,8 @@ class PackagesController extends Controller
     public function index()
     {
         $packages = Package::all();
-        return Inertia::render('Admin/Packages/Index', [
+        return Inertia::render('Admin/Packages/AdminPackage', [
             'packages' => $packages,
-            'auth' => auth('admin')->user(),
-        ]);
-    }
-
-    public function create()
-    {
-        return Inertia::render('Admin/Packages/Create', [
             'auth' => auth('admin')->user(),
         ]);
     }
@@ -39,14 +32,14 @@ class PackagesController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
+            'subtitle' => 'required|string|max:255',
+            'description' => 'required|string|min:10',
             'price' => 'required|numeric|min:0',
-            'discount_price' => 'nullable|numeric|min:0',
+            'discount_price' => 'nullable|numeric|min:0|lt:price',
             'discount_type' => 'nullable|string|max:50',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             'rating' => 'nullable|numeric|min:0|max:5',
             'is_featured' => 'boolean',
         ]);
@@ -60,25 +53,17 @@ class PackagesController extends Controller
         return redirect()->route('admin.packages.index')->with('success', 'Package created successfully.');
     }
 
-    public function edit(Package $package)
-    {
-        return Inertia::render('Admin/Packages/Edit', [
-            'package' => $package,
-            'auth' => auth('admin')->user(),
-        ]);
-    }
-
     public function update(Request $request, Package $package)
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
+            'subtitle' => 'required|string|max:255',
+            'description' => 'required|string|min:10',
             'price' => 'required|numeric|min:0',
-            'discount_price' => 'nullable|numeric|min:0',
+            'discount_price' => 'nullable|numeric|min:0|lt:price',
             'discount_type' => 'nullable|string|max:50',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'rating' => 'nullable|numeric|min:0|max:5',
             'is_featured' => 'boolean',
@@ -89,6 +74,8 @@ class PackagesController extends Controller
                 Storage::disk('public')->delete($package->image);
             }
             $validated['image'] = $request->file('image')->store('packages', 'public');
+        } else {
+            $validated['image'] = $package->image;
         }
 
         $package->update($validated);
@@ -104,6 +91,15 @@ class PackagesController extends Controller
         $package->delete();
 
         return redirect()->route('admin.packages.index')->with('success', 'Package deleted successfully.');
+    }
+
+    public function toggleFeatured(Package $package)
+    {
+        $package->is_featured = !$package->is_featured;
+        $package->save();
+
+        $message = $package->is_featured ? 'Package set as featured successfully.' : 'Package removed from featured successfully.';
+        return redirect()->route('admin.packages.index')->with('success', $message);
     }
 
     public function show(Package $package)

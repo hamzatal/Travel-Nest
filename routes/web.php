@@ -43,6 +43,16 @@ Route::get('/', function () {
     ]);
 })->name('welcome');
 
+//? Login Page
+Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
+Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.submit');
+Route::post('/admin/logout', [LoginController::class, 'destroy'])->name('admin.logout');
+
+
+// ===================================================
+//! Frontend Routes
+// ===================================================
+
 Route::get('/about-us', fn() => Inertia::render('about-us'))->name('about-us');
 Route::get('/ContactPage', fn() => Inertia::render('ContactPage'))->name('ContactPage');
 
@@ -65,6 +75,7 @@ Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.s
 //? Booking Form
 Route::get('/book', [BookController::class, 'create'])->name('book.create');
 Route::post('/book', [BookController::class, 'store'])->name('book.store');
+
 // ===================================================
 //! Authentication Routes
 // ===================================================
@@ -79,7 +90,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
-   
+
 
     //? Search Route
     Route::get('/search', [SearchController::class, 'index'])->name('search');
@@ -108,44 +119,39 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
 //! Admin Routes
 // ===================================================
 
-//? Admin Authentication (Guest: Admin Only)
-Route::middleware('guest:admin')->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/login', [LoginController::class, 'create'])->name('login');
-    Route::post('/login', [LoginController::class, 'store']);
-});
 
-//? Admin Protected Routes (Authenticated: Admin)
+// Admin Protected Routes (Authenticated: Admin)
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
-    //? Dashboard
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    //? Admin Profile
+    // Admin Profile
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::put('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
     Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
 
-    //? Users Management
+    // Users Management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::post('/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('toggle-status');
     });
 
-    //? Contact Messages
+    // Contact Messages
     Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
     Route::patch('/messages/{id}/read', [AdminController::class, 'markAsRead'])->name('messages.read');
 
-    //? Admin Destinations Routes
+    // Admin Destinations Routes
     Route::prefix('destinations')->name('destinations.')->group(function () {
-        Route::get('/', [DestinationController::class, 'index'])->name('manage');
+        Route::get('/', [DestinationController::class, 'index'])->name('index');
         Route::post('/', [DestinationController::class, 'store'])->name('store');
-        Route::put('/{id}', [DestinationController::class, 'update'])->name('update');
-        Route::delete('/{id}', [DestinationController::class, 'destroy'])->name('destroy');
+        Route::put('/{destination}', [DestinationController::class, 'update'])->name('update');
+        Route::delete('/{destination}', [DestinationController::class, 'destroy'])->name('destroy');
+        Route::patch('/{destination}/toggle-featured', [DestinationController::class, 'toggleFeatured'])->name('toggle-featured');
     });
-
-    //? Offers Routes
+    // Offers Routes
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [OfferController::class, 'index'])->name('index');
         Route::post('/', [OfferController::class, 'store'])->name('store');
@@ -154,7 +160,7 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::patch('/{id}/toggle', [OfferController::class, 'toggleActive'])->name('toggle');
     });
 
-    //? Hero Sections Routes
+    // Hero Sections Routes
     Route::prefix('hero')->name('hero.')->group(function () {
         Route::get('/', [HeroSectionController::class, 'index'])->name('index');
         Route::post('/', [HeroSectionController::class, 'store'])->name('store');
@@ -163,15 +169,15 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{id}', [HeroSectionController::class, 'destroy'])->name('delete');
     });
 
-    //? Packages Routes
-    Route::get('/packages', [PackagesController::class, 'index'])->name('packages.index');
-    Route::get('/packages/create', [PackagesController::class, 'create'])->name('packages.create');
-    Route::post('/packages', [PackagesController::class, 'store'])->name('packages.store');
-    Route::get('/packages/{package}/edit', [PackagesController::class, 'edit'])->name('packages.edit');
-    Route::put('/packages/{package}', [PackagesController::class, 'update'])->name('packages.update');
-    Route::delete('/packages/{package}', [PackagesController::class, 'destroy'])->name('packages.destroy');
+    // Packages Routes
+    Route::prefix('packages')->name('packages.')->group(function () {
+        Route::get('/', [PackagesController::class, 'index'])->name('index');
+        Route::post('/', [PackagesController::class, 'store'])->name('store');
+        Route::put('/{package}', [PackagesController::class, 'update'])->name('update');
+        Route::patch('/{package}/toggle-featured', [PackagesController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::delete('/{package}', [PackagesController::class, 'destroy'])->name('destroy');
+    });
 });
-
 // ===================================================
 //! API Routes
 // ===================================================

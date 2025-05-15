@@ -16,7 +16,7 @@ class OfferController extends Controller
             $offer->image = $offer->image ? asset('storage/offers/' . $offer->image) : null;
             return $offer;
         });
-        return Inertia::render('Admin/OffersView', ['offers' => $offers]);
+        return Inertia::render('Admin/Deals/AdminDeals', ['offers' => $offers]);
     }
 
     public function store(Request $request)

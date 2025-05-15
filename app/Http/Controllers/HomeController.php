@@ -6,6 +6,7 @@ use App\Models\HeroSection;
 use App\Models\Offer;
 use App\Models\Destination;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 class HomeController extends Controller
 {
@@ -16,7 +17,7 @@ class HomeController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($hero) {
-                $hero->image = $hero->image ? asset('storage/hero_sections/' . basename($hero->image)) : null;
+                $hero->image = $hero->image ? Storage::url($hero->image) : null;
                 return $hero;
             });
 
@@ -45,7 +46,7 @@ class HomeController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($destination) {
-                $destination->image = $destination->image ? asset('storage/destinations/' . basename($destination->image)) : null;
+                $destination->image = $destination->image ? Storage::url($destination->image) : null;
                 $destination->name = $destination->name ?? 'Unknown Destination';
                 $destination->location = $destination->location ?? 'Unknown Location';
                 $destination->description = $destination->description ?? '';

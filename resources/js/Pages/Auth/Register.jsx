@@ -15,8 +15,8 @@ export default function Register() {
         password: "",
         password_confirmation: "",
         role: "user",
-        company_name: "", // جديد: لحقل اسم الشركة
-        license_number: "", // جديد: لرقم الترخيص
+        company_name: "", 
+        license_number: "", 
     });
 
     useEffect(() => {

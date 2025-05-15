@@ -5,7 +5,6 @@ namespace App\Http\Controllers\AdminAuth;
 use App\Http\Controllers\Controller;
 use App\Models\HeroSection;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
 class HeroSectionController extends Controller
@@ -13,62 +12,60 @@ class HeroSectionController extends Controller
     public function index()
     {
         $heroSections = HeroSection::all();
-        return Inertia::render('Admin/HeroSectionsView', ['heroSections' => $heroSections]);
+        return inertia('Admin/Hero/AdminHero', [
+            'heroSections' => $heroSections,
+        ]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'subtitle' => 'required|string|max:255',
+        $validated = $request->validate([
+            'title' => 'required|string|min:3|max:255',
+            'subtitle' => 'required|string|min:3|max:255',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $imageName = $request->file('image')->store('hero_sections', 'public');
-        $imageName = basename($imageName);
+        $imageName = time() . '.' . $request->image->extension();
+        $request->image->storeAs('hero', $imageName, 'public');
 
         HeroSection::create([
-            'title' => $request->title,
-            'subtitle' => $request->subtitle,
-            'image' => $imageName,
-            'is_active' => true, // Default to active
+            'title' => $validated['title'],
+            'subtitle' => $validated['subtitle'],
+            'image' => 'hero/' . $imageName,
+            'is_active' => false,
         ]);
 
-        return redirect()->route('admin.hero')->with('success', 'Hero section created successfully.');
+        return redirect()->route('admin.hero.index')->with('success', 'Hero section added successfully.');
     }
 
     public function update(Request $request, $id)
     {
         $hero = HeroSection::findOrFail($id);
 
-        $request->validate([
-            'title' => 'nullable|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
+        $validated = $request->validate([
+            'title' => 'nullable|string|min:3|max:255',
+            'subtitle' => 'nullable|string|min:3|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $data = [];
-        if ($request->filled('title')) {
-            $data['title'] = $request->title;
-        }
-        if ($request->filled('subtitle')) {
-            $data['subtitle'] = $request->subtitle;
-        }
+        $data = array_filter([
+            'title' => $validated['title'] ?? $hero->title,
+            'subtitle' => $validated['subtitle'] ?? $hero->subtitle,
+        ]);
+
         if ($request->hasFile('image')) {
-            if ($hero->image) {
-                Storage::disk('public')->delete('hero_sections/' . $hero->image);
-            }
-            $imageName = $request->file('image')->store('hero_sections', 'public');
-            $data['image'] = basename($imageName);
+            Storage::disk('public')->delete($hero->image);
+            $imageName = time() . '.' . $request->image->extension();
+            $request->image->storeAs('hero', $imageName, 'public');
+            $data['image'] = 'hero/' . $imageName;
         }
 
         if (!empty($data)) {
             $hero->update($data);
         }
 
-        return redirect()->route('admin.hero')->with('success', 'Hero section updated successfully.');
+        return redirect()->route('admin.hero.index')->with('success', 'Hero section updated successfully.');
     }
-
 
     public function destroy($id)
     {
@@ -76,8 +73,9 @@ class HeroSectionController extends Controller
         Storage::disk('public')->delete($hero->image);
         $hero->delete();
 
-        return redirect()->route('admin.hero')->with('success', 'Hero section deleted successfully.');
+        return redirect()->route('admin.hero.index')->with('success', 'Hero section deleted successfully.');
     }
+
     public function toggleActive($id)
     {
         $hero = HeroSection::findOrFail($id);
@@ -85,6 +83,6 @@ class HeroSectionController extends Controller
         $hero->save();
 
         $message = $hero->is_active ? 'Hero section activated successfully.' : 'Hero section deactivated successfully.';
-        return redirect()->route('admin.hero')->with('success', $message);
+        return redirect()->route('admin.hero.index')->with('success', $message);
     }
 }

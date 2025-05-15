@@ -112,18 +112,15 @@ export default function HeroSectionsView() {
             toast.error("Please fix the form errors.");
             return;
         }
-        post(route("admin.hero.store"), {
+        post("/admin/hero", {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
                 setShowAddModal(false);
                 reset();
                 setImagePreview(null);
-                toast.success("Hero section added successfully!");
             },
-            onError: () => {
-                toast.error("Failed to add hero section. Please try again.");
-            },
+            onError: () => {},
         });
     };
 
@@ -134,7 +131,7 @@ export default function HeroSectionsView() {
             toast.error("Please fix the form errors.");
             return;
         }
-        put(route("admin.hero.update", selectedSection.id), {
+        put(`/admin/hero/${selectedSection.id}`, {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
@@ -142,47 +139,28 @@ export default function HeroSectionsView() {
                 reset();
                 setImagePreview(null);
                 setSelectedSection(null);
-                toast.success("Hero section updated successfully!");
             },
-            onError: () => {
-                toast.error("Failed to update hero section. Please try again.");
-            },
+            onError: () => {},
         });
     };
 
     // Handle delete hero section
     const handleDelete = (id) => {
         if (confirm("Are you sure you want to delete this hero section?")) {
-            deleteForm(route("admin.hero.destroy", id), {
+            deleteForm(`/admin/hero/${id}`, {
                 preserveScroll: true,
-                onSuccess: () => {
-                    toast.success("Hero section deleted successfully!");
-                },
-                onError: () => {
-                    toast.error(
-                        "Failed to delete hero section. Please try again."
-                    );
-                },
+                onSuccess: () => {},
+                onError: () => {},
             });
         }
     };
 
     // Handle toggle active status
     const handleToggleActive = (id) => {
-        patch(route("admin.hero.toggle", id), {
+        patch(`/admin/hero/${id}/toggle`, {
             preserveScroll: true,
-            onSuccess: () => {
-                const hero = heroSections.find((h) => h.id === id);
-                const message = hero.is_active
-                    ? "Hero section deactivated successfully!"
-                    : "Hero section activated successfully!";
-                toast.success(message);
-            },
-            onError: () => {
-                toast.error(
-                    "Failed to toggle hero section status. Please try again."
-                );
-            },
+            onSuccess: () => {},
+            onError: () => {},
         });
     };
 
