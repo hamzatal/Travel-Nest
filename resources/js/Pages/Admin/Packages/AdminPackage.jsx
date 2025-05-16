@@ -17,18 +17,75 @@ import {
 import AdminSidebar from "@/Components/AdminSidebar";
 import toast, { Toaster } from "react-hot-toast";
 
+// Custom Scrollbar Styles
+const styles = `
+  /* WebKit Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #1f2937; /* Dark gray to match theme */
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #4b5563; /* Grayish-blue */
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2563eb; /* Blue on hover */
+  }
+  ::-webkit-scrollbar-corner {
+    background: #1f2937;
+  }
+  /* Firefox Scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #1f2937;
+  }
+`;
+
+// Inject styles into document
+const styleSheet = document.createElement("style");
+styleSheet.innerText = styles;
+document.head.appendChild(styleSheet);
+
+// Format date for display
+const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+        });
+    } catch {
+        return "N/A";
+    }
+};
+
+// Convert ISO date to yyyy-MM-dd format
+const formatISOToDateInput = (isoString) => {
+    if (!isoString) return "";
+    try {
+        return isoString.split("T")[0]; // Extracts yyyy-MM-dd from 2025-05-15T00:00:00.000000Z
+    } catch {
+        return "";
+    }
+};
+
+// Calculate discount percentage
+const calculateDiscount = (original, discounted) => {
+    if (!discounted || !original) return null;
+    const percentage = Math.round(((original - discounted) / original) * 100);
+    return percentage;
+};
+
 export default function AdminPackage() {
+    // Page props and form handling
     const { props } = usePage();
     const { packages = [], flash = {} } = props;
-
-    const [searchQuery, setSearchQuery] = useState("");
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [selectedPackage, setSelectedPackage] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
-    const [validationErrors, setValidationErrors] = useState({});
-    const [charCount, setCharCount] = useState(0);
 
     const {
         data,
@@ -50,60 +107,92 @@ export default function AdminPackage() {
         start_date: "",
         end_date: "",
         image: null,
-        rating: 0,
+        rating: "",
         is_featured: false,
     });
 
-    // Format date
-    const formatDate = (dateString) => {
-        if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-        });
-    };
+    // State management
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedPackage, setSelectedPackage] = useState(null);
+    const [packageToDelete, setPackageToDelete] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [validationErrors, setValidationErrors] = useState({});
+    const [charCount, setCharCount] = useState(0);
 
-    // Validate form
+    // Form validation
     const validateForm = (isAdd = false) => {
         const errors = {};
-        if (!data.title) errors.title = "Title is required";
-        else if (data.title.length < 3)
+        if (!data.title) {
+            errors.title = "Title is required";
+        } else if (data.title.length < 3) {
             errors.title = "Title must be at least 3 characters";
-
-        if (!data.subtitle) errors.subtitle = "Subtitle is required";
-        else if (data.subtitle.length < 3)
-            errors.subtitle = "Subtitle must be at least 3 characters";
-
-        if (!data.description) errors.description = "Description is required";
-        else if (data.description.length < 10)
-            errors.description = "Description must be at least 10 characters";
-
-        if (!data.price) errors.price = "Price is required";
-        else if (isNaN(parseFloat(data.price)) || parseFloat(data.price) <= 0)
-            errors.price = "Price must be a positive number";
-
-        if (
-            data.discount_price &&
-            (isNaN(parseFloat(data.discount_price)) ||
-                parseFloat(data.discount_price) <= 0 ||
-                parseFloat(data.discount_price) >= parseFloat(data.price))
-        ) {
-            errors.discount_price =
-                "Discount price must be less than regular price";
         }
 
-        if (!data.start_date) errors.start_date = "Start date is required";
-        if (!data.end_date) errors.end_date = "End date is required";
+        if (isAdd && !data.subtitle) {
+            errors.subtitle = "Subtitle is required";
+        } else if (data.subtitle && data.subtitle.length < 3) {
+            errors.subtitle = "Subtitle must be at least 3 characters";
+        }
+
+        if (!data.description) {
+            errors.description = "Description is required";
+        } else if (data.description.length < 10) {
+            errors.description = "Description must be at least 10 characters";
+        }
+
+        if (!data.price) {
+            errors.price = "Price is required";
+        } else if (
+            isNaN(parseFloat(data.price)) ||
+            parseFloat(data.price) <= 0
+        ) {
+            errors.price = "Price must be a positive number";
+        }
+
+        if (data.discount_price) {
+            if (
+                isNaN(parseFloat(data.discount_price)) ||
+                parseFloat(data.discount_price) <= 0 ||
+                parseFloat(data.discount_price) >= parseFloat(data.price)
+            ) {
+                errors.discount_price =
+                    "Discount price must be less than regular price";
+            }
+        }
+
+        if (isAdd && !data.start_date) {
+            errors.start_date = "Start date is required";
+        } else if (
+            data.start_date &&
+            !/^\d{4}-\d{2}-\d{2}$/.test(data.start_date)
+        ) {
+            errors.start_date = "Start date must be a valid date (YYYY-MM-DD)";
+        }
+
+        if (isAdd && !data.end_date) {
+            errors.end_date = "End date is required";
+        } else if (
+            data.end_date &&
+            !/^\d{4}-\d{2}-\d{2}$/.test(data.end_date)
+        ) {
+            errors.end_date = "End date must be a valid date (YYYY-MM-DD)";
+        }
+
         if (
             data.start_date &&
             data.end_date &&
-            new Date(data.end_date) <= new Date(data.start_date)
+            new Date(data.end_date) < new Date(data.start_date)
         ) {
-            errors.end_date = "End date must be after start date";
+            errors.end_date = "End date must be after or equal to start date";
         }
 
-        if (isAdd && !data.image) errors.image = "Image is required";
+        if (isAdd && !data.image) {
+            errors.image = "Image is required";
+        }
+
         if (data.image) {
             const validTypes = [
                 "image/jpeg",
@@ -111,19 +200,19 @@ export default function AdminPackage() {
                 "image/jpg",
                 "image/gif",
             ];
-            if (!validTypes.includes(data.image.type))
+            if (!validTypes.includes(data.image.type)) {
                 errors.image = "Image must be JPEG, PNG, JPG, or GIF";
-            if (data.image.size > 2 * 1024 * 1024)
+            }
+            if (data.image.size > 2 * 1024 * 1024) {
                 errors.image = "Image size must be less than 2MB";
+            }
         }
 
-        if (
-            data.rating &&
-            (isNaN(parseFloat(data.rating)) ||
-                parseFloat(data.rating) < 0 ||
-                parseFloat(data.rating) > 5)
-        ) {
-            errors.rating = "Rating must be between 0 and 5";
+        if (data.rating) {
+            const rating = parseFloat(data.rating);
+            if (isNaN(rating) || rating < 0 || rating > 5) {
+                errors.rating = "Rating must be between 0 and 5";
+            }
         }
 
         setValidationErrors(errors);
@@ -143,15 +232,6 @@ export default function AdminPackage() {
         setImagePreview(null);
     };
 
-    // Calculate discount
-    const calculateDiscount = (original, discounted) => {
-        if (!discounted || !original) return null;
-        const percentage = Math.round(
-            ((original - discounted) / original) * 100
-        );
-        return percentage;
-    };
-
     // Handle add package
     const handleAdd = (e) => {
         e.preventDefault();
@@ -167,9 +247,11 @@ export default function AdminPackage() {
                 reset();
                 setImagePreview(null);
                 setCharCount(0);
+                toast.success("Package added successfully!");
             },
-            onError: () => {
-                // Errors handled by useEffect
+            onError: (errors) => {
+                console.log("Add Package Errors:", errors);
+                toast.error("Failed to add package. Please try again.");
             },
         });
     };
@@ -181,46 +263,69 @@ export default function AdminPackage() {
             toast.error("Please fix the form errors.");
             return;
         }
-        put(`/admin/packages/${selectedPackage.id}`, {
+        console.log("Form Data Sent:", {
+            ...data,
+            start_date: data.start_date || selectedPackage.start_date,
+            end_date: data.end_date || selectedPackage.end_date,
+        });
+        const formData = {
+            ...data,
+            start_date:
+                data.start_date ||
+                formatISOToDateInput(selectedPackage.start_date),
+            end_date:
+                data.end_date || formatISOToDateInput(selectedPackage.end_date),
+        };
+        const options = {
             preserveScroll: true,
-            forceFormData: true,
             onSuccess: () => {
-                setShowEditModal(false);
-                reset();
+                setShowEditModal(false); // Close the modal immediately
+                reset(); // Reset form data
                 setImagePreview(null);
                 setSelectedPackage(null);
                 setCharCount(0);
+                toast.success("Package updated successfully!");
             },
-            onError: () => {
-                // Errors handled by useEffect
+            onError: (errors) => {
+                console.log("Edit Package Errors:", errors);
+                toast.error("Failed to update package. Please try again.");
             },
-        });
+            onFinish: () => {
+                if (!showEditModal) {
+                    setShowEditModal(false); // Ensure modal closes even if response is delayed
+                }
+            },
+        };
+        if (data.image) {
+            options.forceFormData = true;
+        }
+        put(`/admin/packages/${selectedPackage.id}`, formData, options);
     };
 
     // Handle delete package
     const handleDelete = () => {
-        deleteForm(`/admin/packages/${selectedPackage.id}`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setShowDeleteModal(false);
-                setSelectedPackage(null);
-            },
-            onError: () => {
-                // Errors handled by useEffect
-            },
-        });
+        if (packageToDelete) {
+            deleteForm(`/admin/packages/${packageToDelete.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setShowDeleteModal(false);
+                    setPackageToDelete(null);
+                    toast.success("Package deleted successfully!");
+                },
+                onError: () => {
+                    setShowDeleteModal(false);
+                    setPackageToDelete(null);
+                    toast.error("Failed to delete package. Please try again.");
+                },
+            });
+        }
     };
 
     // Handle toggle featured
     const handleToggleFeatured = (id) => {
         patch(`/admin/packages/${id}/toggle-featured`, {
             preserveScroll: true,
-            onSuccess: () => {
-                // Success handled by useEffect
-            },
-            onError: () => {
-                // Errors handled by useEffect
-            },
+    
         });
     };
 
@@ -231,14 +336,17 @@ export default function AdminPackage() {
             title: pkg.title || "",
             subtitle: pkg.subtitle || "",
             description: pkg.description || "",
-            price: pkg.price || "",
-            discount_price: pkg.discount_price || "",
+            price: pkg.price !== null ? pkg.price.toString() : "",
+            discount_price:
+                pkg.discount_price !== null
+                    ? pkg.discount_price.toString()
+                    : "",
             discount_type: pkg.discount_type || "percentage",
-            start_date: pkg.start_date || "",
-            end_date: pkg.end_date || "",
+            start_date: formatISOToDateInput(pkg.start_date),
+            end_date: formatISOToDateInput(pkg.end_date),
             image: null,
-            rating: pkg.rating || 0,
-            is_featured: pkg.is_featured || false,
+            rating: pkg.rating !== null ? pkg.rating.toString() : "",
+            is_featured: !!pkg.is_featured,
         });
         setImagePreview(pkg.image ? `/storage/${pkg.image}` : null);
         setCharCount(pkg.description ? pkg.description.length : 0);
@@ -247,7 +355,7 @@ export default function AdminPackage() {
 
     // Open delete modal
     const openDeleteModal = (pkg) => {
-        setSelectedPackage(pkg);
+        setPackageToDelete(pkg);
         setShowDeleteModal(true);
     };
 
@@ -266,7 +374,7 @@ export default function AdminPackage() {
 
     // Update char count
     useEffect(() => {
-        setCharCount(data.description.length);
+        setCharCount(data.description ? data.description.length : 0);
     }, [data.description]);
 
     // Clean up image preview
@@ -283,6 +391,7 @@ export default function AdminPackage() {
             <Head title="Packages - Travel Nest Admin" />
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
             <div className="lg:ml-64 p-6 lg:p-8">
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <h1 className="text-2xl font-bold text-white">Packages</h1>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
@@ -311,6 +420,7 @@ export default function AdminPackage() {
                     </div>
                 </div>
 
+                {/* Packages Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredPackages.length > 0 ? (
                         filteredPackages.map((pkg) => (
@@ -399,7 +509,7 @@ export default function AdminPackage() {
                                                 </span>
                                             </span>
                                         ) : (
-                                            <span className="font-semibold">
+                                            <span className="font-semibold text-green-400">
                                                 ${pkg.price}
                                             </span>
                                         )}
@@ -411,7 +521,7 @@ export default function AdminPackage() {
                                             {formatDate(pkg.end_date)}
                                         </span>
                                     </div>
-                                    <div className="flex items-center">
+                                    <div className="flex items-center mb-2">
                                         <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-1" />
                                         <span className="text-sm text-gray-400">
                                             {pkg.rating || 0}/5
@@ -478,6 +588,7 @@ export default function AdminPackage() {
                                                     )
                                                 }
                                                 className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                required
                                             />
                                             {(validationErrors.title ||
                                                 errors.title) && (
@@ -508,6 +619,7 @@ export default function AdminPackage() {
                                                     )
                                                 }
                                                 className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                required
                                             />
                                             {(validationErrors.subtitle ||
                                                 errors.subtitle) && (
@@ -542,6 +654,7 @@ export default function AdminPackage() {
                                             }
                                             rows="4"
                                             className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
                                         />
                                         {(validationErrors.description ||
                                             errors.description) && (
@@ -577,6 +690,7 @@ export default function AdminPackage() {
                                                     step="0.01"
                                                     min="0"
                                                     className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.price ||
@@ -644,6 +758,7 @@ export default function AdminPackage() {
                                                         )
                                                     }
                                                     className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.start_date ||
@@ -677,6 +792,7 @@ export default function AdminPackage() {
                                                         )
                                                     }
                                                     className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.end_date ||
@@ -693,10 +809,7 @@ export default function AdminPackage() {
                                             htmlFor="image"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
-                                            Image{" "}
-                                            <span className="text-red-500">
-                                                *
-                                            </span>
+                                            Image
                                         </label>
                                         <input
                                             type="file"
@@ -800,8 +913,15 @@ export default function AdminPackage() {
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                                         >
+                                            {processing ? (
+                                                <span className="inline-block mr-2 animate-spin">
+                                                    ⟳
+                                                </span>
+                                            ) : (
+                                                <Plus className="w-4 h-4 mr-2" />
+                                            )}
                                             Save
                                         </button>
                                     </div>
@@ -859,6 +979,7 @@ export default function AdminPackage() {
                                                     )
                                                 }
                                                 className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                required
                                             />
                                             {(validationErrors.title ||
                                                 errors.title) && (
@@ -873,10 +994,7 @@ export default function AdminPackage() {
                                                 htmlFor="subtitle"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                Subtitle{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
+                                                Subtitle
                                             </label>
                                             <input
                                                 type="text"
@@ -923,6 +1041,7 @@ export default function AdminPackage() {
                                             }
                                             rows="4"
                                             className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
                                         />
                                         {(validationErrors.description ||
                                             errors.description) && (
@@ -958,6 +1077,7 @@ export default function AdminPackage() {
                                                     step="0.01"
                                                     min="0"
                                                     className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.price ||
@@ -1007,10 +1127,7 @@ export default function AdminPackage() {
                                                 htmlFor="start_date"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                Start Date{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
+                                                Start Date
                                             </label>
                                             <div className="relative">
                                                 <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -1040,10 +1157,7 @@ export default function AdminPackage() {
                                                 htmlFor="end_date"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                End Date{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
+                                                End Date
                                             </label>
                                             <div className="relative">
                                                 <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -1179,9 +1293,16 @@ export default function AdminPackage() {
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                                         >
-                                            Save
+                                            {processing ? (
+                                                <span className="inline-block mr-2 animate-spin">
+                                                    ⟳
+                                                </span>
+                                            ) : (
+                                                <Edit2 className="w-4 h-4 mr-2" />
+                                            )}
+                                            Update
                                         </button>
                                     </div>
                                 </form>
@@ -1191,34 +1312,39 @@ export default function AdminPackage() {
                 )}
 
                 {/* Delete Package Modal */}
-                {showDeleteModal && selectedPackage && (
+                {showDeleteModal && packageToDelete && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div className="bg-gray-800 rounded-lg max-w-lg w-full">
                             <div className="p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="text-lg font-semibold text-white">
-                                        Delete Package
+                                        Confirm Delete
                                     </h3>
                                     <button
-                                        onClick={() =>
-                                            setShowDeleteModal(false)
-                                        }
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setPackageToDelete(null);
+                                        }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
                                         <X className="w-6 h-6" />
                                     </button>
                                 </div>
-                                <p className="text-gray-400 mb-6">
-                                    Are you sure you want to delete "
-                                    {selectedPackage.title}"? This action cannot
-                                    be undone.
+                                <p className="text-gray-300 mb-6">
+                                    Are you sure you want to delete the package
+                                    "
+                                    <span className="font-semibold">
+                                        {packageToDelete.title}
+                                    </span>
+                                    "? This action cannot be undone.
                                 </p>
                                 <div className="flex justify-end space-x-3">
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            setShowDeleteModal(false)
-                                        }
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setPackageToDelete(null);
+                                        }}
                                         className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                     >
                                         Cancel
@@ -1227,8 +1353,15 @@ export default function AdminPackage() {
                                         type="button"
                                         onClick={handleDelete}
                                         disabled={processing}
-                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
                                     >
+                                        {processing ? (
+                                            <span className="inline-block mr-2 animate-spin">
+                                                ⟳
+                                            </span>
+                                        ) : (
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                        )}
                                         Delete
                                     </button>
                                 </div>
