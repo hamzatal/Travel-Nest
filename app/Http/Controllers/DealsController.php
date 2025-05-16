@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Offer;
 use Inertia\Inertia;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class DealsController extends Controller
@@ -62,4 +61,5 @@ class DealsController extends Controller
             'flash' => session()->only(['success', 'error']),
         ]);
     }
+
 }

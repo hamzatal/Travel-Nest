@@ -47,16 +47,17 @@ class OfferController extends Controller
             'is_active' => true,
         ]);
 
-        return redirect()->route('admin.offers.index')->with('success', '...');
+        return redirect()->route('admin.offers.index')->with('success', 'Offer created successfully.');
     }
 
     public function update(Request $request, $id)
     {
+
         $offer = Offer::findOrFail($id);
 
         $request->validate([
-            'title' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'price' => 'nullable|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
@@ -65,13 +66,16 @@ class OfferController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        $data = [];
-        if ($request->filled('title')) {
-            $data['title'] = $request->title;
-        }
-        if ($request->filled('description')) {
-            $data['description'] = $request->description;
-        }
+        $data = $request->only([
+            'title',
+            'description',
+            'price',
+            'discount_price',
+            'discount_type',
+            'start_date',
+            'end_date',
+        ]);
+
         if ($request->hasFile('image')) {
             if ($offer->image) {
                 Storage::disk('public')->delete('offers/' . $offer->image);
@@ -79,29 +83,11 @@ class OfferController extends Controller
             $imagePath = $request->file('image')->store('offers', 'public');
             $data['image'] = basename($imagePath);
         }
-        if ($request->filled('price')) {
-            $data['price'] = $request->price;
-        }
-        if ($request->filled('discount_price')) {
-            $data['discount_price'] = $request->discount_price;
-        }
-        if ($request->filled('discount_type')) {
-            $data['discount_type'] = $request->discount_type;
-        }
-        if ($request->filled('start_date')) {
-            $data['start_date'] = $request->start_date;
-        }
-        if ($request->filled('end_date')) {
-            $data['end_date'] = $request->end_date;
-        }
 
-        if (!empty($data)) {
-            $offer->update($data);
-        }
+        $offer->update($data);
 
         return redirect()->route('admin.offers.index')->with('success', 'Offer updated successfully.');
     }
-
     public function destroy($id)
     {
         $offer = Offer::findOrFail($id);
