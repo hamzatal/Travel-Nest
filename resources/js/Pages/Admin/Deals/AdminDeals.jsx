@@ -24,7 +24,9 @@ export default function OffersView() {
     const [searchQuery, setSearchQuery] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedOffer, setSelectedOffer] = useState(null);
+    const [offerToDelete, setOfferToDelete] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [validationErrors, setValidationErrors] = useState({});
 
@@ -70,7 +72,7 @@ export default function OffersView() {
             errors.title = "Title must be between 3 and 255 characters.";
         }
         if (!data.description) {
-            errors.description = "Description is required.";
+            errors.description = "Title is required.";
         } else if (data.description.length < 10) {
             errors.description = "Description must be at least 10 characters.";
         }
@@ -181,6 +183,7 @@ export default function OffersView() {
             toast.error("Please fix the form errors.");
             return;
         }
+        console.log("Form Data Sent:", data);
         const options = {
             preserveScroll: true,
             onSuccess: () => {
@@ -191,6 +194,7 @@ export default function OffersView() {
                 toast.success("Offer updated successfully!");
             },
             onError: (errors) => {
+                console.log("Inertia Errors:", errors);
                 toast.error("Failed to update offer. Please try again.");
             },
         };
@@ -203,13 +207,24 @@ export default function OffersView() {
 
     // Handle delete offer
     const handleDelete = (id) => {
-        if (confirm("Are you sure you want to delete this offer?")) {
-            deleteForm(route("admin.offers.destroy", id), {
+        const offer = offers.find((o) => o.id === id);
+        setOfferToDelete(offer);
+        setShowDeleteModal(true);
+    };
+
+    // Confirm deletion
+    const confirmDelete = () => {
+        if (offerToDelete) {
+            deleteForm(route("admin.offers.destroy", offerToDelete.id), {
                 preserveScroll: true,
                 onSuccess: () => {
+                    setShowDeleteModal(false);
+                    setOfferToDelete(null);
                     toast.success("Offer deleted successfully!");
                 },
                 onError: () => {
+                    setShowDeleteModal(false);
+                    setOfferToDelete(null);
                     toast.error("Failed to delete offer. Please try again.");
                 },
             });
@@ -1099,6 +1114,64 @@ export default function OffersView() {
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete Confirmation Modal */}
+                {showDeleteModal && offerToDelete && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-gray-800 rounded-lg w-full max-w-md">
+                            <div className="p-4 sm:p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-semibold text-white">
+                                        Confirm Delete
+                                    </h3>
+                                    <button
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setOfferToDelete(null);
+                                        }}
+                                        className="text-gray-400 hover:text-gray-300"
+                                    >
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+                                <p className="text-gray-300 mb-6">
+                                    Are you sure you want to delete the offer "
+                                    <span className="font-semibold">
+                                        {offerToDelete.title}
+                                    </span>
+                                    "? This action cannot be undone.
+                                </p>
+                                <div className="flex justify-end space-x-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setOfferToDelete(null);
+                                        }}
+                                        className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={confirmDelete}
+                                        disabled={processing}
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                                    >
+                                        {processing ? (
+                                            <span className="inline-block mr-2 animate-spin">
+                                                ⟳
+                                            </span>
+                                        ) : (
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                        )}
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
