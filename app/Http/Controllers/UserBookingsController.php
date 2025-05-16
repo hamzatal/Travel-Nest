@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Book;
+use App\Models\Booking;
 use App\Models\Favorite;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +19,7 @@ class UserBookingsController extends Controller
         }
 
         // Fetch bookings with related destination, offer, and package data
-        $bookings = Book::where('user_id', $user->id)
+        $bookings = Booking::where('user_id', $user->id)
             ->with([
                 'destination' => function ($query) {
                     $query->select([

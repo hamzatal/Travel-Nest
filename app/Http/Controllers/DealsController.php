@@ -28,7 +28,6 @@ class DealsController extends Controller
                     'is_featured' => $offer->is_featured,
                 ];
             }),
-            'auth' => Auth::check() ? ['user' => Auth::user()] : null,
             'flash' => session()->only(['success', 'error']),
         ]);
     }

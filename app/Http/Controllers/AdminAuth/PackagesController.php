@@ -16,7 +16,6 @@ class PackagesController extends Controller
         $packages = Package::all();
         return Inertia::render('Packages/Index', [
             'packages' => $packages,
-            'auth' => auth()->user(),
         ]);
     }
 

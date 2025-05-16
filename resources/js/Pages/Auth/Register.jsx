@@ -19,14 +19,23 @@ export default function Register() {
     const [currentStep, setCurrentStep] = useState(1);
     const [accountType, setAccountType] = useState("user");
 
-    const { data, setData, post, processing, errors, reset, setError, clearErrors } = useForm({
+    const {
+        data,
+        setData,
+        post,
+        processing,
+        errors,
+        reset,
+        setError,
+        clearErrors,
+    } = useForm({
         name: "",
         email: "",
         password: "",
         password_confirmation: "",
         role: "user",
-        company_name: "", 
-        license_number: "", 
+        company_name: "",
+        license_number: "",
     });
 
     useEffect(() => {
@@ -47,38 +56,50 @@ export default function Register() {
     };
 
     const validateCompanyName = (companyName) => {
-        if (accountType === "company" && !companyName) return "Company name is required";
-        if (companyName && companyName.length < 2) return "Company name must be at least 2 characters long";
-        if (companyName && companyName.length > 100) return "Company name cannot exceed 100 characters";
+        if (accountType === "company" && !companyName)
+            return "Company name is required";
+        if (companyName && companyName.length < 2)
+            return "Company name must be at least 2 characters long";
+        if (companyName && companyName.length > 100)
+            return "Company name cannot exceed 100 characters";
         return null;
     };
 
     const validateLicenseNumber = (licenseNumber) => {
-        if (accountType === "company" && !licenseNumber) return "License number is required";
-        if (licenseNumber && licenseNumber.length > 50) return "License number cannot exceed 50 characters";
+        if (accountType === "company" && !licenseNumber)
+            return "License number is required";
+        if (licenseNumber && licenseNumber.length > 50)
+            return "License number cannot exceed 50 characters";
+        if (licenseNumber && !/^[a-zA-Z0-9-]+$/.test(licenseNumber))
+            return "License number can only contain letters, numbers, and hyphens";
         return null;
     };
 
     const validateEmail = (email) => {
         if (!email) return "Email is required";
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return "Please enter a valid email address";
+        if (!emailRegex.test(email))
+            return "Please enter a valid email address";
         if (email.length > 100) return "Email cannot exceed 100 characters";
         return null;
     };
 
     const validatePassword = (password) => {
         if (!password) return "Password is required";
-        if (password.length < 8) return "Password must be at least 8 characters long";
+        if (password.length < 8)
+            return "Password must be at least 8 characters long";
         if (password.length > 64) return "Password cannot exceed 64 characters";
         const hasUpperCase = /[A-Z]/.test(password);
         const hasLowerCase = /[a-z]/.test(password);
         const hasNumbers = /[0-9]/.test(password);
         const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-        if (!hasUpperCase) return "Password must contain at least one uppercase letter";
-        if (!hasLowerCase) return "Password must contain at least one lowercase letter";
+        if (!hasUpperCase)
+            return "Password must contain at least one uppercase letter";
+        if (!hasLowerCase)
+            return "Password must contain at least one lowercase letter";
         if (!hasNumbers) return "Password must contain at least one number";
-        if (!hasSpecialChar) return "Password must contain at least one special character";
+        if (!hasSpecialChar)
+            return "Password must contain at least one special character";
         return null;
     };
 
@@ -98,16 +119,23 @@ export default function Register() {
             if (nameError) newErrors.name = nameError;
             const companyNameError = validateCompanyName(data.company_name);
             if (companyNameError) newErrors.company_name = companyNameError;
-            const licenseNumberError = validateLicenseNumber(data.license_number);
-            if (licenseNumberError) newErrors.license_number = licenseNumberError;
+            const licenseNumberError = validateLicenseNumber(
+                data.license_number
+            );
+            if (licenseNumberError)
+                newErrors.license_number = licenseNumberError;
             const emailError = validateEmail(data.email);
             if (emailError) newErrors.email = emailError;
         }
         if (currentStep === 3) {
             const passwordError = validatePassword(data.password);
             if (passwordError) newErrors.password = passwordError;
-            const confirmPasswordError = validateConfirmPassword(data.password, data.password_confirmation);
-            if (confirmPasswordError) newErrors.password_confirmation = confirmPasswordError;
+            const confirmPasswordError = validateConfirmPassword(
+                data.password,
+                data.password_confirmation
+            );
+            if (confirmPasswordError)
+                newErrors.password_confirmation = confirmPasswordError;
         }
         return newErrors;
     };
@@ -116,8 +144,13 @@ export default function Register() {
         clearErrors();
         const validationErrors = validate();
         if (Object.keys(validationErrors).length > 0) {
-            Object.entries(validationErrors).forEach(([key, message]) => setError(key, message));
-            setNotification({ type: "error", message: "Please fix the errors below." });
+            Object.entries(validationErrors).forEach(([key, message]) =>
+                setError(key, message)
+            );
+            setNotification({
+                type: "error",
+                message: "Please fix the errors below.",
+            });
             setTimeout(() => setNotification(null), 3000);
             return;
         }
@@ -138,26 +171,47 @@ export default function Register() {
         clearErrors();
         const validationErrors = validate();
         if (Object.keys(validationErrors).length > 0) {
-            Object.entries(validationErrors).forEach(([key, message]) => setError(key, message));
-            setNotification({ type: "error", message: "Please fix the errors below." });
+            Object.entries(validationErrors).forEach(([key, message]) =>
+                setError(key, message)
+            );
+            setNotification({
+                type: "error",
+                message: "Please fix the errors below.",
+            });
             setTimeout(() => setNotification(null), 3000);
             return;
         }
-        const routeName = data.role === "company" ? "company.register" : "register";
+        const routeName =
+            accountType === "company" ? "company.register" : "register";
         post(route(routeName), {
+            data: {
+                name: data.name,
+                email: data.email,
+                password: data.password,
+                password_confirmation: data.password_confirmation,
+                ...(accountType === "company" && {
+                    company_name: data.company_name,
+                    license_number: data.license_number,
+                }),
+            },
             onSuccess: () => {
                 setNotification({
                     type: "success",
-                    message: data.role === "company"
-                        ? "Company registration successful! Redirecting to dashboard..."
-                        : "Registration successful! Please verify your email.",
+                    message:
+                        accountType === "company"
+                            ? "Company registration successful! Redirecting to dashboard..."
+                            : "Registration successful! Please verify your email.",
                 });
                 setTimeout(() => setNotification(null), 2000);
             },
-            onError: (errors) => {
+            onError: (serverErrors) => {
                 setNotification({
                     type: "error",
-                    message: errors.email || "Registration failed. Please try again.",
+                    message:
+                        serverErrors.email ||
+                        serverErrors.company_name ||
+                        serverErrors.license_number ||
+                        "Registration failed. Please try again.",
                 });
                 setTimeout(() => setNotification(null), 3000);
             },
@@ -172,13 +226,23 @@ export default function Register() {
                         <React.Fragment key={step}>
                             <div
                                 className={`rounded-full h-10 w-10 flex items-center justify-center font-medium
-                                    ${currentStep === step ? "bg-green-600 text-white" : currentStep > step ? "bg-green-500 text-white" : "bg-gray-700 text-gray-300"}`}
+                                    ${
+                                        currentStep === step
+                                            ? "bg-green-600 text-white"
+                                            : currentStep > step
+                                            ? "bg-green-500 text-white"
+                                            : "bg-gray-700 text-gray-300"
+                                    }`}
                             >
                                 {step}
                             </div>
                             {step < 3 && (
                                 <ChevronRight
-                                    className={`w-5 h-5 ${currentStep > step ? "text-green-500" : "text-gray-500"}`}
+                                    className={`w-5 h-5 ${
+                                        currentStep > step
+                                            ? "text-green-500"
+                                            : "text-gray-500"
+                                    }`}
                                 />
                             )}
                         </React.Fragment>
@@ -194,98 +258,198 @@ export default function Register() {
                 return (
                     <div className="space-y-6">
                         <div className="text-center mb-6">
-                            <h3 className="text-2xl font-bold text-white">Choose Account Type</h3>
-                            <p className="text-sm text-gray-400 mt-2">Select the type of account you want to create</p>
+                            <h3 className="text-2xl font-bold text-white">
+                                Choose Account Type
+                            </h3>
+                            <p className="text-sm text-gray-400 mt-2">
+                                Select the type of account you want to create
+                            </p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div
                                 className={`p-6 rounded-lg border-2 cursor-pointer transition-all flex flex-col items-center
-                                    ${accountType === "user" ? "border-green-500 bg-green-600/20" : "border-gray-700 bg-gray-800/50 hover:border-gray-500"}`}
+                                    ${
+                                        accountType === "user"
+                                            ? "border-green-500 bg-green-600/20"
+                                            : "border-gray-700 bg-gray-800/50 hover:border-gray-500"
+                                    }`}
                                 onClick={() => setAccountType("user")}
                             >
-                                <User className={`w-12 h-12 mb-4 ${accountType === "user" ? "text-green-400" : "text-gray-400"}`} />
-                                <h4 className="text-lg font-medium text-white">Individual</h4>
-                                <p className="text-sm text-gray-400 text-center mt-2">For personal travel and experiences</p>
+                                <User
+                                    className={`w-12 h-12 mb-4 ${
+                                        accountType === "user"
+                                            ? "text-green-400"
+                                            : "text-gray-400"
+                                    }`}
+                                />
+                                <h4 className="text-lg font-medium text-white">
+                                    Individual
+                                </h4>
+                                <p className="text-sm text-gray-400 text-center mt-2">
+                                    For personal travel and experiences
+                                </p>
                             </div>
                             <div
                                 className={`p-6 rounded-lg border-2 cursor-pointer transition-all flex flex-col items-center
-                                    ${accountType === "company" ? "border-green-500 bg-green-600/20" : "border-gray-700 bg-gray-800/50 hover:border-gray-500"}`}
+                                    ${
+                                        accountType === "company"
+                                            ? "border-green-500 bg-green-600/20"
+                                            : "border-gray-700 bg-gray-800/50 hover:border-gray-500"
+                                    }`}
                                 onClick={() => setAccountType("company")}
                             >
-                                <Building2 className={`w-12 h-12 mb-4 ${accountType === "company" ? "text-green-400" : "text-gray-400"}`} />
-                                <h4 className="text-lg font-medium text-white">Company</h4>
-                                <p className="text-sm text-gray-400 text-center mt-2">For managing travel services and listings</p>
+                                <Building2
+                                    className={`w-12 h-12 mb-4 ${
+                                        accountType === "company"
+                                            ? "text-green-400"
+                                            : "text-gray-400"
+                                    }`}
+                                />
+                                <h4 className="text-lg font-medium text-white">
+                                    Company
+                                </h4>
+                                <p className="text-sm text-gray-400 text-center mt-2">
+                                    For managing travel services and listings
+                                </p>
                             </div>
                         </div>
-                        {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role}</p>}
+                        {errors.role && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.role}
+                            </p>
+                        )}
                     </div>
                 );
             case 2:
                 return (
                     <div className="space-y-6">
                         <div className="text-center mb-6">
-                            <h3 className="text-2xl font-bold text-white">{accountType === "company" ? "Company Information" : "Personal Information"}</h3>
-                            <p className="text-sm text-gray-400 mt-2">{accountType === "company" ? "Tell us about your company" : "Tell us who you are"}</p>
+                            <h3 className="text-2xl font-bold text-white">
+                                {accountType === "company"
+                                    ? "Company Information"
+                                    : "Personal Information"}
+                            </h3>
+                            <p className="text-sm text-gray-400 mt-2">
+                                {accountType === "company"
+                                    ? "Tell us about your company"
+                                    : "Tell us who you are"}
+                            </p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">{accountType === "company" ? "Contact Person Name" : "Full Name"}</label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                {accountType === "company"
+                                    ? "Contact Person Name"
+                                    : "Full Name"}
+                            </label>
                             <div className="relative">
                                 <User className="absolute left-3 top-3 text-gray-400" />
                                 <input
                                     type="text"
                                     value={data.name}
-                                    onChange={(e) => setData("name", e.target.value)}
-                                    className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${errors.name ? "border-red-500" : ""}`}
-                                    placeholder={accountType === "company" ? "Contact Person Name" : "Your Name"}
+                                    onChange={(e) =>
+                                        setData("name", e.target.value)
+                                    }
+                                    className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                        errors.name ? "border-red-500" : ""
+                                    }`}
+                                    placeholder={
+                                        accountType === "company"
+                                            ? "Contact Person Name"
+                                            : "Your Name"
+                                    }
                                 />
                             </div>
-                            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                            {errors.name && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.name}
+                                </p>
+                            )}
                         </div>
                         {accountType === "company" && (
                             <>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">Company Name</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        Company Name
+                                    </label>
                                     <div className="relative">
                                         <Building2 className="absolute left-3 top-3 text-gray-400" />
                                         <input
                                             type="text"
                                             value={data.company_name}
-                                            onChange={(e) => setData("company_name", e.target.value)}
-                                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${errors.company_name ? "border-red-500" : ""}`}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "company_name",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                                errors.company_name
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
                                             placeholder="Your Company Name"
                                         />
                                     </div>
-                                    {errors.company_name && <p className="text-red-500 text-sm mt-1">{errors.company_name}</p>}
+                                    {errors.company_name && (
+                                        <p className="text-red-500 text-sm mt-1">
+                                            {errors.company_name}
+                                        </p>
+                                    )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">License Number</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        License Number
+                                    </label>
                                     <div className="relative">
                                         <Building2 className="absolute left-3 top-3 text-gray-400" />
                                         <input
                                             type="text"
                                             value={data.license_number}
-                                            onChange={(e) => setData("license_number", e.target.value)}
-                                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${errors.license_number ? "border-red-500" : ""}`}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "license_number",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                                errors.license_number
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
                                             placeholder="Company License Number"
                                         />
                                     </div>
-                                    {errors.license_number && <p className="text-red-500 text-sm mt-1">{errors.license_number}</p>}
+                                    {errors.license_number && (
+                                        <p className="text-red-500 text-sm mt-1">
+                                            {errors.license_number}
+                                        </p>
+                                    )}
                                 </div>
                             </>
                         )}
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Email Address
+                            </label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-3 text-gray-400" />
                                 <input
                                     type="email"
                                     value={data.email}
-                                    onChange={(e) => setData("email", e.target.value)}
-                                    className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${errors.email ? "border-red-500" : ""}`}
+                                    onChange={(e) =>
+                                        setData("email", e.target.value)
+                                    }
+                                    className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                        errors.email ? "border-red-500" : ""
+                                    }`}
                                     placeholder="you@example.com"
                                 />
                             </div>
-                            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                            {errors.email && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.email}
+                                </p>
+                            )}
                         </div>
                     </div>
                 );
@@ -293,50 +457,91 @@ export default function Register() {
                 return (
                     <div className="space-y-6">
                         <div className="text-center mb-6">
-                            <h3 className="text-2xl font-bold text-white">Set Password</h3>
-                            <p className="text-sm text-gray-400 mt-2">Create a secure password for your account</p>
+                            <h3 className="text-2xl font-bold text-white">
+                                Set Password
+                            </h3>
+                            <p className="text-sm text-gray-400 mt-2">
+                                Create a secure password for your account
+                            </p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Password
+                            </label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-3 text-gray-400" />
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     value={data.password}
-                                    onChange={(e) => setData("password", e.target.value)}
-                                    className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${errors.password ? "border-red-500" : ""}`}
+                                    onChange={(e) =>
+                                        setData("password", e.target.value)
+                                    }
+                                    className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                        errors.password ? "border-red-500" : ""
+                                    }`}
                                     placeholder="••••••••"
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
+                                    onClick={() =>
+                                        setShowPassword(!showPassword)
+                                    }
                                     className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
                                 >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    {showPassword ? (
+                                        <EyeOff className="w-5 h-5" />
+                                    ) : (
+                                        <Eye className="w-5 h-5" />
+                                    )}
                                 </button>
                             </div>
-                            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+                            {errors.password && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.password}
+                                </p>
+                            )}
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">Confirm Password</label>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Confirm Password
+                            </label>
                             <div className="relative">
                                 <Lock className="absolute left-3 top-3 text-gray-400" />
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     value={data.password_confirmation}
-                                    onChange={(e) => setData("password_confirmation", e.target.value)}
-                                    className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${errors.password_confirmation ? "border-red-500" : ""}`}
+                                    onChange={(e) =>
+                                        setData(
+                                            "password_confirmation",
+                                            e.target.value
+                                        )
+                                    }
+                                    className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                        errors.password_confirmation
+                                            ? "border-red-500"
+                                            : ""
+                                    }`}
                                     placeholder="••••••••"
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
+                                    onClick={() =>
+                                        setShowPassword(!showPassword)
+                                    }
                                     className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
                                 >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    {showPassword ? (
+                                        <EyeOff className="w-5 h-5" />
+                                    ) : (
+                                        <Eye className="w-5 h-5" />
+                                    )}
                                 </button>
                             </div>
-                            {errors.password_confirmation && <p className="text-red-500 text-sm mt-1">{errors.password_confirmation}</p>}
+                            {errors.password_confirmation && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.password_confirmation}
+                                </p>
+                            )}
                         </div>
                     </div>
                 );
@@ -365,7 +570,13 @@ export default function Register() {
                     className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all disabled:opacity-50 flex items-center space-x-2"
                     disabled={processing}
                 >
-                    <span>{currentStep === 3 ? (processing ? "Creating Account..." : "Complete Registration") : "Next"}</span>
+                    <span>
+                        {currentStep === 3
+                            ? processing
+                                ? "Creating Account..."
+                                : "Complete Registration"
+                            : "Next"}
+                    </span>
                     {currentStep < 3 && <ChevronRight className="w-5 h-5" />}
                 </button>
             </div>

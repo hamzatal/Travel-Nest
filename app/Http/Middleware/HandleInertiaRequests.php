@@ -32,15 +32,21 @@ class HandleInertiaRequests extends Middleware
     {
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
+                'user' => Auth::guard('web')->check() ? [
+                    'id' => Auth::guard('web')->user()->id,
+                    'name' => Auth::guard('web')->user()->name,
+                    'email' => Auth::guard('web')->user()->email,
                 ] : null,
                 'admin' => Auth::guard('admin')->check() ? [
                     'id' => Auth::guard('admin')->user()->id,
                     'name' => Auth::guard('admin')->user()->name,
                     'email' => Auth::guard('admin')->user()->email,
+                ] : null,
+                'company' => Auth::guard('company')->check() ? [
+                    'id' => Auth::guard('company')->user()->id,
+                    'name' => Auth::guard('company')->user()->name,
+                    'email' => Auth::guard('company')->user()->email,
+                    'company_name' => Auth::guard('company')->user()->company_name,
                 ] : null,
             ],
             'flash' => [

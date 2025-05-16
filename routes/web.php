@@ -31,6 +31,16 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // ===================================================
+//! Company Authentication
+// ===================================================
+
+use App\Http\Controllers\CompanyAuth\CompanyController;
+use App\Http\Controllers\CompanyAuth\CompanyDashboardController;
+use App\Http\Controllers\CompanyAuth\CompanyDestinationController;
+use App\Http\Controllers\CompanyAuth\CompanyOfferController;
+use App\Http\Controllers\CompanyAuth\CompanyPackageController;
+
+// ===================================================
 //! Public Routes (No Authentication Required)
 // ===================================================
 
@@ -44,11 +54,12 @@ Route::get('/', function () {
     ]);
 })->name('welcome');
 
+Route::get('/home', [HomeController::class, 'index'])->name('home');
+
 //? Login Page
 Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
 Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.submit');
 Route::post('/admin/logout', [LoginController::class, 'destroy'])->name('admin.logout');
-
 
 // ===================================================
 //! Frontend Routes
@@ -92,10 +103,7 @@ require __DIR__ . '/auth.php';
 // ===================================================
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
-
-
 
     //? Search Route
     Route::get('/search', [SearchController::class, 'index'])->name('search');
@@ -123,7 +131,6 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
 // ===================================================
 //! Admin Routes
 // ===================================================
-
 
 //! Admin Protected Routes (Authenticated: Admin)
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -184,6 +191,20 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{package}', [PackagesController::class, 'destroy'])->name('destroy');
     });
 });
+
+// ===================================================
+//! Company Routes
+// ===================================================
+
+Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(function () {
+    Route::get('/dashboard', [CompanyDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/profile', [CompanyController::class, 'profile'])->name('profile');
+    Route::put('/profile', [CompanyController::class, 'updateProfile'])->name('profile');
+});
+
+Route::post('/company/login', [CompanyController::class, 'login'])->name('company.login');
+Route::post('/company/logout', [CompanyController::class, 'logout'])->name('company.logout');
+
 // ===================================================
 //! API Routes
 // ===================================================

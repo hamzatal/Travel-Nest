@@ -14,12 +14,14 @@ import {
     Search,
     PlaneIcon,
     PackageCheck,
+    LayoutDashboard,
+    Building2,
 } from "lucide-react";
 import { Link, usePage, router } from "@inertiajs/react";
 import axios from "axios";
 axios.defaults.baseURL = window.location.origin;
 
-const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
+const Nav = ({ isDarkMode = true, wishlist = [] }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -27,9 +29,15 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const { auth } = props;
     const searchRef = useRef(null);
     const profileRef = useRef(null);
+
+    // Debug auth value
+    useEffect(() => {
+        console.log("Nav.jsx auth:", auth);
+    }, [auth]);
 
     // Handle scroll effect
     useEffect(() => {
@@ -64,7 +72,6 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                 setSearchQuery("");
             }
 
-            // Fix for profile dropdown - only close if clicking outside AND dropdown is open
             if (
                 profileRef.current &&
                 !profileRef.current.contains(event.target) &&
@@ -78,7 +85,7 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [isSearchOpen, isDropdownOpen]); // Add dependencies to ensure the effect runs when these states change
+    }, [isSearchOpen, isDropdownOpen]);
 
     // Real-time search
     useEffect(() => {
@@ -140,7 +147,7 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
         { label: "Contact", href: "/ContactPage", icon: Mail },
     ];
 
-    const dropdownItems = [
+    const userDropdownItems = [
         {
             label: "My Bookings",
             href: "/UserBookings",
@@ -151,6 +158,26 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
         {
             label: "Logout",
             href: route("logout"),
+            icon: LogOut,
+            method: "post",
+        },
+    ];
+
+    const companyDropdownItems = [
+        {
+            label: "Dashboard",
+            href: route("company.dashboard"),
+            icon: LayoutDashboard,
+            method: "get",
+        },
+        {
+            label: "Company Profile",
+            href: route("company.profile"),
+            icon: Building2,
+        },
+        {
+            label: "Logout",
+            href: route("company.logout"),
             icon: LogOut,
             method: "post",
         },
@@ -168,17 +195,21 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
 
     // Profile Button Component
     const ProfileButton = () => {
-        const displayAvatar = user?.avatar_url
-            ? user.avatar_url
+        if (!auth || (!auth.user && !auth.company)) {
+            return null; // Don't render if auth is null or no user/company is authenticated
+        }
+
+        const displayAvatar = auth.user?.avatar_url
+            ? auth.user.avatar_url
             : "/images/avatar.webp";
 
         return (
             <div className="relative" ref={profileRef}>
                 <button
-                    onClick={toggleDropdown} // Use the toggle function
+                    onClick={toggleDropdown}
                     className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 focus:outline-none border-2 border-green-500 hover:bg-green-600/30 transition-colors"
                 >
-                    {user?.avatar_url ? (
+                    {auth.user && auth.user.avatar_url ? (
                         <img
                             src={displayAvatar}
                             alt="User Avatar"
@@ -186,7 +217,11 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                         />
                     ) : (
                         <div className="w-full h-full rounded-full flex items-center justify-center">
-                            <User className="w-6 h-6 text-white" />
+                            {auth.company ? (
+                                <Building2 className="w-6 h-6 text-white" />
+                            ) : (
+                                <User className="w-6 h-6 text-white" />
+                            )}
                         </div>
                     )}
                 </button>
@@ -200,7 +235,10 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                             transition={{ duration: 0.2 }}
                             className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-black/80 backdrop-blur-lg text-white border border-green-500/30 overflow-hidden z-60"
                         >
-                            {dropdownItems.map((item) => (
+                            {(auth.user
+                                ? userDropdownItems
+                                : companyDropdownItems
+                            ).map((item) => (
                                 <Link
                                     key={item.label}
                                     href={item.href}
@@ -462,6 +500,24 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                 {/* Profile Button */}
                 <ProfileButton />
 
+                {/* Login/Signup Links */}
+                {(!auth || (!auth.user && !auth.company)) && (
+                    <>
+                        <Link
+                            href={route("login")}
+                            className="hidden md:block text-gray-300 hover:text-green-400 transition-colors"
+                        >
+                            Log in
+                        </Link>
+                        <Link
+                            href={route("register")}
+                            className="hidden md:block text-gray-300 hover:text-green-400 transition-colors"
+                        >
+                            Sign up
+                        </Link>
+                    </>
+                )}
+
                 {/* Mobile Menu Button */}
                 <button
                     className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 border border-green-500/30 hover:bg-green-600/30 transition-colors"
@@ -621,6 +677,29 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                                 <span>{item.label}</span>
                             </Link>
                         ))}
+                        {auth?.company && (
+                            <Link
+                                href={route("company.dashboard")}
+                                className={`
+                                    flex items-center
+                                    px-4 py-3
+                                    rounded-lg
+                                    text-sm
+                                    font-medium
+                                    w-full
+                                    transition-colors duration-200
+                                    ${
+                                        isActive(route("company.dashboard"))
+                                            ? "bg-green-600 text-white"
+                                            : "text-gray-300 hover:bg-green-600/20 hover:text-white"
+                                    }
+                                `}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                <LayoutDashboard className="w-5 h-5 mr-2" />
+                                <span>Dashboard</span>
+                            </Link>
+                        )}
                     </div>
 
                     {/* Book Now Button on Mobile */}
@@ -633,6 +712,26 @@ const Nav = ({ isDarkMode = true, wishlist = [], handleLogout, user }) => {
                             Book Now <Plane className="ml-2 w-5 h-5" />
                         </Link>
                     </div>
+
+                    {/* Mobile Login/Signup Links */}
+                    {(!auth || (!auth.user && !auth.company)) && (
+                        <div className="px-6 mt-4 space-y-2">
+                            <Link
+                                href={route("login")}
+                                className="flex items-center px-4 py-3 rounded-lg text-sm font-medium w-full text-gray-300 hover:bg-green-600/20 hover:text-white"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Log in
+                            </Link>
+                            <Link
+                                href={route("register")}
+                                className="flex items-center px-4 py-3 rounded-lg text-sm font-medium w-full text-gray-300 hover:bg-green-600/20 hover:text-white"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Sign up
+                            </Link>
+                        </div>
+                    )}
                 </div>
             )}
         </header>

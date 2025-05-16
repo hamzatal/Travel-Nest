@@ -14,7 +14,6 @@ class PackagesController extends Controller
         $packages = Package::with('company')->get();
         return Inertia::render('Packages/Index', [
             'packages' => $packages,
-            'auth' => auth()->user(),
         ]);
     }
 
@@ -26,7 +25,7 @@ class PackagesController extends Controller
             : Package::all();
         return Inertia::render('Company/Packages/Index', [
             'packages' => $packages,
-            'auth' => $user,
+            'auth' =>$user,
         ]);
     }
 

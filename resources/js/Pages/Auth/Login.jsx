@@ -5,90 +5,52 @@ import {
     Lock,
     Eye,
     EyeOff,
-    LogIn,
     Home,
+    Building2,
     User,
     PhoneCall,
 } from "lucide-react";
-import { Head, Link, useForm, usePage } from "@inertiajs/react";
+import { Head, Link, useForm, usePage, router } from "@inertiajs/react";
 
-const Notification = ({ message, type, onClose }) => {
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [message, onClose]);
-
-  if (!message) return null;
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className={`fixed top-4 right-4 z-[100] p-4 rounded-md shadow-lg max-w-sm ${
-          type === "error" ? "bg-red-600" : "bg-green-600"
-        } text-white flex items-center space-x-2`}
-      >
-        <span>{message}</span>
-        <button onClick={onClose} className="ml-2 text-white hover:text-gray-200">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </motion.div>
-    </AnimatePresence>
-  );
-};
-
-const LoginPage = () => {
+export default function Login({ status }) {
     const { auth } = usePage().props;
-    const [isDarkMode, setIsDarkMode] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
     const [notification, setNotification] = useState(null);
+    const [accountType, setAccountType] = useState(
+        auth.company ? "company" : "user"
+    );
+
+    const { data, setData, post, processing, errors, reset, clearErrors } =
+        useForm({
+            email: "",
+            password: "",
+            remember: false,
+        });
+
+    useEffect(() => {
+        return () => reset("password");
+    }, []);
+
+    useEffect(() => {
+        if (auth.company && accountType === "company") {
+            router.visit(route("home"), { replace: true });
+        }
+    }, [auth.company, accountType]);
+
     const validateEmail = (email) => {
         if (!email) return "Email is required";
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email))
             return "Please enter a valid email address";
-        if (email.length > 100) return "Email cannot exceed 100 characters";
         return null;
     };
 
     const validatePassword = (password) => {
         if (!password) return "Password is required";
-        if (password.length < 8)
-            return "Password must be at least 8 characters long";
-        if (password.length > 50) return "Password cannot exceed 50 characters";
         return null;
     };
 
-    const {
-        data,
-        setData,
-        post,
-        processing,
-        errors,
-        reset,
-        setError,
-        clearErrors,
-    } = useForm({
-        email: "",
-        password: "",
-        remember: true,
-    });
-
-    useEffect(() => {
-        return () => {
-            reset("password");
-        };
-    }, []);
-
-    const validateForm = () => {
+    const validate = () => {
         const newErrors = {};
         const emailError = validateEmail(data.email);
         if (emailError) newErrors.email = emailError;
@@ -97,54 +59,53 @@ const LoginPage = () => {
         return newErrors;
     };
 
-    const submit = (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
         clearErrors();
-        const validationErrors = validateForm();
+        const validationErrors = validate();
         if (Object.keys(validationErrors).length > 0) {
-            Object.keys(validationErrors).forEach((key) => {
-                setError(key, validationErrors[key]);
-            });
+            Object.entries(validationErrors).forEach(([key, message]) =>
+                setError(key, message)
+            );
             setNotification({
                 type: "error",
                 message: "Please fix the errors below.",
             });
+            setTimeout(() => setNotification(null), 3000);
             return;
         }
-        post(route("login"), {
+        const routeName = accountType === "company" ? "company.login" : "login";
+        post(route(routeName), {
             onSuccess: () => {
                 setNotification({
                     type: "success",
-                    message: "Login successful! Redirecting...",
+                    message:
+                        accountType === "company"
+                            ? "Company login successful! Redirecting to home..."
+                            : "Login successful! Redirecting...",
                 });
+                setTimeout(() => {
+                    router.visit(route("home"), { replace: true });
+                }, 1000);
             },
-            onError: (errors) => {
+            onError: (serverErrors) => {
                 setNotification({
                     type: "error",
-                    message: errors.email || "Invalid credentials. Try again.",
+                    message:
+                        serverErrors.email ||
+                        "Login failed. Please check your credentials.",
                 });
-                Object.keys(errors).forEach((key) => {
-                    setError(key, errors[key]);
-                });
+                setTimeout(() => setNotification(null), 3000);
             },
         });
     };
 
-    const closeNotification = () => {
-        setNotification(null);
-    };
-
     return (
-        <div className="min-h-screen w-full relative">
-            <Head title="Sign In - Travel Nest" />
-
-            <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: "url('/images/world.svg')" }}
-            />
-
-            <div className="absolute inset-0 bg-black opacity-50 z-0" />
-
+        <div
+            className="min-h-screen flex bg-cover bg-center bg-no-repeat relative"
+            style={{ backgroundImage: "url('/images/world.svg')" }}
+        >
+            <Head title="Log in - Travel Nest" />
             <Link
                 href="/"
                 className="fixed top-6 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
@@ -152,7 +113,6 @@ const LoginPage = () => {
                 <Home className="w-5 h-5" />
                 <span className="font-medium">Home</span>
             </Link>
-
             <Link
                 href="/ContactPage"
                 className="fixed top-20 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
@@ -160,175 +120,208 @@ const LoginPage = () => {
                 <PhoneCall className="w-5 h-5" />
                 <span className="font-medium">Contact Us</span>
             </Link>
-
-            <Notification
-                message={notification?.message}
-                type={notification?.type}
-                onClose={closeNotification}
-            />
-
-            <div className="relative z-10 min-h-screen flex">
-                <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12">
-                    <div className="text-center space-y-8">
-                        <div className="bg-green-600/20 p-6 rounded-full inline-block mx-auto">
+            <AnimatePresence>
+                {notification && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -50 }}
+                        className={`fixed top-4 left-1/3 transform -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg z-20 text-white ${
+                            notification.type === "success"
+                                ? "bg-green-600"
+                                : "bg-red-600"
+                        }`}
+                    >
+                        {notification.message}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            <div className="hidden lg:flex w-1/2 items-center justify-center p-12">
+                <div className="text-center space-y-8">
+                    <div className="bg-green-600/20 p-6 rounded-full inline-block mx-auto">
+                        {accountType === "company" ? (
+                            <Building2 className="w-20 h-20 text-green-500" />
+                        ) : (
                             <User className="w-20 h-20 text-green-500" />
-                        </div>
-                        <h1 className="text-5xl font-bold text-white">
-                            Welcome to{" "}
-                            <span className="text-green-500">Travel Nest</span>
-                        </h1>
-                        <p className="text-gray-300 max-w-md mx-auto text-lg">
-                            Plan your next trip with ease. Book flights, explore
-                            destinations, and unlock unforgettable adventures
-                            around the world.
-                        </p>
+                        )}
                     </div>
+                    <h1 className="text-5xl font-bold text-white">
+                        Welcome to{" "}
+                        <span className="text-green-500">Travel Nest</span>
+                    </h1>
+                    <p className="text-gray-300 max-w-md mx-auto text-lg">
+                        {accountType === "company"
+                            ? "Log in to manage companies and create your travel ."
+                            : "Log in to start planning your next adventure with us."}
+                    </p>
                 </div>
-
-                <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8">
-                    <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800/90 backdrop-blur-sm">
-                        <div className="lg:hidden text-center mb-8">
-                            <div className="bg-green-600/20 p-4 rounded-full inline-block mx-auto">
-                                <User className="w-12 h-12 text-green-500" />
-                            </div>
-                            <h1 className="text-3xl font-bold text-white mt-3">
-                                <span className="text-green-500">
-                                    Travel Nest
-                                </span>
-                            </h1>
-                        </div>
-
-                        <h2 className="text-3xl font-bold text-white text-center mb-2">
-                            Sign In to Travel Nest
-                        </h2>
-                        <p className="text-gray-400 text-center mb-6">
-                            Enter your details to continue
+            </div>
+            <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-2">
+                <div className="w-full max-w-md p-5 rounded-xl shadow-xl bg-gray-800/90 backdrop-blur-sm">
+                    <div className="text-center mb-6">
+                        <h3 className="text-2xl font-bold text-white">
+                            Log in to Your Account
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-2">
+                            Select your account type to continue
                         </p>
-
-                        <form onSubmit={submit} className="space-y-6">
-                            <div>
-                                <label
-                                    htmlFor="email"
-                                    className="block text-sm font-medium text-gray-300 mb-2"
-                                >
-                                    Email Address
-                                </label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-3 text-gray-400" />
-                                    <input
-                                        type="email"
-                                        id="email"
-                                        name="email"
-                                        value={data.email}
-                                        onChange={(e) =>
-                                            setData("email", e.target.value)
-                                        }
-                                        className={`pl-10 w-full p-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
-                                            errors.email ? "border-red-500" : ""
-                                        }`}
-                                        placeholder="you@example.com"
-                                        autoComplete="username"
-                                    />
-                                </div>
-                                {errors.email && (
-                                    <span className="text-red-500 text-sm mt-1">
-                                        {errors.email}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label
-                                    htmlFor="password"
-                                    className="block text-sm font-medium text-gray-300 mb-2"
-                                >
-                                    Password
-                                </label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-3 text-gray-400" />
-                                    <input
-                                        type={
-                                            showPassword ? "text" : "password"
-                                        }
-                                        id="password"
-                                        name="password"
-                                        value={data.password}
-                                        onChange={(e) =>
-                                            setData("password", e.target.value)
-                                        }
-                                        className={`pl-10 w-full p-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
-                                            errors.password
-                                                ? "border-red-500"
-                                                : ""
-                                        }`}
-                                        placeholder="••••••••"
-                                        autoComplete="current-password"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setShowPassword(!showPassword)
-                                        }
-                                        className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
-                                    >
-                                        {showPassword ? (
-                                            <EyeOff className="w-5 h-5" />
-                                        ) : (
-                                            <Eye className="w-5 h-5" />
-                                        )}
-                                    </button>
-                                </div>
-                                {errors.password && (
-                                    <span className="text-red-500 text-sm mt-1">
-                                        {errors.password}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <Link
-                                    href={route("password.request")}
-                                    className="text-sm text-green-400 hover:text-green-300 hover:underline transition-colors"
-                                >
-                                    Forgot password?
-                                </Link>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={processing}
-                                className="w-full py-3 flex items-center justify-center bg-green-600 text-white rounded-lg font-medium transition-all hover:bg-green-700 disabled:opacity-50 shadow-lg"
-                            >
-                                <LogIn className="w-5 h-5 mr-2" />
-                                {processing ? "Signing in..." : "Sign In"}
-                            </button>
-
-                            <p className="text-center text-sm text-gray-400 mt-6">
-                                Don't have an account?{" "}
-                                <Link
-                                    href={route("register")}
-                                    className="text-green-400 font-medium hover:text-green-300 hover:underline transition-colors"
-                                >
-                                    Register now
-                                </Link>
-                                <span> / </span>
-                                <Link
-                                    href={
-                                        auth.admin
-                                            ? route("admin.dashboard")
-                                            : route("admin.login")
-                                    }
-                                    className="text-green-400 font-medium hover:text-green-300 hover:underline transition-colors"
-                                >
-                                    Admin ?
-                                </Link>
-                            </p>
-                        </form>
                     </div>
+                    {status && (
+                        <div className="mb-4 text-sm text-green-500">
+                            {status}
+                        </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex flex-col items-center ${
+                                accountType === "user"
+                                    ? "border-green-500 bg-green-600/20"
+                                    : "border-gray-700 bg-gray-800/50 hover:border-gray-500"
+                            }`}
+                            onClick={() => setAccountType("user")}
+                        >
+                            <User
+                                className={`w-8 h-8 mb-2 ${
+                                    accountType === "user"
+                                        ? "text-green-400"
+                                        : "text-gray-400"
+                                }`}
+                            />
+                            <h4 className="text-sm font-medium text-white">
+                                Individual
+                            </h4>
+                        </div>
+                        <div
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex flex-col items-center ${
+                                accountType === "company"
+                                    ? "border-green-500 bg-green-600/20"
+                                    : "border-gray-700 bg-gray-800/50 hover:border-gray-500"
+                            }`}
+                            onClick={() => setAccountType("company")}
+                        >
+                            <Building2
+                                className={`w-8 h-8 mb-2 ${
+                                    accountType === "company"
+                                        ? "text-green-400"
+                                        : "text-gray-400"
+                                }`}
+                            />
+                            <h4 className="text-sm font-medium text-white">
+                                Company
+                            </h4>
+                        </div>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Email Address
+                            </label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-3 text-gray-400" />
+                                <input
+                                    type="email"
+                                    value={data.email}
+                                    onChange={(e) =>
+                                        setData("email", e.target.value)
+                                    }
+                                    className={`pl-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                        errors.email ? "border-red-500" : ""
+                                    }`}
+                                    placeholder="you@example.com"
+                                />
+                            </div>
+                            {errors.email && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.email}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Password
+                            </label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-3 text-gray-400" />
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={data.password}
+                                    onChange={(e) =>
+                                        setData("password", e.target.value)
+                                    }
+                                    className={`pl-10 pr-10 w-full py-3 rounded-lg border bg-gray-700 text-white border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none ${
+                                        errors.password ? "border-red-500" : ""
+                                    }`}
+                                    placeholder="••••••••"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPassword(!showPassword)
+                                    }
+                                    className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="w-5 h-5" />
+                                    ) : (
+                                        <Eye className="w-5 h-5" />
+                                    )}
+                                </button>
+                            </div>
+                            {errors.password && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.password}
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center text-sm text-gray-300">
+                                <input
+                                    type="checkbox"
+                                    checked={data.remember}
+                                    onChange={(e) =>
+                                        setData("remember", e.target.checked)
+                                    }
+                                    className="mr-2 rounded border-gray-600 text-green-500 focus:ring-green-500"
+                                />
+                                Remember me
+                            </label>
+                            <Link
+                                href={route("password.request")}
+                                className="text-sm text-green-400 hover:text-green-300 hover:underline transition-colors"
+                            >
+                                Forgot your password?
+                            </Link>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={processing}
+                            className="w-full py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all disabled:opacity-50"
+                        >
+                            {processing ? "Logging in..." : "Log in"}
+                        </button>
+                    </form>
+                    <p className="text-center text-sm text-gray-400 mt-6">
+                        Don’t have an account?{" "}
+                        <Link
+                            href={route("register")}
+                            className="text-green-400 font-medium hover:text-green-300 hover:underline transition-colors"
+                        >
+                            Sign up
+                        </Link>
+                        <span> / </span>
+                        <Link
+                            href={
+                                auth.admin
+                                    ? route("admin.dashboard")
+                                    : route("admin.login")
+                            }
+                            className="text-red-400 font-medium hover:text-green-300 hover:underline transition-colors"
+                        >
+                            Admin ?
+                        </Link>
+                    </p>
                 </div>
             </div>
         </div>
     );
-};
-
-export default LoginPage;
+}

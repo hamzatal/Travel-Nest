@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Notifications\Notifiable;
 
 class Company extends Authenticatable
 {
-    use HasFactory;
+    use Notifiable;
+
+    protected $guard = 'company';
 
     protected $fillable = [
         'name',
@@ -15,8 +17,8 @@ class Company extends Authenticatable
         'license_number',
         'email',
         'password',
-        'avatar',
-        'last_login',
+        'is_active',
+        'role',
     ];
 
     protected $hidden = [
@@ -26,24 +28,6 @@ class Company extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'last_login' => 'datetime',
+        'is_active' => 'boolean',
     ];
-
-    // Relationship with Packages
-    public function packages()
-    {
-        return $this->hasMany(Package::class);
-    }
-
-    // Relationship with Destinations
-    public function destinations()
-    {
-        return $this->hasMany(Destination::class);
-    }
-
-    // Relationship with Offers
-    public function offers()
-    {
-        return $this->hasMany(Offer::class);
-    }
 }

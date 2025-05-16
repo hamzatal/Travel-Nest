@@ -11,9 +11,15 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
         'admin' => [
             'driver' => 'session',
             'provider' => 'admins',
+        ],
+
+        'company' => [
+            'driver' => 'session',
+            'provider' => 'companies',
         ],
     ],
 
@@ -22,9 +28,15 @@ return [
             'driver' => 'eloquent',
             'model' => App\Models\User::class,
         ],
+
         'admins' => [
             'driver' => 'eloquent',
             'model' => App\Models\Admin::class,
+        ],
+
+        'companies' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Company::class,
         ],
     ],
 
@@ -35,8 +47,8 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
-        'admins' => [
-            'provider' => 'admins',
+        'companies' => [
+            'provider' => 'companies',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
