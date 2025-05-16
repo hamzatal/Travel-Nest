@@ -200,6 +200,35 @@ Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(
     Route::get('/dashboard', [CompanyDashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [CompanyController::class, 'profile'])->name('profile');
     Route::put('/profile', [CompanyController::class, 'updateProfile'])->name('profile');
+    Route::put('/profile/password', [CompanyController::class, 'updatePassword'])->name('profile.password');
+
+    //? Destinations Routes
+    Route::prefix('destinations')->name('destinations.')->group(function () {
+        Route::get('/', [CompanyDestinationController::class, 'index'])->name('index');
+        Route::post('/', [CompanyDestinationController::class, 'store'])->name('store');
+        Route::put('/{destination}', [CompanyDestinationController::class, 'update'])->name('update');
+        Route::delete('/{destination}', [CompanyDestinationController::class, 'destroy'])->name('destroy');
+        Route::patch('/{destination}/toggle-featured', [CompanyDestinationController::class, 'toggleFeatured'])->name('toggle-featured');
+    })    ;
+
+    //? Offers Routes
+    Route::prefix('offers')->name('offers.')->group(function () {
+        Route::get('/', [CompanyOfferController::class, 'index'])->name('index');
+        Route::post('/', [CompanyOfferController::class, 'store'])->name('store');
+        Route::put('/{id}', [CompanyOfferController::class, 'update'])->name('update');
+        Route::delete('/{id}', [CompanyOfferController::class, 'destroy'])->name('destroy');
+        Route::patch('/{id}/toggle', [CompanyOfferController::class, 'toggleActive'])->name('toggle');
+    })    ;
+
+    //? Packages Routes
+    Route::prefix('packages')->name('packages.')->group(function () {
+        Route::get('/', [CompanyPackageController::class, 'index'])->name('index');
+        Route::post('/', [CompanyPackageController::class, 'store'])->name('store');
+        Route::put('/{package}', [CompanyPackageController::class, 'update'])->name('update');
+        Route::patch('/{package}/toggle-featured', [CompanyPackageController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
+    })    ;
+
 });
 
 Route::post('/company/login', [CompanyController::class, 'login'])->name('company.login');

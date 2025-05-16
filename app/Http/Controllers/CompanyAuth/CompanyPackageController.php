@@ -5,107 +5,59 @@ namespace App\Http\Controllers\CompanyAuth;
 use App\Http\Controllers\Controller;
 use App\Models\Package;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
 
 class CompanyPackageController extends Controller
 {
-    /**
-     * Display a listing of the packages.
-     */
-    public function index(): Response
-    {
-        $packages = Package::where('company_id', Auth::guard('company')->id())->get();
-        return Inertia::render('Company/Packages', [
-            'packages' => $packages,
-        ]);
-    }
 
-    /**
-     * Store a newly created package.
-     */
-    public function store(Request $request): RedirectResponse
+    public function index()
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'description' => 'required|string',
-            'price' => 'required|numeric|min:0',
-            'discount_price' => 'nullable|numeric|min:0|lt:price',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        $packages = Package::where('company_id', auth('company')->id())->get();
+        return Inertia::render('Company/Dashboard', ['packages' => $packages]);
+    }
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'price' => ['required', 'numeric', 'min:0'],
+            // Add other fields as needed
         ]);
 
-        $data = $request->only(['title', 'subtitle', 'description', 'price', 'discount_price', 'start_date', 'end_date', 'is_featured', 'discount_type']);
-        $data['company_id'] = Auth::guard('company')->id();
-        $data['image'] = $request->file('image')->store('packages', 'public');
+        $package = Package::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'price' => $validated['price'],
+            'company_id' => auth('company')->id(),
+            // Add other fields as needed
+        ]);
 
-        Package::create($data);
-
-        return redirect()->route('company.packages.index')->with('success', 'Package created successfully.');
+        return response()->json(['message' => 'Package created successfully', 'package' => $package], 201);
     }
 
-    /**
-     * Update the specified package.
-     */
-    public function update(Request $request, Package $package): RedirectResponse
+
+    public function update(Request $request, Package $package)
     {
         $this->authorize('update', $package);
 
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'description' => 'required|string',
-            'price' => 'required|numeric|min:0',
-            'discount_price' => 'nullable|numeric|min:0|lt:price',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['required', 'string'],
+            'price' => ['required', 'numeric', 'min:0'],
+            // Add other fields as needed
         ]);
 
-        $data = $request->only(['title', 'subtitle', 'description', 'price', 'discount_price', 'start_date', 'end_date', 'is_featured', 'discount_type']);
+        $package->update($validated);
 
-        if ($request->hasFile('image')) {
-            if ($package->image) {
-                Storage::disk('public')->delete($package->image);
-            }
-            $data['image'] = $request->file('image')->store('packages', 'public');
-        }
-
-        $package->update($data);
-
-        return redirect()->route('company.packages.index')->with('success', 'Package updated successfully.');
+        return response()->json(['message' => 'Package updated successfully'], 200);
     }
 
-    /**
-     * Remove the specified package.
-     */
-    public function destroy(Package $package): RedirectResponse
+    public function destroy(Package $package)
     {
         $this->authorize('delete', $package);
 
-        if ($package->image) {
-            Storage::disk('public')->delete($package->image);
-        }
-
         $package->delete();
 
-        return redirect()->route('company.packages.index')->with('success', 'Package deleted successfully.');
-    }
-
-    /**
-     * Toggle the featured status of the package.
-     */
-    public function toggleFeatured(Package $package): RedirectResponse
-    {
-        $this->authorize('update', $package);
-
-        $package->update(['is_featured' => !$package->is_featured]);
-
-        return redirect()->route('company.packages.index')->with('success', 'Featured status toggled successfully.');
+        return response()->json(['message' => 'Package deleted successfully'], 200);
     }
 }
