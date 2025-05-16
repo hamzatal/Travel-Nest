@@ -25,6 +25,9 @@ import {
     Users,
     Search,
     Sparkles,
+    XIcon,
+    Circle,
+    CircleXIcon,
 } from "lucide-react";
 import { Head, usePage, Link } from "@inertiajs/react";
 import Navbar from "../Components/Nav";
@@ -1134,16 +1137,17 @@ const HomePage = ({ auth }) => {
                     <div className="relative mb-2 p-4 bg-white text-black rounded-lg shadow-lg text-sm transition-all duration-300 animate-fade-in-down whitespace-nowrap">
                         <button
                             onClick={handleCloseTooltip}
-                            className="absolute top-1 right-1 text-gray-500 hover:text-gray-800"
+                            className="absolute top-1 right-1 text-red-500 hover:text-green-800"
                             aria-label="Close tooltip"
                         >
-                            <X size={18} />
+                            <CircleXIcon size={20} />
                         </button>
                         <div className="flex items-center">
-                            <MessageCircle className="mr-2 text-blue-600" />
+                            <MessageCircle className="mr-2 text-green-600" />
                             <p>
-                                Need help planning your trip? Chat with our AI
-                                assistant
+                                Need help planning your trip?
+                                <br />
+                                Our AI chat bot is here to assist you.
                             </p>
                         </div>
                     </div>

@@ -133,49 +133,57 @@ const Footer = () => {
   const [activePopup, setActivePopup] = useState(null);
 
   return (
-    <>
-      <motion.footer
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="relative py-4 mt-12 text-center"
-      >
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/images/world.svg')" }}
-        />
-        <div className="absolute inset-0 bg-black opacity-50" />
-        <div className="relative z-10">
-          <p className="text-white text-sm">© 2025 Travel Nest. All rights reserved.</p>
-          <div className="mt-10 space-x-6">
-            <button 
-              onClick={() => setActivePopup('privacyPolicy')} 
-              className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
-            >
-              Privacy Policy
-            </button>
-            <button 
-              onClick={() => setActivePopup('termsOfService')} 
-              className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
-            >
-              Terms of Service
-            </button>
-            <a 
-              href="/ContactPage" 
-              className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
-            >
-              Contact
-            </a>
-          </div>
-        </div>
-      </motion.footer>
+      <>
+          <motion.footer
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="relative py-4 mt-12 text-center"
+          >
+              <div
+                  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                  style={{ backgroundImage: "url('/images/world.svg')" }}
+              />
+              <div className="absolute inset-0 bg-black opacity-50" />
+              <div className="relative z-10">
+                  <p className="text-white text-sm">
+                      © 2025 Travel Nest. All rights reserved.
+                  </p>
+                  <div className="mt-10 space-x-6">
+                      <button
+                          onClick={() => setActivePopup("privacyPolicy")}
+                          className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
+                      >
+                          Privacy Policy
+                      </button>
+                      <button
+                          onClick={() => setActivePopup("termsOfService")}
+                          className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
+                      >
+                          Terms of Service
+                      </button>
+                      <a
+                          href="/ContactPage"
+                          className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
+                      >
+                          Contact
+                      </a>
+                      <a
+                          href="/about-us"
+                          className="text-white text-sm hover:bg-green-500/20 hover:text-green-500 rounded-full px-3 py-1 transition-all duration-300"
+                      >
+                          About Us
+                      </a>
+                  </div>
+              </div>
+          </motion.footer>
 
-      {activePopup && (
-        <LegalPopup 
-          type={activePopup} 
-          onClose={() => setActivePopup(null)} 
-        />
-      )}
-    </>
+          {activePopup && (
+              <LegalPopup
+                  type={activePopup}
+                  onClose={() => setActivePopup(null)}
+              />
+          )}
+      </>
   );
 };
 

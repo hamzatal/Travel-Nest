@@ -10,6 +10,7 @@ import {
     PlaneIcon,
     AmpersandIcon,
     ShieldAlert,
+    PhoneCall,
 } from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
 
@@ -128,6 +129,14 @@ const AdminLoginPage = () => {
             >
                 <Home className="w-5 h-5" />
                 <span className="font-medium">Home</span>
+            </Link>
+
+            <Link
+                href="/ContactPage"
+                className="fixed top-20 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+            >
+                <PhoneCall className="w-5 h-5" />
+                <span className="font-medium">Contact Us</span>
             </Link>
 
             <Notification

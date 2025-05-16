@@ -294,14 +294,7 @@ const About = ({ auth }) => {
             >
               Sign Up Today
             </motion.a>
-            <motion.a 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              href="/destinations" 
-              className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-all duration-300"
-            >
-              Explore Destinations
-            </motion.a>
+            
           </div>
         </motion.div>
       </div>

@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, User, Home, Building2, ChevronRight } from "lucide-react";
+import {
+    Mail,
+    Lock,
+    Eye,
+    EyeOff,
+    User,
+    Home,
+    Building2,
+    ChevronRight,
+    PhoneCall,
+} from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
 
 export default function Register() {
@@ -363,19 +373,38 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen flex bg-cover bg-center bg-no-repeat relative" style={{ backgroundImage: "url('/images/world.svg')" }}>
+        <div
+            className="min-h-screen flex bg-cover bg-center bg-no-repeat relative"
+            style={{ backgroundImage: "url('/images/world.svg')" }}
+        >
             <Head title="Register - Travel Nest" />
-            <Link href="/" className="fixed top-6 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all">
+            <Link
+                href="/"
+                className="fixed top-6 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+            >
                 <Home className="w-5 h-5" />
                 <span className="font-medium">Home</span>
             </Link>
+
+            <Link
+                href="/ContactPage"
+                className="fixed top-20 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
+            >
+                <PhoneCall className="w-5 h-5" />
+                <span className="font-medium">Contact Us</span>
+            </Link>
+
             <AnimatePresence>
                 {notification && (
                     <motion.div
                         initial={{ opacity: 0, y: -50 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -50 }}
-                        className={`fixed top-4 left-1/3 transform -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg z-20 text-white ${notification.type === "success" ? "bg-green-600" : "bg-red-600"}`}
+                        className={`fixed top-4 left-1/3 transform -translate-x-1/2 px-4 py-3 rounded-lg shadow-lg z-20 text-white ${
+                            notification.type === "success"
+                                ? "bg-green-600"
+                                : "bg-red-600"
+                        }`}
                     >
                         {notification.message}
                     </motion.div>
@@ -384,9 +413,15 @@ export default function Register() {
             <div className="hidden lg:flex w-1/2 items-center justify-center p-12">
                 <div className="text-center space-y-8">
                     <div className="bg-green-600/20 p-6 rounded-full inline-block mx-auto">
-                        {accountType === "company" ? <Building2 className="w-20 h-20 text-green-500" /> : <User className="w-20 h-20 text-green-500" />}
+                        {accountType === "company" ? (
+                            <Building2 className="w-20 h-20 text-green-500" />
+                        ) : (
+                            <User className="w-20 h-20 text-green-500" />
+                        )}
                     </div>
-                    <h1 className="text-5xl font-bold text-white">Join <span className="text-green-500">Travel Nest</span></h1>
+                    <h1 className="text-5xl font-bold text-white">
+                        Join <span className="text-green-500">Travel Nest</span>
+                    </h1>
                     <p className="text-gray-300 max-w-md mx-auto text-lg">
                         {accountType === "company"
                             ? "Create a company account to list your travel services, packages, and destinations."
@@ -401,7 +436,10 @@ export default function Register() {
                     {renderStepButtons()}
                     <p className="text-center text-sm text-gray-400 mt-6">
                         Already have an account?{" "}
-                        <Link href={route("login")} className="text-green-400 font-medium hover:text-green-300 hover:underline transition-colors">
+                        <Link
+                            href={route("login")}
+                            className="text-green-400 font-medium hover:text-green-300 hover:underline transition-colors"
+                        >
                             Sign in
                         </Link>
                     </p>
