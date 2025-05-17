@@ -32,7 +32,6 @@ export default function HeroSectionsView() {
         data,
         setData,
         post,
-        put,
         delete: deleteForm,
         patch,
         processing,
@@ -150,17 +149,18 @@ export default function HeroSectionsView() {
         formData.append("subtitle", data.subtitle || "");
         if (data.image instanceof File) {
             formData.append("image", data.image);
+            console.log("Image details:", {
+                name: data.image.name,
+                size: data.image.size,
+                type: data.image.type,
+            });
         }
-        formData.append("_method", "PUT");
         console.log("Sending FormData:", Object.fromEntries(formData));
 
-        put(`/admin/hero/${selectedSection.id}`, {
+        post(`/admin/hero/${selectedSection.id}`, {
             preserveScroll: true,
-            data: {
-                title: data.title || null,
-                subtitle: data.subtitle || null,
-                _method: "PUT",
-            },
+            forceFormData: true,
+            data: formData,
             onSuccess: (page) => {
                 console.log("Edit success, response:", page);
                 setShowEditModal(false);

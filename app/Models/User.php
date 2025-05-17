@@ -22,7 +22,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_active',
         'deactivated_at',
         'deactivation_reason',
-        'last_login',
     ];
 
     protected $hidden = [
@@ -32,11 +31,14 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'last_login' => 'datetime',
         'deactivated_at' => 'datetime',
-        'birthday' => 'date',
         'is_active' => 'boolean',
     ];
+
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
 
     public function reviews()
     {

@@ -17,8 +17,9 @@ class Company extends Authenticatable
         'license_number',
         'email',
         'password',
+        'contact_avatar',
+        'company_logo',
         'is_active',
-        'role',
     ];
 
     protected $hidden = [
@@ -30,4 +31,24 @@ class Company extends Authenticatable
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
     ];
+
+    public function destinations()
+    {
+        return $this->hasMany(Destination::class);
+    }
+
+    public function packages()
+    {
+        return $this->hasMany(Package::class);
+    }
+
+    public function offers()
+    {
+        return $this->hasMany(Offer::class);
+    }
+
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
 }

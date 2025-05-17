@@ -5,19 +5,11 @@ import {
     ArrowRight,
     MessageCircle,
     X,
-    ArrowUp,
     Heart,
-    TrendingUp,
     Shield,
     Tag,
     Award,
     Compass,
-    Image,
-    Coffee,
-    Globe,
-    Briefcase,
-    Gift,
-    UserCheck,
     Sun,
     ArrowLeft,
     ArrowRight as ChevronRight,
@@ -26,8 +18,9 @@ import {
     Search,
     Sparkles,
     XIcon,
-    Circle,
     CircleXIcon,
+    Globe2,
+    Building,
 } from "lucide-react";
 import { Head, usePage, Link } from "@inertiajs/react";
 import Navbar from "../Components/Nav";
@@ -41,6 +34,8 @@ const HomePage = ({ auth }) => {
         flash = {},
         offers = [],
         destinations = [],
+        packages = [],
+        translations = {},
     } = props;
     const user = auth?.user || null;
     const successMessage = flash?.success || null;
@@ -51,40 +46,9 @@ const HomePage = ({ auth }) => {
     const [isTooltipVisible, setIsTooltipVisible] = useState(true);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
-    const [scrollPosition, setScrollPosition] = useState(0);
-
-    // Journey Planner states
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [suggestions, setSuggestions] = useState([]);
-
-    // Mocked data for inspiration section
-    const inspirationItems = [
-        {
-            id: 1,
-            title: "Beach Getaways",
-            image: "https://images.unsplash.com/photo-1506953823976-52e1fdc0149a",
-            count: "4,230+ destinations",
-        },
-        {
-            id: 2,
-            title: "Mountain Retreats",
-            image: "https://images.unsplash.com/photo-1464822759023-fed622ff877c",
-            count: "2,450+ destinations",
-        },
-        {
-            id: 3,
-            title: "Cultural Experiences",
-            image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5",
-            count: "3,120+ destinations",
-        },
-        {
-            id: 4,
-            title: "Urban Adventures",
-            image: "https://images.unsplash.com/photo-1514565131-fce0801e5785",
-            count: "1,890+ destinations",
-        },
-    ];
 
     // Feature toggles
     const toggleChat = () => setIsChatOpen(!isChatOpen);
@@ -95,13 +59,6 @@ const HomePage = ({ auth }) => {
     const scrollToSearch = () => {
         searchRef.current?.scrollIntoView({ behavior: "smooth" });
     };
-
-    // Track scroll position for UI effects
-    useEffect(() => {
-        const handleScroll = () => setScrollPosition(window.scrollY);
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
 
     // Auto hide tooltip after delay
     useEffect(() => {
@@ -123,40 +80,50 @@ const HomePage = ({ auth }) => {
     useEffect(() => {
         const filterSuggestions = () => {
             const lowerQuery = searchQuery.toLowerCase();
-            const filtered = [...destinations, ...offers].filter((item) => {
-                const matchesQuery =
-                    (item.name?.toLowerCase().includes(lowerQuery) ||
-                        item.title?.toLowerCase().includes(lowerQuery) ||
-                        item.description?.toLowerCase().includes(lowerQuery) ||
-                        item.location?.toLowerCase().includes(lowerQuery) ||
-                        item.destination?.toLowerCase().includes(lowerQuery)) &&
-                    (selectedCategory === "all" ||
-                        item.category?.toLowerCase() ===
-                            selectedCategory.toLowerCase());
-                return matchesQuery;
-            });
-            setSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
+            const allItems = [
+                ...destinations.map((d) => ({ ...d, type: "destination" })),
+                ...offers.map((o) => ({ ...o, type: "offer" })),
+                ...packages.map((p) => ({ ...p, type: "package" })),
+            ];
+            const filtered = allItems
+                .filter((item) => {
+                    const matchesQuery =
+                        (item.name?.toLowerCase().includes(lowerQuery) ||
+                            item.title?.toLowerCase().includes(lowerQuery) ||
+                            item.description
+                                ?.toLowerCase()
+                                .includes(lowerQuery) ||
+                            item.location?.toLowerCase().includes(lowerQuery) ||
+                            item.destination_name
+                                ?.toLowerCase()
+                                .includes(lowerQuery)) &&
+                        (selectedCategory === "all" ||
+                            item.category?.toLowerCase() ===
+                                selectedCategory.toLowerCase());
+                    return matchesQuery;
+                })
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 3); // Limit to latest 3
+            setSuggestions(filtered);
         };
         filterSuggestions();
-    }, [searchQuery, selectedCategory, destinations, offers]);
+    }, [searchQuery, selectedCategory, destinations, offers, packages]);
 
     // Calculate discount percentage
     const calculateDiscount = (original, discounted) => {
-        if (!discounted) return null;
-        const percentage = Math.round(
-            ((original - discounted) / original) * 100
-        );
-        return percentage;
+        if (!discounted || original <= discounted) return null;
+        return Math.round(((original - discounted) / original) * 100);
     };
 
     // Handle "Surprise Me" button
     const handleSurpriseMe = () => {
-        const randomItem = [...destinations, ...offers][
-            Math.floor(Math.random() * (destinations.length + offers.length))
+        const allItems = [
+            ...destinations.map((d) => ({ ...d, type: "destination" })),
+            ...offers.map((o) => ({ ...o, type: "offer" })),
+            ...packages.map((p) => ({ ...p, type: "package" })),
         ];
-        if (randomItem) {
-            setSuggestions([randomItem]);
-        }
+        const shuffled = allItems.sort(() => Math.random() - 0.5);
+        setSuggestions(shuffled.slice(0, 3)); // Select 3 random items
     };
 
     // Clear search input
@@ -167,11 +134,8 @@ const HomePage = ({ auth }) => {
 
     return (
         <div
-            className={`min-h-screen transition-all duration-300 ${
-                isDarkMode
-                    ? "bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white"
-                    : "bg-gradient-to-br from-blue-50 via-white to-gray-100 text-gray-900"
-            }`}
+            className="min-h-screen bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: "url('/images/world.svg')" }}
         >
             <Head>
                 <title>Travel Nest</title>
@@ -185,22 +149,6 @@ const HomePage = ({ auth }) => {
                 isDarkMode={isDarkMode}
                 toggleDarkMode={toggleDarkMode}
             />
-
-            {/* Floating Back to Top Button */}
-            {/* {scrollPosition > 500 && (
-                <motion.button
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                    onClick={() =>
-                        window.scrollTo({ top: 0, behavior: "smooth" })
-                    }
-                    className="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300"
-                    aria-label="Back to Top"
-                >
-                    <ArrowUp size={22} className="animate-bounce" />
-                </motion.button>
-            )} */}
 
             {/* Hero Carousel Section */}
             <section className="relative h-screen w-full overflow-hidden">
@@ -279,7 +227,6 @@ const HomePage = ({ auth }) => {
                             </motion.div>
                         </div>
 
-                        {/* Navigation arrows */}
                         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-4 md:px-10 z-20">
                             <button
                                 onClick={() =>
@@ -309,7 +256,6 @@ const HomePage = ({ auth }) => {
                             </button>
                         </div>
 
-                        {/* Slide indicators */}
                         <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 z-20">
                             {heroSections.map((_, index) => (
                                 <button
@@ -328,7 +274,7 @@ const HomePage = ({ auth }) => {
                 )}
             </section>
 
-            {/* Journey Planner (Modern Filter) Section */}
+            {/* Journey Planner Section */}
             <section
                 className="relative py-8 bg-white -mt-0 z-20"
                 ref={searchRef}
@@ -341,17 +287,15 @@ const HomePage = ({ auth }) => {
                         className="relative bg-white rounded-3xl p-6 shadow-lg border border-gray-200"
                     >
                         <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-4">
-                            Discover Your{" "}
-                            <span className="text-blue-600">
-                                Next Adventure
-                            </span>
+                            {translations.journey_planner_title ||
+                                "Discover Your Next Adventure"}
+                            <span className="text-blue-600"> Adventure</span>
                         </h2>
                         <p className="text-lg text-gray-600 text-center mb-6 max-w-2xl mx-auto">
-                            Filter destinations by category or search for your
-                            dream trip.
+                            {translations.journey_planner_subtitle ||
+                                "Search for your favorite destinations or browse new offers and packages"}
                         </p>
 
-                        {/* Search Bar */}
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -369,7 +313,10 @@ const HomePage = ({ auth }) => {
                                     onChange={(e) =>
                                         setSearchQuery(e.target.value)
                                     }
-                                    placeholder="Search destinations, experiences, or keywords..."
+                                    placeholder={
+                                        translations.search_placeholder ||
+                                        "Search for destinations, offers, or packages..."
+                                    }
                                     className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-full text-gray-800 text-lg font-light placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all duration-300"
                                 />
                                 {searchQuery && (
@@ -384,7 +331,6 @@ const HomePage = ({ auth }) => {
                             </div>
                         </motion.div>
 
-                        {/* Category Filters and Surprise Me */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -429,10 +375,10 @@ const HomePage = ({ auth }) => {
                                             <MapPin size={16} />
                                         )}
                                         {category === "Cultural" && (
-                                            <Globe size={16} />
+                                            <Globe2 size={16} />
                                         )}
                                         {category === "Urban" && (
-                                            <Briefcase size={16} />
+                                            <Building size={16} />
                                         )}
                                         {category}
                                     </motion.button>
@@ -449,11 +395,10 @@ const HomePage = ({ auth }) => {
                                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-semibold"
                             >
                                 <Sparkles size={20} />
-                                Surprise Me
+                                {translations.surprise_me || "Surprise Me"}
                             </motion.button>
                         </motion.div>
 
-                        {/* Suggestions */}
                         <AnimatePresence>
                             {suggestions.length > 0 && (
                                 <motion.div
@@ -465,11 +410,13 @@ const HomePage = ({ auth }) => {
                                 >
                                     {suggestions.map((item) => (
                                         <Link
-                                            key={item.id}
+                                            key={`${item.type}-${item.id}`}
                                             href={
-                                                item.name
+                                                item.type === "destination"
                                                     ? `/destinations/${item.id}`
-                                                    : `/offers/${item.id}`
+                                                    : item.type === "offer"
+                                                    ? `/offers/${item.id}`
+                                                    : `/packages/${item.id}`
                                             }
                                             className="relative bg-white rounded-xl p-4 hover:bg-gray-50 transition-all duration-300 shadow-md border border-gray-200 group"
                                         >
@@ -491,7 +438,7 @@ const HomePage = ({ auth }) => {
                                                     </h3>
                                                     <p className="text-gray-600 text-sm">
                                                         {item.location ||
-                                                            item.destination}
+                                                            item.destination_name}
                                                     </p>
                                                     <p className="text-blue-600 text-sm font-medium">
                                                         $
@@ -522,9 +469,7 @@ const HomePage = ({ auth }) => {
             </section>
 
             {/* Featured Promotions */}
-            <section
-                className={`py-16 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
-            >
+            <section className="py-16 bg-white">
                 <div className="max-w-7xl mx-auto px-6 md:px-16">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -533,173 +478,170 @@ const HomePage = ({ auth }) => {
                         transition={{ duration: 0.6 }}
                     >
                         <div className="flex items-center justify-between mb-10">
-                            <h2
-                                className={`text-3xl font-bold ${
-                                    isDarkMode ? "text-white" : "text-gray-900"
-                                }`}
-                            >
-                                Special{" "}
-                                <span className="text-blue-600">Offers</span>
+                            <h2 className="text-3xl font-bold text-gray-900">
+                                {translations.offers_section_title ||
+                                    "Featured Offers"}
                             </h2>
                             <Link
-                                href="/deals"
-                                className={`flex items-center gap-1 ${
-                                    isDarkMode
-                                        ? "text-blue-400"
-                                        : "text-blue-600"
-                                } hover:underline`}
+                                href="/offers"
+                                className="flex items-center gap-1 text-blue-600 hover:underline"
                             >
-                                View all deals <ArrowRight size={16} />
+                                {translations.view_all || "View All"}{" "}
+                                <ArrowRight size={16} />
                             </Link>
                         </div>
 
-                        {offers && offers.length === 0 ? (
+                        {offers.length === 0 ? (
                             <div className="text-center text-gray-400 py-8">
-                                No offers available at the moment.
+                                {translations.offers_empty_message ||
+                                    "No offers available at the moment."}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {offers &&
-                                    offers.map((offer) => (
-                                        <motion.div
-                                            key={offer.id}
-                                            whileHover={{
-                                                y: -10,
-                                                transition: { duration: 0.3 },
-                                            }}
-                                            className={`rounded-xl overflow-hidden shadow-lg ${
-                                                isDarkMode
-                                                    ? "bg-gray-800"
-                                                    : "bg-white"
-                                            }`}
-                                        >
-                                            <div className="relative">
-                                                <img
-                                                    src={
-                                                        offer.image ||
-                                                        "https://via.placeholder.com/640x480"
-                                                    }
-                                                    alt={offer.title}
-                                                    className="w-full h-48 object-cover"
-                                                    loading="lazy"
-                                                />
-                                                {calculateDiscount(
-                                                    offer.price,
-                                                    offer.discount_price
-                                                ) && (
-                                                    <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                                                        {calculateDiscount(
-                                                            offer.price,
-                                                            offer.discount_price
-                                                        )}
-                                                        % OFF
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                whileInView={{ opacity: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: 0.3 }}
+                                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+                            >
+                                {offers.map((offer, index) => (
+                                    <motion.div
+                                        key={offer.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{
+                                            duration: 0.5,
+                                            delay: 0.1 * index,
+                                        }}
+                                        whileHover={{
+                                            y: -8,
+                                            transition: { duration: 0.3 },
+                                        }}
+                                        className="rounded-2xl overflow-hidden shadow-lg bg-white hover:shadow-xl transition-all duration-300 group"
+                                    >
+                                        <div className="relative overflow-hidden">
+                                            <img
+                                                src={
+                                                    offer.image ||
+                                                    "https://via.placeholder.com/640x480"
+                                                }
+                                                alt={offer.title}
+                                                className="w-full h-64 object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                                loading="lazy"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                                            <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                                                {offer.tag && (
+                                                    <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                                                        {offer.tag}
                                                     </div>
                                                 )}
-                                            </div>
-                                            <div className="p-6">
-                                                <h3
-                                                    className={`text-xl font-bold mb-2 ${
-                                                        isDarkMode
-                                                            ? "text-white"
-                                                            : "text-gray-900"
-                                                    }`}
-                                                >
-                                                    {offer.title}
-                                                </h3>
-                                                <p
-                                                    className={`mb-4 ${
-                                                        isDarkMode
-                                                            ? "text-gray-300"
-                                                            : "text-gray-600"
-                                                    }`}
-                                                >
-                                                    {offer.description}
-                                                </p>
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <span
-                                                                className={`block ${
-                                                                    isDarkMode
-                                                                        ? "text-gray-400"
-                                                                        : "text-gray-500"
-                                                                } text-sm`}
-                                                            >
-                                                                Original Price
-                                                            </span>
-                                                            <span
-                                                                className={`text-xl font-bold ${
-                                                                    offer.discount_price
-                                                                        ? "line-through text-gray-400"
-                                                                        : "text-blue-600"
-                                                                }`}
-                                                            >
-                                                                ${offer.price}
-                                                            </span>
-                                                        </div>
-                                                        {offer.discount_price && (
-                                                            <div>
-                                                                <span
-                                                                    className={`block ${
-                                                                        isDarkMode
-                                                                            ? "text-gray-400"
-                                                                            : "text-gray-500"
-                                                                    } text-sm`}
-                                                                >
-                                                                    Discounted
-                                                                    Price
-                                                                </span>
-                                                                <span className="text-blue-600 font-bold text-xl">
-                                                                    $
-                                                                    {
-                                                                        offer.discount_price
-                                                                    }
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {(offer.start_date ||
-                                                        offer.end_date) && (
-                                                        <div className="text-sm text-gray-400">
-                                                            <span>
-                                                                Valid from:{" "}
-                                                            </span>
-                                                            <span>
-                                                                {offer.start_date?.slice(
-                                                                    0,
-                                                                    10
-                                                                ) || "N/A"}{" "}
-                                                                TO{" "}
-                                                                {offer.end_date?.slice(
-                                                                    0,
-                                                                    10
-                                                                ) || "N/A"}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
                                                 <button
-                                                    className={`mt-4 px-4 py-2 rounded-full ${
-                                                        isDarkMode
-                                                            ? "bg-blue-600 text-white hover:bg-blue-700"
-                                                            : "bg-blue-600 text-white hover:bg-blue-700"
-                                                    } transition-all duration-300`}
+                                                    className="bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-40 backdrop-blur-sm transition-all duration-300 transform hover:scale-110"
+                                                    aria-label="Add to favorites"
                                                 >
-                                                    Book Now
+                                                    <Heart
+                                                        size={18}
+                                                        className="text-white"
+                                                    />
                                                 </button>
                                             </div>
-                                        </motion.div>
-                                    ))}
-                            </div>
+                                            {calculateDiscount(
+                                                offer.price,
+                                                offer.discount_price
+                                            ) && (
+                                                <div className="absolute top-20 right-0 bg-red-500 text-white px-4 py-1 rounded-l-full text-sm font-bold shadow-lg">
+                                                    {calculateDiscount(
+                                                        offer.price,
+                                                        offer.discount_price
+                                                    )}
+                                                    % OFF
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-5">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="font-bold text-lg text-gray-900">
+                                                    {offer.title}
+                                                </h3>
+                                            </div>
+                                            {offer.description && (
+                                                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                                                    {offer.description}
+                                                </p>
+                                            )}
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="flex items-center">
+                                                    <CalendarX
+                                                        size={14}
+                                                        className="text-gray-500 mr-1"
+                                                    />
+                                                    <span className="text-xs text-gray-500">
+                                                        {offer.start_date?.slice(
+                                                            0,
+                                                            10
+                                                        ) || "N/A"}{" "}
+                                                        -{" "}
+                                                        {offer.end_date?.slice(
+                                                            0,
+                                                            10
+                                                        ) || "N/A"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                                                <div>
+                                                    <span className="block text-xs font-medium text-gray-500">
+                                                        {translations.starting_from ||
+                                                            "Starting from"}
+                                                    </span>
+                                                    <div className="flex items-baseline">
+                                                        <span className="text-blue-600 font-bold text-lg">
+                                                            $
+                                                            {offer.discount_price ||
+                                                                offer.price}
+                                                        </span>
+                                                        {offer.discount_price && (
+                                                            <span className="text-sm text-gray-400 line-through ml-2">
+                                                                ${offer.price}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-xs text-gray-500 ml-1">
+                                                            {translations.per_night ||
+                                                                "/ night"}
+                                                        </span>
+                                                    </div>
+                                                    {offer.discount_type && (
+                                                        <span className="text-xs text-gray-500 mt-1">
+                                                            Discount Type:{" "}
+                                                            {
+                                                                offer.discount_type
+                                                            }
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <Link
+                                                    href={`/offers/${offer.id}`}
+                                                    className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 text-sm font-medium"
+                                                    aria-label="View offer details"
+                                                >
+                                                    {translations.details ||
+                                                        "Details"}{" "}
+                                                    <ArrowRight size={14} />
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
                         )}
                     </motion.div>
                 </div>
             </section>
 
             {/* Trending Destinations Section */}
-            <section
-                className={`py-24 ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}
-            >
+            <section className="py-24 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -710,54 +652,32 @@ const HomePage = ({ auth }) => {
                     >
                         <div className="flex flex-col md:flex-row md:items-center justify-between">
                             <div>
-                                <h2
-                                    className={`text-3xl md:text-4xl font-extrabold ${
-                                        isDarkMode
-                                            ? "text-white"
-                                            : "text-gray-900"
-                                    }`}
-                                >
-                                    <span className="text-blue-600">
-                                        Trending
-                                    </span>{" "}
-                                    Destinations
+                                <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
+                                    {translations.destinations_section_title ||
+                                        "Trending Destinations"}
                                 </h2>
-                                <p
-                                    className={`mt-3 text-lg ${
-                                        isDarkMode
-                                            ? "text-gray-300"
-                                            : "text-gray-600"
-                                    }`}
-                                >
-                                    Discover our most popular vacation spots
-                                    loved by travelers worldwide
+                                <p className="mt-3 text-lg text-gray-600">
+                                    {translations.destinations_subtitle ||
+                                        "Discover our most popular vacation spots loved by travelers worldwide"}
                                 </p>
                             </div>
                             <div className="mt-6 md:mt-0 flex items-center justify-center md:justify-end gap-4">
                                 <button
-                                    className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all"
+                                    className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-all"
                                     aria-label="Previous destinations"
                                 >
                                     <ArrowLeft
                                         size={20}
-                                        className={
-                                            isDarkMode
-                                                ? "text-gray-300"
-                                                : "text-gray-700"
-                                        }
+                                        className="text-gray-700"
                                     />
                                 </button>
                                 <button
-                                    className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all"
+                                    className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-all"
                                     aria-label="Next destinations"
                                 >
                                     <ChevronRight
                                         size={20}
-                                        className={
-                                            isDarkMode
-                                                ? "text-gray-300"
-                                                : "text-gray-700"
-                                        }
+                                        className="text-gray-700"
                                     />
                                 </button>
                             </div>
@@ -765,17 +685,18 @@ const HomePage = ({ auth }) => {
                     </motion.div>
 
                     {destinations.length === 0 ? (
-                        <div className="text-center text-gray-400 py-16 bg-opacity-10 rounded-xl bg-gray-200 dark:bg-gray-800">
+                        <div className="text-center text-gray-400 py-16 bg-opacity-10 rounded-xl bg-gray-200">
                             <CalendarX
                                 size={48}
                                 className="mx-auto mb-4 opacity-50"
                             />
                             <p className="text-lg font-medium">
-                                No destinations available at the moment.
+                                {translations.destinations_empty_title ||
+                                    "No destinations available at the moment."}
                             </p>
                             <p className="mt-2">
-                                Please check back later for new exciting
-                                locations.
+                                {translations.destinations_empty_subtitle ||
+                                    "Please check back later for new exciting locations."}
                             </p>
                         </div>
                     ) : (
@@ -802,11 +723,7 @@ const HomePage = ({ auth }) => {
                                             y: -8,
                                             transition: { duration: 0.3 },
                                         }}
-                                        className={`rounded-2xl overflow-hidden shadow-lg group ${
-                                            isDarkMode
-                                                ? "bg-gray-800 hover:bg-gray-750"
-                                                : "bg-white hover:shadow-xl"
-                                        } transition-all duration-300`}
+                                        className="rounded-2xl overflow-hidden shadow-lg bg-white hover:shadow-xl transition-all duration-300 group"
                                     >
                                         <div className="relative overflow-hidden">
                                             <img
@@ -850,13 +767,7 @@ const HomePage = ({ auth }) => {
                                         </div>
                                         <div className="p-5">
                                             <div className="flex items-center justify-between mb-3">
-                                                <h3
-                                                    className={`font-bold text-lg ${
-                                                        isDarkMode
-                                                            ? "text-white"
-                                                            : "text-gray-900"
-                                                    }`}
-                                                >
+                                                <h3 className="font-bold text-lg text-gray-900">
                                                     {destination.name}
                                                 </h3>
                                             </div>
@@ -865,13 +776,7 @@ const HomePage = ({ auth }) => {
                                                     size={16}
                                                     className="text-blue-600 flex-shrink-0"
                                                 />
-                                                <span
-                                                    className={`text-sm ${
-                                                        isDarkMode
-                                                            ? "text-gray-300"
-                                                            : "text-gray-600"
-                                                    }`}
-                                                >
+                                                <span className="text-sm text-gray-600">
                                                     {destination.location}
                                                 </span>
                                             </div>
@@ -879,19 +784,9 @@ const HomePage = ({ auth }) => {
                                                 <div className="flex items-center">
                                                     <CalendarX
                                                         size={14}
-                                                        className={`${
-                                                            isDarkMode
-                                                                ? "text-gray-400"
-                                                                : "text-gray-500"
-                                                        } mr-1`}
+                                                        className="text-gray-500 mr-1"
                                                     />
-                                                    <span
-                                                        className={`text-xs ${
-                                                            isDarkMode
-                                                                ? "text-gray-400"
-                                                                : "text-gray-500"
-                                                        }`}
-                                                    >
+                                                    <span className="text-xs text-gray-500">
                                                         {destination.duration ||
                                                             "3-7 days"}
                                                     </span>
@@ -899,34 +794,19 @@ const HomePage = ({ auth }) => {
                                                 <div className="flex items-center">
                                                     <Users
                                                         size={14}
-                                                        className={`${
-                                                            isDarkMode
-                                                                ? "text-gray-400"
-                                                                : "text-gray-500"
-                                                        } mr-1`}
+                                                        className="text-gray-500 mr-1"
                                                     />
-                                                    <span
-                                                        className={`text-xs ${
-                                                            isDarkMode
-                                                                ? "text-gray-400"
-                                                                : "text-gray-500"
-                                                        }`}
-                                                    >
+                                                    <span className="text-xs text-gray-500">
                                                         {destination.group_size ||
                                                             "2-8 people"}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                                                 <div>
-                                                    <span
-                                                        className={`block text-xs font-medium ${
-                                                            isDarkMode
-                                                                ? "text-gray-400"
-                                                                : "text-gray-500"
-                                                        }`}
-                                                    >
-                                                        Starting from
+                                                    <span className="block text-xs font-medium text-gray-500">
+                                                        {translations.starting_from ||
+                                                            "Starting from"}
                                                     </span>
                                                     <div className="flex items-baseline">
                                                         <span className="text-blue-600 font-bold text-lg">
@@ -943,20 +823,18 @@ const HomePage = ({ auth }) => {
                                                             </span>
                                                         )}
                                                         <span className="text-xs text-gray-500 ml-1">
-                                                            / night
+                                                            {translations.per_night ||
+                                                                "/ night"}
                                                         </span>
                                                     </div>
                                                 </div>
                                                 <Link
                                                     href={`/destinations/${destination.id}`}
-                                                    className={`flex items-center gap-1 px-3 py-2 rounded-lg ${
-                                                        isDarkMode
-                                                            ? "bg-blue-600 text-white hover:bg-blue-700"
-                                                            : "bg-blue-600 text-white hover:bg-blue-700"
-                                                    } transition-all duration-300 text-sm font-medium`}
+                                                    className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 text-sm font-medium"
                                                     aria-label="View destination details"
                                                 >
-                                                    Details{" "}
+                                                    {translations.details ||
+                                                        "Details"}{" "}
                                                     <ArrowRight size={14} />
                                                 </Link>
                                             </div>
@@ -974,82 +852,22 @@ const HomePage = ({ auth }) => {
                     >
                         <Link
                             href="/destinations"
-                            className={`inline-flex items-center gap-2 px-8 py-4 rounded-full text-lg font-medium ${
-                                isDarkMode
-                                    ? "bg-gradient-to-r from-blue-700 to-blue-500 text-white hover:from-blue-800 hover:to-blue-600"
-                                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
-                            } transition-all duration-300 shadow-lg hover:shadow-xl`}
+                            className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-lg font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                         >
-                            Explore All Destinations <ArrowRight size={18} />
+                            {translations.explore_all_destinations ||
+                                "Explore All Destinations"}{" "}
+                            <ArrowRight size={18} />
                         </Link>
-                        <p
-                            className={`mt-4 text-sm ${
-                                isDarkMode ? "text-gray-400" : "text-gray-600"
-                            }`}
-                        >
-                            Over 200+ exotic locations to discover around the
-                            world
+                        <p className="mt-4 text-sm text-gray-600">
+                            {translations.over_200_destinations ||
+                                "Over 200+ exotic locations to discover around the world"}
                         </p>
                     </motion.div>
                 </div>
             </section>
 
-            {/* Travel Inspiration Section */}
-            {/* <section
-                className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
-            >
-                <div className="max-w-7xl mx-auto px-6 md:px-16">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
-                    >
-                        <h2
-                            className={`text-3xl font-bold mb-12 text-center ${
-                                isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                        >
-                            Find{" "}
-                            <span className="text-blue-600">Inspiration</span>{" "}
-                            For Your Next Trip
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {inspirationItems.map((item) => (
-                                <motion.div
-                                    key={item.id}
-                                    whileHover={{
-                                        scale: 1.03,
-                                        transition: { duration: 0.3 },
-                                    }}
-                                    className="relative rounded-2xl overflow-hidden cursor-pointer group"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent z-10 opacity-70 group-hover:opacity-80 transition-all duration-300"></div>
-                                    <img
-                                        src={item.image}
-                                        alt={item.title}
-                                        className="w-full h-80 object-cover transform group-hover:scale-110 transition-all duration-700"
-                                        loading="lazy"
-                                    />
-                                    <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
-                                        <h3 className="text-white text-xl font-bold mb-2">
-                                            {item.title}
-                                        </h3>
-                                        <p className="text-gray-300 text-sm">
-                                            {item.count}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </motion.div>
-                </div>
-            </section> */}
-
             {/* Benefits Section */}
-            <section
-                className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
-            >
+            <section className="py-20 bg-white">
                 <div className="max-w-7xl mx-auto px-6 md:px-16">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -1057,73 +875,37 @@ const HomePage = ({ auth }) => {
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
                     >
-                        <h2
-                            className={`text-3xl font-bold mb-12 text-center ${
-                                isDarkMode ? "text-white" : "text-gray-900"
-                            }`}
-                        >
-                            Why Choose{" "}
-                            <span className="text-blue-600">Travel Nest</span>
+                        <h2 className="text-3xl font-bold mb-12 text-center text-gray-900">
+                            {translations.benefits_section_title ||
+                                "Why Choose Travel Nest"}
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                            {[
-                                {
-                                    icon: <Tag size={24} />,
-                                    title: "Best Price Guarantee",
-                                    description:
-                                        "We match or beat any comparable price you can find elsewhere.",
-                                },
-                                {
-                                    icon: <Shield size={24} />,
-                                    title: "Secure Booking",
-                                    description:
-                                        "Your personal and payment information is always protected.",
-                                },
-                                {
-                                    icon: <Award size={24} />,
-                                    title: "Top-rated Service",
-                                    description:
-                                        "Our dedicated support team is available 24/7 to assist you.",
-                                },
-                                {
-                                    icon: <TrendingUp size={24} />,
-                                    title: "Loyalty Rewards",
-                                    description:
-                                        "Earn points on every booking and unlock exclusive benefits.",
-                                },
-                            ].map((benefit, index) => (
-                                <motion.div
-                                    key={index}
-                                    whileHover={{ y: -5 }}
-                                    className={`p-6 text-center ${
-                                        isDarkMode
-                                            ? "text-white"
-                                            : "text-gray-900"
-                                    }`}
-                                >
-                                    <div
-                                        className={`inline-flex items-center justify-center p-4 rounded-full mb-6 ${
-                                            isDarkMode
-                                                ? "bg-blue-900 text-blue-300"
-                                                : "bg-blue-100 text-blue-600"
-                                        }`}
+                            {(translations.benefits || []).map(
+                                (benefit, index) => (
+                                    <motion.div
+                                        key={index}
+                                        whileHover={{ y: -5 }}
+                                        className="p-6 text-center text-gray-900"
                                     >
-                                        {benefit.icon}
-                                    </div>
-                                    <h3 className="text-xl font-semibold mb-3">
-                                        {benefit.title}
-                                    </h3>
-                                    <p
-                                        className={`${
-                                            isDarkMode
-                                                ? "text-gray-400"
-                                                : "text-gray-600"
-                                        }`}
-                                    >
-                                        {benefit.description}
-                                    </p>
-                                </motion.div>
-                            ))}
+                                        <div className="inline-flex items-center justify-center p-4 rounded-full mb-6 bg-blue-100 text-blue-600">
+                                            {index === 0 && <Tag size={24} />}
+                                            {index === 1 && (
+                                                <Shield size={24} />
+                                            )}
+                                            {index === 2 && <Award size={24} />}
+                                            {index === 3 && (
+                                                <Users size={24} />
+                                            )}
+                                        </div>
+                                        <h3 className="text-xl font-semibold mb-3">
+                                            {benefit.title}
+                                        </h3>
+                                        <p className="text-gray-600">
+                                            {benefit.description}
+                                        </p>
+                                    </motion.div>
+                                )
+                            )}
                         </div>
                     </motion.div>
                 </div>

@@ -8,7 +8,7 @@ use App\Http\Controllers\AdminAuth\AdminController;
 use App\Http\Controllers\AdminAuth\DashboardController;
 use App\Http\Controllers\AdminAuth\HeroSectionController;
 use App\Http\Controllers\AdminAuth\LoginController;
-use App\Http\Controllers\AdminAuth\OfferController;
+use App\Http\Controllers\AdminAuth\OfferController as AdminOfferController; // Rename the controller
 use App\Http\Controllers\AdminAuth\PackagesController;
 
 // ===================================================
@@ -17,13 +17,12 @@ use App\Http\Controllers\AdminAuth\PackagesController;
 
 use App\Http\Controllers\ChatBotController;
 use App\Http\Controllers\DestinationController;
-use App\Http\Controllers\DealsController;
+use App\Http\Controllers\OfferController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\BookController;
 use App\Http\Controllers\UserBookingsController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
@@ -81,16 +80,16 @@ Route::get('/packages', [PackagesController::class, 'indexPublic'])->name('packa
 Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
 
 //? Deals Routes
-Route::get('/deals', [DealsController::class, 'index'])->name('deals');
-Route::get('/offers/{offer}', [App\Http\Controllers\DealsController::class, 'show'])->name('offers.show');
+Route::get('/deals', [OfferController::class, 'index'])->name('deals');
+Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
 
 //? Booking Routes
 Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
 Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
 
 //? Booking Form
-Route::get('/book', [BookController::class, 'create'])->name('book.create');
-Route::post('/book', [BookController::class, 'store'])->name('book.store');
+Route::get('/book', [BookingController::class, 'create'])->name('book.create');
+Route::post('/book', [BookingController::class, 'store'])->name('book.store');
 
 // ===================================================
 //! Authentication Routes
@@ -162,17 +161,18 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::put('/{destination}', [DestinationController::class, 'update'])->name('update');
         Route::delete('/{destination}', [DestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [DestinationController::class, 'toggleFeatured'])->name('toggle-featured');
+    
     });
 
     //? Offers Routes
     Route::prefix('offers')->name('offers.')->group(function () {
-        Route::get('/', [OfferController::class, 'index'])->name('index');
-        Route::post('/', [OfferController::class, 'store'])->name('store');
-        Route::put('/{id}', [OfferController::class, 'update'])->name('update');
-        Route::delete('/{id}', [OfferController::class, 'destroy'])->name('destroy');
-        Route::patch('/{id}/toggle', [OfferController::class, 'toggleActive'])->name('toggle');
+        Route::get('/', [AdminOfferController::class, 'index'])->name('index');
+        Route::post('/', [AdminOfferController::class, 'store'])->name('store');
+        Route::put('/{id}', [AdminOfferController::class, 'update'])->name('update');
+        Route::delete('/{id}', [AdminOfferController::class, 'destroy'])->name('destroy');
+        Route::patch('/{id}/toggle', [AdminOfferController::class, 'toggleActive'])->name('toggle');
     });
-
+    
     //? Hero Sections Routes
     Route::prefix('hero')->name('hero.')->group(function () {
         Route::get('/', [HeroSectionController::class, 'index'])->name('index');
@@ -209,7 +209,7 @@ Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(
         Route::put('/{destination}', [CompanyDestinationController::class, 'update'])->name('update');
         Route::delete('/{destination}', [CompanyDestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [CompanyDestinationController::class, 'toggleFeatured'])->name('toggle-featured');
-    })    ;
+    });
 
     //? Offers Routes
     Route::prefix('offers')->name('offers.')->group(function () {
@@ -218,17 +218,16 @@ Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(
         Route::put('/{id}', [CompanyOfferController::class, 'update'])->name('update');
         Route::delete('/{id}', [CompanyOfferController::class, 'destroy'])->name('destroy');
         Route::patch('/{id}/toggle', [CompanyOfferController::class, 'toggleActive'])->name('toggle');
-    })    ;
+    });
 
     //? Packages Routes
-    Route::prefix('packages')->name('packages.')->group(function () {
-        Route::get('/', [CompanyPackageController::class, 'index'])->name('index');
-        Route::post('/', [CompanyPackageController::class, 'store'])->name('store');
-        Route::put('/{package}', [CompanyPackageController::class, 'update'])->name('update');
-        Route::patch('/{package}/toggle-featured', [CompanyPackageController::class, 'toggleFeatured'])->name('toggle-featured');
-        Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
-    })    ;
-
+    // Route::prefix('packages')->name('packages.')->group(function () {
+    //     Route::get('/', [CompanyPackageController::class, 'index'])->name('index');
+    //     Route::post('/', [CompanyPackageController::class, 'store'])->name('store');
+    //     Route::put('/{package}', [CompanyPackageController::class, 'update'])->name('update');
+    //     Route::patch('/{package}/toggle-featured', [CompanyPackageController::class, 'toggleFeatured'])->name('toggle-featured');
+    //     Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
+    // });
 });
 
 Route::post('/company/login', [CompanyController::class, 'login'])->name('company.login');

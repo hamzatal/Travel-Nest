@@ -4,74 +4,94 @@ namespace App\Http\Controllers;
 
 use App\Models\Destination;
 use App\Models\Package;
-use App\Models\Deal;
 use App\Models\Offer;
+use App\Models\Booking;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 
 class BookingController extends Controller
 {
     /**
      * Display the booking page with all travel options
-     *
-     * @return \Inertia\Response
      */
     public function index()
     {
-        // Get all destinations
         $destinations = Destination::select([
             'id',
-            'name',
+            'title',
             'location',
             'description',
             'image',
             'price',
             'discount_price',
-            'tag',
+            'category',
             'rating',
-            'is_featured'
+            'is_featured',
         ])
             ->where('is_featured', true)
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($destination) {
-                $destination->image = $destination->image ? asset('storage/destinations/' . basename($destination->image)) : null;
-                $destination->name = $destination->name ?? 'Unknown Destination';
+                $destination->image = $destination->image ? Storage::url($destination->image) : null;
+                $destination->title = $destination->title ?? 'Unknown Destination';
                 $destination->location = $destination->location ?? 'Unknown Location';
                 $destination->description = $destination->description ?? '';
                 $destination->price = $destination->price ?? 0;
                 $destination->discount_price = $destination->discount_price ?? null;
-                $destination->tag = $destination->tag ?? '';
+                $destination->category = $destination->category ?? '';
                 $destination->rating = $destination->rating ?? 0;
                 $destination->is_featured = $destination->is_featured ?? false;
                 return $destination;
-    });
+            });
 
-        // Get all packages
         $packages = Package::select([
             'id',
             'title',
+            'subtitle',
             'description',
             'price',
             'discount_price',
             'image',
             'rating',
-            'is_featured'
+            'is_featured',
+            'destination_id',
+            'discount_type',
+            'category',
+            'start_date',
+            'end_date',
+            'location',
+            'duration',
+            'group_size',
         ])
+            ->where('is_active', true)
             ->where('is_featured', true)
+            ->with(['destination' => function ($query) {
+                $query->select('id', 'title', 'location');
+            }])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($package) {
-                $package->image = $package->image ? asset('storage/packages/' . basename($package->image)) : null;
-                $package->name = $package->name ?? 'Unknown Package';
+                $package->image = $package->image ? Storage::url($package->image) : null;
+                $package->title = $package->title ?? 'Unknown Package';
+                $package->subtitle = $package->subtitle ?? '';
                 $package->description = $package->description ?? '';
                 $package->price = $package->price ?? 0;
                 $package->discount_price = $package->discount_price ?? null;
                 $package->rating = $package->rating ?? 0;
+                $package->discount_type = $package->discount_type ?? '';
+                $package->category = $package->category ?? '';
+                $package->start_date = $package->start_date ? $package->start_date->format('Y-m-d') : null;
+                $package->end_date = $package->end_date ? $package->end_date->format('Y-m-d') : null;
+                $package->location = $package->location ?? ($package->destination ? $package->destination->location : 'Unknown Location');
+                $package->duration = $package->duration ?? '';
+                $package->group_size = $package->group_size ?? '';
+                $package->destination_title = $package->destination ? $package->destination->title : null;
                 return $package;
             });
 
-        // Get all Offers
         $offers = Offer::select([
             'id',
             'title',
@@ -79,75 +99,167 @@ class BookingController extends Controller
             'price',
             'discount_price',
             'image',
+            'start_date',
+            'end_date',
+            'discount_type',
+            'category',
+            'is_active',
         ])
+            ->where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($offer) {
-                $offer->image = $offer->image ? asset('storage/offers/' . basename($offer->image)) : null;
-                $offer->name = $offer->name ?? 'Unknown Offer';
+                $offer->image = $offer->image ? Storage::url($offer->image) : null;
+                $offer->title = $offer->title ?? 'Unknown Offer';
                 $offer->description = $offer->description ?? '';
                 $offer->price = $offer->price ?? 0;
                 $offer->discount_price = $offer->discount_price ?? null;
+                $offer->start_date = $offer->start_date ? $offer->start_date->format('Y-m-d') : null;
+                $offer->end_date = $offer->end_date ? $offer->end_date->format('Y-m-d') : null;
+                $offer->discount_type = $offer->discount_type ?? '';
+                $offer->category = $offer->category ?? '';
                 return $offer;
             });
-        
+
+        $translations = [
+            'book_now_title' => __('Book Your Next Adventure'),
+            'destinations_section_title' => __('Featured Destinations'),
+            'packages_section_title' => __('Featured Packages'),
+            'offers_section_title' => __('Special Offers'),
+            'no_items_message' => __('No items available at the moment.'),
+            'starting_from' => __('Starting from'),
+            'per_night' => __('/ night'),
+            'details' => __('Details'),
+            'book_now' => __('Book Now'),
+            'search_placeholder' => __('Search for destinations, packages, or offers...')
+        ];
 
         return Inertia::render('Book/BookNow', [
             'destinations' => $destinations,
             'packages' => $packages,
             'offers' => $offers,
+            'translations' => $translations,
         ]);
     }
 
     /**
-     * Process a booking request
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * Show the booking form for a specific destination, package, or offer.
+     */
+    public function create(Request $request)
+    {
+        $destinationId = $request->query('destination_id');
+        $packageId = $request->query('package_id');
+        $offerId = $request->query('offer_id');
+
+        $data = [
+            'auth' => Auth::user() ? [
+                'user' => Auth::user(),
+            ] : null,
+        ];
+
+        if ($destinationId) {
+            $destination = Destination::findOrFail($destinationId);
+            $data['destination'] = [
+                'id' => $destination->id,
+                'title' => $destination->title,
+                'location' => $destination->location,
+                'price' => $destination->price,
+                'discount_price' => $destination->discount_price,
+                'image' => $destination->image ? Storage::url($destination->image) : null,
+            ];
+        }
+
+        if ($packageId) {
+            $package = Package::findOrFail($packageId);
+            $data['package'] = [
+                'id' => $package->id,
+                'title' => $package->title,
+                'location' => $package->location,
+                'price' => $package->price,
+                'discount_price' => $package->discount_price,
+                'image' => $package->image ? Storage::url($package->image) : null,
+            ];
+        }
+
+        if ($offerId) {
+            $offer = Offer::findOrFail($offerId);
+            $data['offer'] = [
+                'id' => $offer->id,
+                'title' => $offer->title,
+                'location' => $offer->location,
+                'price' => $offer->price,
+                'discount_price' => $offer->discount_price,
+                'image' => $offer->image ? Storage::url($offer->image) : null,
+            ];
+        }
+
+        if (!$destinationId && !$packageId && !$offerId) {
+            return Inertia::render('Error', [
+                'message' => 'No destination, package, or offer specified.',
+            ]);
+        }
+
+        return Inertia::render('Book/Book', $data);
+    }
+
+    /**
+     * Store a new booking in the database.
      */
     public function store(Request $request)
     {
-        // Validate booking data
-        $validatedData = $request->validate([
-            'type' => 'required|string|in:destination,package,deal',
-            'item_id' => 'required|integer',
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date',
-            'guests' => 'required|integer|min:1',
-            'special_requests' => 'nullable|string|max:500',
+        $validated = $request->validate([
+            'destination_id' => 'nullable|exists:destinations,id',
+            'package_id' => 'nullable|exists:packages,id',
+            'offer_id' => 'nullable|exists:offers,id',
+            'check_in' => 'required|date|after_or_equal:today',
+            'check_out' => 'required|date|after:check_in',
+            'guests' => 'required|integer|min:1|max:8',
+            'notes' => 'nullable|string|max:500',
+            'total_price' => 'required|numeric|min:0',
         ]);
 
-        // Get the appropriate model based on type
-        switch ($validatedData['type']) {
-            case 'destination':
-                $model = Destination::class;
-                break;
-            case 'package':
-                $model = Package::class;
-                break;
-            case 'offer':
-                $model = Offer::class;
-                break;
-            default:
-                throw new \InvalidArgumentException('Invalid booking type.');
+        if (!$validated['destination_id'] && !$validated['package_id'] && !$validated['offer_id']) {
+            return Redirect::back()->withErrors(['error' => 'A destination, package, or offer must be specified.']);
         }
 
-        // Find the selected item
-        $item = $model::findOrFail($validatedData['item_id']);
+        $companyId = null;
+        if ($validated['destination_id']) {
+            $destination = Destination::find($validated['destination_id']);
+            $companyId = $destination->company_id;
+        } elseif ($validated['package_id']) {
+            $package = Package::find($validated['package_id']);
+            $companyId = $package->company_id;
+        } elseif ($validated['offer_id']) {
+            $offer = Offer::find($validated['offer_id']);
+            $companyId = $offer->company_id;
+        }
 
-        // Create the booking (assuming you have a Booking model)
-        $booking = auth()->user()->bookings()->create([
-            'bookable_type' => $model,
-            'bookable_id' => $item->id,
-            'start_date' => $validatedData['start_date'],
-            'end_date' => $validatedData['end_date'],
-            'guests' => $validatedData['guests'],
-            'special_requests' => $validatedData['special_requests'] ?? null,
-            'price' => $item->discount_price ?? $item->price,
+        $booking = Booking::create([
+            'user_id' => Auth::id(),
+            'company_id' => $companyId,
+            'destination_id' => $validated['destination_id'],
+            'package_id' => $validated['package_id'],
+            'offer_id' => $validated['offer_id'],
+            'check_in' => $validated['check_in'],
+            'check_out' => $validated['check_out'],
+            'guests' => $validated['guests'],
+            'notes' => $validated['notes'],
+            'total_price' => $validated['total_price'],
             'status' => 'pending',
         ]);
 
-        return redirect()->route('bookings.show', $booking->id)
-            ->with('success', 'Your booking has been submitted successfully!');
+        $redirectParams = [];
+        if ($validated['destination_id']) {
+            $redirectParams['destination_id'] = $validated['destination_id'];
+        }
+        if ($validated['package_id']) {
+            $redirectParams['package_id'] = $validated['package_id'];
+        }
+        if ($validated['offer_id']) {
+            $redirectParams['offer_id'] = $validated['offer_id'];
+        }
+
+        return Redirect::route('booking.create', $redirectParams)
+            ->with('success', 'Booking confirmed successfully!');
     }
 }

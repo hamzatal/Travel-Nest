@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\AdminAuth;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use App\Http\Controllers\Controller;
 
 class LoginController extends Controller
 {
@@ -16,26 +17,45 @@ class LoginController extends Controller
 
     public function store(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+        try {
+            $credentials = $request->validate([
+                'email' => ['required', 'email'],
+                'password' => ['required'],
+            ]);
 
-        if (Auth::guard('admin')->attempt($credentials)) {
-            $request->session()->regenerate();
-            return redirect()->intended('/admin/dashboard');
+            if (Auth::guard('admin')->attempt($credentials)) {
+                $admin = Auth::guard('admin')->user();
+                $admin->last_login = now();
+                $admin->save();
+
+                $request->session()->regenerate();
+                Log::info('Admin logged in:', ['admin_id' => $admin->id]);
+                return redirect()->intended('/admin/dashboard');
+            }
+
+            Log::warning('Admin login failed:', ['email' => $request->email]);
+            return back()->withErrors([
+                'email' => 'The provided credentials do not match our records.',
+            ])->with('error', 'Invalid login credentials.');
+        } catch (\Exception $e) {
+            Log::error('Admin login error:', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to login.');
         }
-
-        return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ]);
     }
 
     public function destroy(Request $request)
     {
-        Auth::guard('admin')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return redirect('/admin/login');
+        try {
+            $adminId = Auth::guard('admin')->id();
+            Auth::guard('admin')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            Log::info('Admin logged out:', ['admin_id' => $adminId]);
+            return redirect('/admin/login');
+        } catch (\Exception $e) {
+            Log::error('Admin logout error:', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to logout.');
+        }
     }
 }

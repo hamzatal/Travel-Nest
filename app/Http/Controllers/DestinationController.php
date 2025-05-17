@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Destination;
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -13,9 +14,28 @@ class DestinationController extends Controller
 {
     public function index()
     {
-        $destinations = Destination::all();
+        $destinations = Destination::with('company')->get();
+
         return Inertia::render('Admin/Destinations/AdminDestinations', [
-            'destinations' => $destinations,
+            'destinations' => $destinations->map(function ($destination) {
+                return [
+                    'id' => $destination->id,
+                    'title' => $destination->title,
+                    'location' => $destination->location,
+                    'category' => $destination->category,
+                    'description' => $destination->description,
+                    'image' => $destination->image ? Storage::url($destination->image) : null,
+                    'price' => $destination->price,
+                    'discount_price' => $destination->discount_price,
+                    'rating' => $destination->rating,
+                    'is_featured' => $destination->is_featured,
+                    'company' => $destination->company ? [
+                        'id' => $destination->company->id,
+                        'company_name' => $destination->company->company_name,
+                    ] : null,
+                ];
+            }),
+            'companies' => Company::select(['id', 'company_name'])->get(),
         ]);
     }
 
@@ -23,35 +43,40 @@ class DestinationController extends Controller
     {
         try {
             $validated = $request->validate([
-                'name' => 'required|string|min:3|max:255',
+                'company_id' => 'required|exists:companies,id',
+                'title' => 'required|string|min:3|max:255',
                 'location' => 'required|string|min:3|max:255',
+                'category' => 'required|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
                 'description' => 'required|string|min:10|max:1000',
                 'image' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048',
                 'price' => 'required|numeric|min:0',
                 'discount_price' => 'nullable|numeric|min:0|lt:price',
-                'tag' => 'nullable|string|max:50',
                 'rating' => 'nullable|numeric|min:0|max:5',
                 'is_featured' => 'boolean',
             ]);
 
-            $data = $validated;
-            if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('destinations', 'public');
-            }
+            $imagePath = $request->file('image')->store('destinations', 'public');
 
-            $data['rating'] = $data['rating'] ?? 0;
-            $data['tag'] = $data['tag'] ?? '';
-            $data['is_featured'] = $data['is_featured'] ?? false;
-
-            $destination = Destination::create($data);
+            $destination = Destination::create([
+                'company_id' => $validated['company_id'],
+                'title' => $validated['title'],
+                'location' => $validated['location'],
+                'category' => $validated['category'],
+                'description' => $validated['description'],
+                'image' => $imagePath,
+                'price' => $validated['price'],
+                'discount_price' => $validated['discount_price'] ?? null,
+                'rating' => $validated['rating'] ?? 0,
+                'is_featured' => $validated['is_featured'] ?? false,
+            ]);
 
             return redirect()->route('admin.destinations.index')->with('success', 'Destination created successfully.');
         } catch (ValidationException $e) {
             Log::error('Store destination validation failed:', ['errors' => $e->errors()]);
-            return back()->withErrors($e->errors())->with('error', 'Failed to create destination.');
+            return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             Log::error('Store destination failed:', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Failed to create destination: ' . $e->getMessage());
+            return back()->with('error', 'Failed to create destination. Please try again.');
         }
     }
 
@@ -61,34 +86,27 @@ class DestinationController extends Controller
             $destination = Destination::findOrFail($id);
 
             $validated = $request->validate([
-                'name' => 'nullable|string|min:3|max:255',
+                'company_id' => 'nullable|exists:companies,id',
+                'title' => 'nullable|string|min:3|max:255',
                 'location' => 'nullable|string|min:3|max:255',
+                'category' => 'nullable|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
                 'description' => 'nullable|string|min:10|max:1000',
                 'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
                 'price' => 'nullable|numeric|min:0',
-                'discount_price' => 'nullable|numeric|min:0',
-                'tag' => 'nullable|string|max:50',
+                'discount_price' => 'nullable|numeric|min:0|lt:price',
                 'rating' => 'nullable|numeric|min:0|max:5',
                 'is_featured' => 'nullable|boolean',
             ]);
 
-            // Remove the discount_price validation against price
-            if (
-                isset($validated['discount_price']) && isset($validated['price']) &&
-                $validated['discount_price'] >= $validated['price']
-            ) {
-                return back()->withErrors(['discount_price' => 'Discount price must be less than regular price'])
-                    ->with('error', 'Failed to update destination.');
-            }
-
             $data = [
-                'name' => $validated['name'] ?? $destination->name,
+                'company_id' => $validated['company_id'] ?? $destination->company_id,
+                'title' => $validated['title'] ?? $destination->title,
                 'location' => $validated['location'] ?? $destination->location,
+                'category' => $validated['category'] ?? $destination->category,
                 'description' => $validated['description'] ?? $destination->description,
                 'price' => $validated['price'] ?? $destination->price,
-                'discount_price' => isset($validated['discount_price']) ? ($validated['discount_price'] ?: null) : $destination->discount_price,
-                'tag' => isset($validated['tag']) ? ($validated['tag'] ?: null) : $destination->tag,
-                'rating' => isset($validated['rating']) ? ($validated['rating'] ?: null) : $destination->rating,
+                'discount_price' => $validated['discount_price'] ?? $destination->discount_price,
+                'rating' => $validated['rating'] ?? $destination->rating,
                 'is_featured' => $validated['is_featured'] ?? $destination->is_featured,
             ];
 
@@ -97,13 +115,6 @@ class DestinationController extends Controller
                     Storage::disk('public')->delete($destination->image);
                 }
                 $data['image'] = $request->file('image')->store('destinations', 'public');
-            } elseif ($request->input('image') === '') {
-                if ($destination->image) {
-                    Storage::disk('public')->delete($destination->image);
-                }
-                $data['image'] = null;
-            } else {
-                $data['image'] = $destination->image;
             }
 
             $destination->update($data);
@@ -111,12 +122,13 @@ class DestinationController extends Controller
             return redirect()->route('admin.destinations.index')->with('success', 'Destination updated successfully.');
         } catch (ValidationException $e) {
             Log::error('Update destination validation failed:', ['id' => $id, 'errors' => $e->errors()]);
-            return back()->withErrors($e->errors())->with('error', 'Failed to update destination.');
+            return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             Log::error('Update destination failed:', ['id' => $id, 'error' => $e->getMessage()]);
-            return back()->with('error', 'Failed to update destination: ' . $e->getMessage());
+            return back()->with('error', 'Failed to update destination. Please try again.');
         }
     }
+
     public function destroy($id)
     {
         try {
@@ -125,12 +137,13 @@ class DestinationController extends Controller
             if ($destination->image) {
                 Storage::disk('public')->delete($destination->image);
             }
+
             $destination->delete();
 
             return redirect()->route('admin.destinations.index')->with('success', 'Destination deleted successfully.');
         } catch (\Exception $e) {
-            Log::error('Destroy destination failed:', ['id' => $id, 'error' => $e->getMessage()]);
-            return back()->with('error', 'Failed to delete destination: ' . $e->getMessage());
+            Log::error('Delete destination failed:', ['id' => $id, 'error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to delete destination. Please try again.');
         }
     }
 
@@ -138,69 +151,84 @@ class DestinationController extends Controller
     {
         try {
             $destination = Destination::findOrFail($id);
-            $destination->is_featured = !$destination->is_featured;
-            $destination->save();
+            $destination->update(['is_featured' => !$destination->is_featured]);
 
-            return redirect()->route('admin.destinations.index')->with(
-                'success',
-                $destination->is_featured
-                    ? 'Destination set as featured successfully.'
-                    : 'Destination removed from featured successfully.'
-            );
+            $message = $destination->is_featured
+                ? 'Destination added to featured successfully.'
+                : 'Destination removed from featured successfully.';
+
+            return redirect()->route('admin.destinations.index')->with('success', $message);
         } catch (\Exception $e) {
             Log::error('Toggle featured failed:', ['id' => $id, 'error' => $e->getMessage()]);
-            return back()->with('error', 'Failed to toggle featured status: ' . $e->getMessage());
+            return back()->with('error', 'Failed to toggle featured status. Please try again.');
         }
     }
 
     public function featured()
     {
-        $destinations = Destination::where('is_featured', true)->get();
+        $destinations = Destination::where('is_featured', true)
+            ->with('company')
+            ->get();
+
         if ($destinations->isEmpty()) {
-            $destinations = Destination::orderBy('created_at', 'desc')->take(4)->get();
+            $destinations = Destination::with('company')
+                ->orderBy('created_at', 'desc')
+                ->take(4)
+                ->get();
         }
-        $mappedDestinations = $destinations->map(function ($destination) {
-            $data = [
+
+        return $destinations->map(function ($destination) {
+            return [
                 'id' => $destination->id,
-                'name' => $destination->name ?? 'Unknown Destination',
-                'location' => $destination->location ?? 'Unknown Location',
-                'description' => $destination->description ?? '',
-                'image' => $destination->image ? asset('storage/' . $destination->image) : null,
-                'price' => $destination->price ?? 0,
-                'discount_price' => $destination->discount_price ?? null,
-                'tag' => $destination->tag ?? '',
-                'rating' => $destination->rating ?? 0,
-                'is_featured' => $destination->is_featured ?? false,
+                'title' => $destination->title,
+                'location' => $destination->location,
+                'category' => $destination->category,
+                'description' => $destination->description,
+                'image' => $destination->image ? Storage::url($destination->image) : null,
+                'price' => $destination->price,
+                'discount_price' => $destination->discount_price,
+                'rating' => $destination->rating,
+                'is_featured' => $destination->is_featured,
+                'company' => $destination->company ? [
+                    'id' => $destination->company->id,
+                    'company_name' => $destination->company->company_name,
+                ] : null,
             ];
-            return $data;
         });
-        return $mappedDestinations;
     }
 
     public function allDestinations(Request $request)
     {
-        $query = Destination::query();
+        $query = Destination::query()->with('company');
 
         if ($request->has('search')) {
             $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%")
-                ->orWhere('location', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('location', 'like', "%{$search}%")
+                    ->orWhereHas('company', function ($q) use ($search) {
+                        $q->where('company_name', 'like', "%{$search}%");
+                    });
+            });
         }
 
         $destinations = $query->get()->map(function ($destination) {
-            $data = [
+            return [
                 'id' => $destination->id,
-                'name' => $destination->name ?? 'Unknown Destination',
-                'location' => $destination->location ?? 'Unknown Location',
-                'description' => $destination->description ?? '',
-                'image' => $destination->image ? asset('storage/' . $destination->image) : null,
-                'price' => $destination->price ?? 0,
-                'discount_price' => $destination->discount_price ?? null,
-                'tag' => $destination->tag ?? '',
-                'rating' => $destination->rating ?? 0,
-                'is_featured' => $destination->is_featured ?? false,
+                'title' => $destination->title,
+                'location' => $destination->location,
+                'category' => $destination->category,
+                'description' => $destination->description,
+                'image' => $destination->image ? Storage::url($destination->image) : null,
+                'price' => $destination->price,
+                'discount_price' => $destination->discount_price,
+                'rating' => $destination->rating,
+                'is_featured' => $destination->is_featured,
+                'company' => $destination->company ? [
+                    'id' => $destination->company->id,
+                    'company_name' => $destination->company->company_name,
+                ] : null,
             ];
-            return $data;
         });
 
         return Inertia::render('DestinationsPage', [
@@ -211,30 +239,34 @@ class DestinationController extends Controller
     public function show($id)
     {
         try {
-            $destination = Destination::findOrFail($id);
-            $destinationData = [
-                'id' => $destination->id,
-                'name' => $destination->name ?? 'Unknown Destination',
-                'location' => $destination->location ?? 'Unknown Location',
-                'description' => $destination->description ?? '',
-                'image' => $destination->image ? asset('storage/' . $destination->image) : null,
-                'price' => $destination->price ?? 0,
-                'discount_price' => $destination->discount_price ?? null,
-                'tag' => $destination->tag ?? '',
-                'rating' => $destination->rating ?? 0,
-                'is_featured' => $destination->is_featured ?? false,
-            ];
+            $destination = Destination::with('company')->findOrFail($id);
+
             return Inertia::render('DestinationDetails', [
-                'destination' => $destinationData,
+                'destination' => [
+                    'id' => $destination->id,
+                    'title' => $destination->title,
+                    'location' => $destination->location,
+                    'category' => $destination->category,
+                    'description' => $destination->description,
+                    'image' => $destination->image ? Storage::url($destination->image) : null,
+                    'price' => $destination->price,
+                    'discount_price' => $destination->discount_price,
+                    'rating' => $destination->rating,
+                    'is_featured' => $destination->is_featured,
+                    'company' => $destination->company ? [
+                        'id' => $destination->company->id,
+                        'company_name' => $destination->company->company_name,
+                    ] : null,
+                ],
                 'flash' => [
-                    'success' => session('success') ?? null,
-                    'error' => session('error') ?? null,
+                    'success' => session('success'),
+                    'error' => session('error'),
                 ],
             ]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error('Destination not found:', ['id' => $id]);
+        } catch (\Exception $e) {
+            Log::error('Show destination failed:', ['id' => $id, 'error' => $e->getMessage()]);
             return Inertia::render('Errors/404', [
-                'message' => 'The destination you are looking for does not exist.',
+                'message' => 'Destination not found.',
             ]);
         }
     }

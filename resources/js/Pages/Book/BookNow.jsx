@@ -44,7 +44,7 @@ const BookNowPage = ({ auth }) => {
     const allData = [
         ...destinations.map((item) => ({ ...item, type: "destination" })),
         ...packages.map((item) => ({ ...item, type: "package" })),
-        ...offers.map((item) => ({ ...item, type: "deal" })),
+        ...offers.map((item) => ({ ...item, type: "offer" })), // Changed from "deal" to "offer"
     ];
 
     const categories = [
@@ -72,7 +72,7 @@ const BookNowPage = ({ auth }) => {
             label: "Packages",
             icon: <Package className="w-4 h-4" />,
         },
-        { id: "deal", label: "Deals", icon: <Tag className="w-4 h-4" /> },
+        { id: "offer", label: "Offers", icon: <Tag className="w-4 h-4" /> }, // Changed from "deal" to "offer"
     ];
 
     // Animation variants
@@ -108,7 +108,6 @@ const BookNowPage = ({ auth }) => {
                 ? selectedTypes.filter((t) => t !== type)
                 : [...selectedTypes, type];
 
-            // If no types selected, default to "all"
             setSelectedTypes(newTypes.length === 0 ? ["all"] : newTypes);
         }
         setCurrentPage(1);
@@ -143,13 +142,20 @@ const BookNowPage = ({ auth }) => {
 
             // Search filter
             const searchMatch =
-                item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                item.location
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                item.description
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase());
+                (
+                    item.name?.toLowerCase() ||
+                    item.title?.toLowerCase() ||
+                    ""
+                ).includes(searchQuery.toLowerCase()) ||
+                (item.location?.toLowerCase() || "").includes(
+                    searchQuery.toLowerCase()
+                ) ||
+                (item.description?.toLowerCase() || "").includes(
+                    searchQuery.toLowerCase()
+                ) ||
+                (item.destination_name?.toLowerCase() || "").includes(
+                    searchQuery.toLowerCase()
+                );
 
             // Category filter
             const categoryMatch =
@@ -243,7 +249,7 @@ const BookNowPage = ({ auth }) => {
                 return <MapPin className="w-5 h-5 text-blue-400" />;
             case "package":
                 return <Package className="w-5 h-5 text-green-400" />;
-            case "deal":
+            case "offer":
                 return <Tag className="w-5 h-5 text-purple-400" />;
             default:
                 return <Compass className="w-5 h-5 text-blue-400" />;
@@ -256,7 +262,7 @@ const BookNowPage = ({ auth }) => {
                 return "bg-blue-600";
             case "package":
                 return "bg-green-600";
-            case "deal":
+            case "offer":
                 return "bg-purple-600";
             default:
                 return "bg-blue-600";
@@ -269,8 +275,8 @@ const BookNowPage = ({ auth }) => {
                 return "Destination";
             case "package":
                 return "Package";
-            case "deal":
-                return "Deal";
+            case "offer":
+                return "Offer";
             default:
                 return "Unknown";
         }
@@ -282,8 +288,8 @@ const BookNowPage = ({ auth }) => {
                 return `/destinations/${item.id}`;
             case "package":
                 return `/packages/${item.id}`;
-            case "deal":
-                return `/offer/${item.id}`;
+            case "offer":
+                return `/offers/${item.id}`; // Fixed from /offer to /offers
             default:
                 return "#";
         }
@@ -295,7 +301,7 @@ const BookNowPage = ({ auth }) => {
                 <title>Book Now - Travel Nest</title>
                 <meta
                     name="description"
-                    content="Book your next adventure with Travel Nest. Explore our destinations, packages, and special deals."
+                    content="Book your next adventure with Travel Nest. Explore our destinations, packages, and special offers."
                 />
             </Head>
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
@@ -327,7 +333,7 @@ const BookNowPage = ({ auth }) => {
                             className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
                             Explore our destinations, packages, and special
-                            deals to find your perfect getaway
+                            offers to find your perfect getaway
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -371,7 +377,7 @@ const BookNowPage = ({ auth }) => {
                         <div className="relative w-full md:w-96">
                             <input
                                 type="text"
-                                placeholder="Search destinations, packages, deals..."
+                                placeholder="Search destinations, packages, offers..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
@@ -600,7 +606,7 @@ const BookNowPage = ({ auth }) => {
                                                 item.image ||
                                                 "https://via.placeholder.com/640x480?text=No+Image"
                                             }
-                                            alt={item.name}
+                                            alt={item.name || item.title}
                                             className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
                                         />
@@ -644,13 +650,19 @@ const BookNowPage = ({ auth }) => {
                                     <div className="p-5 flex flex-col flex-grow">
                                         <div className="flex items-center justify-between mb-2">
                                             <h3 className="text-xl font-bold text-white line-clamp-1">
-                                                {item.name}
+                                                {item.name ||
+                                                    item.title ||
+                                                    "Unknown"}
                                             </h3>
                                         </div>
                                         <div className="flex items-center gap-2 mb-2">
                                             {getTypeIcon(item.type)}
                                             <span className="text-gray-300 text-sm">
-                                                {item.location}
+                                                {item.type === "package" &&
+                                                item.destination_name
+                                                    ? item.destination_name
+                                                    : item.location ||
+                                                      "Unknown Location"}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-1 mb-3">
@@ -663,6 +675,75 @@ const BookNowPage = ({ auth }) => {
                                             {item.description ||
                                                 "No description available."}
                                         </p>
+                                        {(item.type === "package" ||
+                                            item.type === "offer") && (
+                                            <div className="flex flex-col gap-2 mb-4 text-sm text-gray-300">
+                                                {item.type === "package" && (
+                                                    <>
+                                                        {item.duration && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Calendar
+                                                                    size={14}
+                                                                    className="text-gray-400"
+                                                                />
+                                                                <span>
+                                                                    Duration:{" "}
+                                                                    {
+                                                                        item.duration
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {item.group_size && (
+                                                            <div className="flex items-center gap-2">
+                                                                <Users
+                                                                    size={14}
+                                                                    className="text-gray-400"
+                                                                />
+                                                                <span>
+                                                                    Group Size:{" "}
+                                                                    {
+                                                                        item.group_size
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                                {(item.start_date ||
+                                                    item.end_date) && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar
+                                                            size={14}
+                                                            className="text-gray-400"
+                                                        />
+                                                        <span>
+                                                            {item.start_date?.slice(
+                                                                0,
+                                                                10
+                                                            ) || "N/A"}{" "}
+                                                            -{" "}
+                                                            {item.end_date?.slice(
+                                                                0,
+                                                                10
+                                                            ) || "N/A"}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {item.discount_type && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Tag
+                                                            size={14}
+                                                            className="text-gray-400"
+                                                        />
+                                                        <span>
+                                                            Discount Type:{" "}
+                                                            {item.discount_type}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="mt-auto">
                                             <div className="flex items-center justify-between mb-4">
                                                 <div>

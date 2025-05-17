@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Package;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Storage;
 
 class PackagesController extends Controller
 {
@@ -13,7 +13,31 @@ class PackagesController extends Controller
     {
         $packages = Package::with('company')->get();
         return Inertia::render('Packages/Index', [
-            'packages' => $packages,
+            'packages' => $packages->map(function ($package) {
+                return [
+                    'id' => $package->id,
+                    'title' => $package->title,
+                    'subtitle' => $package->subtitle,
+                    'description' => $package->description,
+                    'location' => $package->location,
+                    'category' => $package->category,
+                    'price' => $package->price,
+                    'discount_price' => $package->discount_price,
+                    'discount_type' => $package->discount_type,
+                    'image' => $package->image ? Storage::url($package->image) : null,
+                    'rating' => $package->rating,
+                    'is_featured' => $package->is_featured,
+                    'is_active' => $package->is_active,
+                    'start_date' => $package->start_date ? $package->start_date->format('Y-m-d') : null,
+                    'end_date' => $package->end_date ? $package->end_date->format('Y-m-d') : null,
+                    'duration' => $package->duration,
+                    'group_size' => $package->group_size,
+                    'company' => $package->company ? [
+                        'id' => $package->company->id,
+                        'company_name' => $package->company->company_name,
+                    ] : null,
+                ];
+            }),
         ]);
     }
 
@@ -24,8 +48,28 @@ class PackagesController extends Controller
             ? Package::where('company_id', $user->id)->get()
             : Package::all();
         return Inertia::render('Company/Packages/Index', [
-            'packages' => $packages,
-            'auth' =>$user,
+            'packages' => $packages->map(function ($package) {
+                return [
+                    'id' => $package->id,
+                    'title' => $package->title,
+                    'subtitle' => $package->subtitle,
+                    'description' => $package->description,
+                    'location' => $package->location,
+                    'category' => $package->category,
+                    'price' => $package->price,
+                    'discount_price' => $package->discount_price,
+                    'discount_type' => $package->discount_type,
+                    'image' => $package->image ? Storage::url($package->image) : null,
+                    'rating' => $package->rating,
+                    'is_featured' => $package->is_featured,
+                    'is_active' => $package->is_active,
+                    'start_date' => $package->start_date ? $package->start_date->format('Y-m-d') : null,
+                    'end_date' => $package->end_date ? $package->end_date->format('Y-m-d') : null,
+                    'duration' => $package->duration,
+                    'group_size' => $package->group_size,
+                ];
+            }),
+            'auth' => $user,
         ]);
     }
 
@@ -42,23 +86,22 @@ class PackagesController extends Controller
             'title' => 'required|string|max:255',
             'subtitle' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'location' => 'required|string|max:255',
+            'category' => 'required|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
             'price' => 'required|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
-            'discount_type' => 'nullable|string|max:50',
+            'discount_type' => 'nullable|string|in:percentage,fixed',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'location' => 'nullable|string|max:255',
             'duration' => 'nullable|string|max:255',
             'group_size' => 'nullable|string|max:255',
-            'inclusions' => 'nullable|array',
-            'itinerary' => 'nullable|array',
-            'tag' => 'nullable|string|max:50',
             'rating' => 'nullable|numeric|min:0|max:5',
             'is_featured' => 'boolean',
+            'is_active' => 'boolean',
         ]);
 
-        $validated['company_id'] = auth()->user()->id; // Assuming company is logged in
+        $validated['company_id'] = auth()->user()->id;
 
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('packages', 'public');
@@ -71,7 +114,7 @@ class PackagesController extends Controller
 
     public function edit(Package $package)
     {
-        $this->authorize('update', $package); // Ensure company can only edit their packages
+        $this->authorize('update', $package);
         return Inertia::render('Company/Packages/Edit', [
             'package' => $package,
             'auth' => auth()->user(),
@@ -86,20 +129,19 @@ class PackagesController extends Controller
             'title' => 'required|string|max:255',
             'subtitle' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'location' => 'required|string|max:255',
+            'category' => 'required|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
             'price' => 'required|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
-            'discount_type' => 'nullable|string|max:50',
+            'discount_type' => 'nullable|string|in:percentage,fixed',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'location' => 'nullable|string|max:255',
             'duration' => 'nullable|string|max:255',
             'group_size' => 'nullable|string|max:255',
-            'inclusions' => 'nullable|array',
-            'itinerary' => 'nullable|array',
-            'tag' => 'nullable|string|max:50',
             'rating' => 'nullable|numeric|min:0|max:5',
             'is_featured' => 'boolean',
+            'is_active' => 'boolean',
         ]);
 
         if ($request->hasFile('image')) {
@@ -129,7 +171,29 @@ class PackagesController extends Controller
     {
         $package->load('company');
         return Inertia::render('Packages/Show', [
-            'package' => $package,
+            'package' => [
+                'id' => $package->id,
+                'title' => $package->title,
+                'subtitle' => $package->subtitle,
+                'description' => $package->description,
+                'location' => $package->location,
+                'category' => $package->category,
+                'price' => $package->price,
+                'discount_price' => $package->discount_price,
+                'discount_type' => $package->discount_type,
+                'image' => $package->image ? Storage::url($package->image) : null,
+                'rating' => $package->rating,
+                'is_featured' => $package->is_featured,
+                'is_active' => $package->is_active,
+                'start_date' => $package->start_date ? $package->start_date->format('Y-m-d') : null,
+                'end_date' => $package->end_date ? $package->end_date->format('Y-m-d') : null,
+                'duration' => $package->duration,
+                'group_size' => $package->group_size,
+                'company' => $package->company ? [
+                    'id' => $package->company->id,
+                    'company_name' => $package->company->company_name,
+                ] : null,
+            ],
             'auth' => auth()->user(),
         ]);
     }

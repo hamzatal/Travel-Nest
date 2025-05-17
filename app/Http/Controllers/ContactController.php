@@ -9,7 +9,6 @@ use Exception;
 
 class ContactController extends Controller
 {
-    // Retrieve all contacts
     public function index()
     {
         try {
@@ -19,9 +18,10 @@ class ContactController extends Controller
             return response()->json([
                 'message' => 'Failed to retrieve contacts.',
                 'error' => $e->getMessage()
-            ], 500); // Internal Server Error
+            ], 500);
         }
     }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -30,13 +30,12 @@ class ContactController extends Controller
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
         ]);
-    
+
         Contact::create($request->all());
-    
+
         return response()->json(['message' => 'Your message has been sent successfully!'], 201);
     }
-    
-    // Retrieve a single contact by ID
+
     public function show($id)
     {
         try {
@@ -46,16 +45,15 @@ class ContactController extends Controller
             return response()->json([
                 'message' => 'Contact not found.',
                 'error' => $e->getMessage()
-            ], 404); // Not Found
+            ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'An error occurred while retrieving the contact.',
                 'error' => $e->getMessage()
-            ], 500); // Internal Server Error
+            ], 500);
         }
     }
 
-    // Delete a contact by ID
     public function destroy($id)
     {
         try {
@@ -66,12 +64,12 @@ class ContactController extends Controller
             return response()->json([
                 'message' => 'Contact not found.',
                 'error' => $e->getMessage()
-            ], 404); // Not Found
+            ], 404);
         } catch (Exception $e) {
             return response()->json([
                 'message' => 'An error occurred while deleting the contact.',
                 'error' => $e->getMessage()
-            ], 500); // Internal Server Error
+            ], 500);
         }
     }
 }

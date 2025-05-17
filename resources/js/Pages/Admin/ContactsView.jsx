@@ -1,11 +1,18 @@
 import React, { useState } from "react";
-import { Head, usePage, useForm } from "@inertiajs/react";
+import { Head, usePage, useForm, router } from "@inertiajs/react";
 import { Search, X, Send, CheckCircle, XCircle, Check } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
 
 export default function ContactsView() {
     const { props } = usePage();
-    const { messages = [], flash = {}, admin = props.auth?.user || {} } = props;
+    const {
+        messages = { data: [], current_page: 1, last_page: 1 },
+        flash = {},
+        admin = props.auth?.user || {},
+    } = props;
+
+    // Debug: Log the messages value to inspect its type and content
+    console.log("Messages value:", messages, "Type:", typeof messages);
 
     // State for search and reply modal
     const [searchQuery, setSearchQuery] = useState("");
@@ -21,13 +28,21 @@ export default function ContactsView() {
         processing,
     } = useForm({});
 
-    // Filter messages based on search query
-    const filteredMessages = messages.filter(
-        (message) =>
-            message.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            message.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            message.subject?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Ensure messages.data is an array before filtering
+    const filteredMessages = Array.isArray(messages.data)
+        ? messages.data.filter(
+              (message) =>
+                  message.name
+                      ?.toLowerCase()
+                      .includes(searchQuery.toLowerCase()) ||
+                  message.email
+                      ?.toLowerCase()
+                      .includes(searchQuery.toLowerCase()) ||
+                  message.subject
+                      ?.toLowerCase()
+                      .includes(searchQuery.toLowerCase())
+          )
+        : [];
 
     // Handle delete contact
     const handleDeleteContact = (id) => {
@@ -66,6 +81,15 @@ export default function ContactsView() {
                     setReplyMessage("");
                 },
             }
+        );
+    };
+
+    // Handle pagination
+    const handlePageChange = (page) => {
+        router.get(
+            `/admin/messages?page=${page}`,
+            { search: searchQuery },
+            { preserveState: true, preserveScroll: true }
         );
     };
 
@@ -205,29 +229,8 @@ export default function ContactsView() {
                                                             Mark as Read
                                                         </button>
                                                     )}
-                                                    {/* <button
-                                                        onClick={() => {
-                                                            setSelectedContact(
-                                                                message
-                                                            );
-                                                            setShowReplyModal(
-                                                                true
-                                                            );
-                                                        }}
-                                                        className="text-blue-400 hover:text-blue-300 mr-4"
-                                                    >
-                                                        Reply
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            handleDeleteContact(
-                                                                message.id
-                                                            )
-                                                        }
-                                                        className="text-red-400 hover:text-red-300"
-                                                    >
-                                                        Delete
-                                                    </button> */}
+                                                    
+                                                   
                                                 </td>
                                             </tr>
                                         ))
@@ -244,89 +247,45 @@ export default function ContactsView() {
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
-
-                {/* Reply Modal */}
-                {showReplyModal && selectedContact && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-                        <div className="bg-gray-800 rounded-lg max-w-2xl w-full">
-                            <div className="p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-semibold text-white">
-                                        Reply to {selectedContact.name}
-                                    </h3>
-                                    <button
-                                        onClick={() => setShowReplyModal(false)}
-                                    >
-                                        <X className="w-6 h-6 text-gray-400" />
-                                    </button>
-                                </div>
-
-                                <form
-                                    onSubmit={handleReply}
-                                    className="space-y-4"
+                        {/* Pagination Controls */}
+                        <div className="mt-4 flex justify-between items-center">
+                            <div className="text-sm text-gray-400">
+                                Showing {messages.from || 0} to{" "}
+                                {messages.to || 0} of {messages.total || 0}{" "}
+                                messages
+                            </div>
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={() =>
+                                        handlePageChange(
+                                            messages.current_page - 1
+                                        )
+                                    }
+                                    disabled={messages.current_page === 1}
+                                    className="px-4 py-2 bg-gray-700 text-gray-200 rounded-lg disabled:opacity-50"
                                 >
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                                            To:
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={selectedContact.email}
-                                            disabled
-                                            className="w-full p-2 bg-gray-700 rounded-lg text-white"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                                            Subject:
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={`Re: ${selectedContact.subject}`}
-                                            disabled
-                                            className="w-full p-2 bg-gray-700 rounded-lg text-white"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                                            Message:
-                                        </label>
-                                        <textarea
-                                            value={replyMessage}
-                                            onChange={(e) =>
-                                                setReplyMessage(e.target.value)
-                                            }
-                                            className="w-full p-2 bg-gray-700 rounded-lg text-white"
-                                            rows={6}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="flex justify-end space-x-2 mt-6">
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setShowReplyModal(false)
-                                            }
-                                            className="px-4 py-2 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-                                        >
-                                            <Send className="w-4 h-4 mr-2" />
-                                            Send Reply
-                                        </button>
-                                    </div>
-                                </form>
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        handlePageChange(
+                                            messages.current_page + 1
+                                        )
+                                    }
+                                    disabled={
+                                        messages.current_page ===
+                                        messages.last_page
+                                    }
+                                    className="px-4 py-2 bg-gray-700 text-gray-200 rounded-lg disabled:opacity-50"
+                                >
+                                    Next
+                                </button>
                             </div>
                         </div>
                     </div>
-                )}
+                </div>
+
+         
             </div>
             <AdminSidebar />
         </div>

@@ -11,42 +11,44 @@ class Package extends Model
 
     protected $fillable = [
         'company_id',
+        'destination_id',
         'title',
         'subtitle',
         'description',
+        'location',
+        'category',
         'price',
         'discount_price',
         'discount_type',
+        'image',
+        'is_featured',
+        'is_active',
         'start_date',
         'end_date',
-        'image',
-        'location',
         'duration',
         'group_size',
-        'inclusions',
-        'itinerary',
-        'tag',
-        'rating',
-        'is_featured',
     ];
-
     protected $casts = [
-        'start_date' => 'datetime',
-        'end_date' => 'datetime',
+        'start_date' => 'date',
+        'end_date' => 'date',
         'is_featured' => 'boolean',
-        'inclusions' => 'array',
-        'itinerary' => 'array',
+        'is_active' => 'boolean',
+        'price' => 'decimal:2',
+        'discount_price' => 'decimal:2',
     ];
 
-    // Relationship with Company
     public function company()
     {
         return $this->belongsTo(Company::class);
     }
 
-    // Relationship with Bookings
+    public function destination()
+    {
+        return $this->belongsTo(Destination::class);
+    }
+
     public function bookings()
     {
-        return $this->hasMany(UserBooking::class, 'package_id');
+        return $this->hasMany(Booking::class, 'package_id');
     }
 }

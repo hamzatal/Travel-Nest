@@ -6,5 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class HeroSection extends Model
 {
-    protected $fillable = ['title', 'subtitle', 'image', 'is_active', 'created_at', 'updated_at'];
+    protected $fillable = ['title', 'subtitle', 'image', 'is_active'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 }

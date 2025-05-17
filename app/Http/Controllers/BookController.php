@@ -1,111 +1,110 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Models;
 
-use App\Models\Destination;
-use App\Models\Package;
-use App\Models\Book;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
-class BookController extends Controller
+class Booking extends Model
 {
-    /**
-     * Show the booking form for a specific destination or package.
-     */
-    public function create(Request $request)
+    use HasFactory;
+
+    protected $table = 'bookings';
+
+    protected $fillable = [
+        'user_id',
+        'company_id',
+        'destination_id',
+        'package_id',
+        'offer_id',
+        'check_in',
+        'check_out',
+        'guests',
+        'total_price',
+        'status',
+        'notes',
+    ];
+
+    protected $casts = [
+        'total_price' => 'decimal:2',
+        'check_in' => 'date',
+        'check_out' => 'date',
+        'guests' => 'integer',
+        'status' => 'string',
+    ];
+
+    public function user()
     {
-        // Get destination_id or package_id from query string
-        $destinationId = $request->query('destination_id');
-        $packageId = $request->query('package_id');
+        return $this->belongsTo(User::class);
+    }
 
-        $data = [
-            'auth' => Auth::user() ? [
-                'user' => Auth::user(),
-            ] : null,
-        ];
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-        // Handle destination booking
-        if ($destinationId) {
-            $destination = Destination::findOrFail($destinationId);
-            $data['destination'] = [
-                'id' => $destination->id,
-                'name' => $destination->name,
-                'location' => $destination->location,
-                'price' => $destination->price,
-                'discount_price' => $destination->discount_price,
-            ];
-        }
+    public function destination()
+    {
+        return $this->belongsTo(Destination::class);
+    }
 
-        // Handle package booking
-        if ($packageId) {
-            $package = Package::findOrFail($packageId);
-            $data['package'] = [
-                'id' => $package->id,
-                'title' => $package->title,
-                'location' => $package->location,
-                'price' => $package->price,
-                'discount_price' => $package->discount_price,
-            ];
-        }
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
+    }
 
-        // Ensure at least one ID is provided
-        if (!$destinationId && !$packageId) {
-            return Inertia::render('Error', [
-                'message' => 'No destination or package specified.',
-            ]);
-        }
-
-        // Render the Book page with data
-        return Inertia::render('Book/Book', $data);
+    public function offer()
+    {
+        return $this->belongsTo(Offer::class);
     }
 
     /**
-     * Store a new booking in the database.
+     * Validate that at least one of destination_id, package_id, or offer_id is present.
      */
-    public function store(Request $request)
+    public static function boot()
     {
-        // Validate the request
-        $validated = $request->validate([
-            'destination_id' => 'nullable|exists:destinations,id',
-            'package_id' => 'nullable|exists:packages,id',
-            'check_in' => 'required|date|after_or_equal:today',
-            'check_out' => 'required|date|after:check_in',
-            'guests' => 'required|integer|min:1|max:8',
-            'notes' => 'nullable|string|max:500',
-            'total_price' => 'required|numeric|min:0',
-        ]);
+        parent::boot();
 
-        // Ensure at least one of destination_id or package_id is provided
-        if (!$validated['destination_id'] && !$validated['package_id']) {
-            return Redirect::back()->withErrors(['error' => 'A destination or package must be specified.']);
-        }
+        static::creating(function ($booking) {
+            $validator = Validator::make($booking->toArray(), [
+                'destination_id' => 'nullable|exists:destinations,id',
+                'package_id' => 'nullable|exists:packages,id',
+                'offer_id' => 'nullable|exists:offers,id',
+            ], [
+                'at_least_one' => 'At least one of destination_id, package_id, or offer_id must be provided.',
+            ]);
 
-        // Create the booking
-        $book = Book::create([
-            'user_id' => Auth::id(),
-            'destination_id' => $validated['destination_id'],
-            'package_id' => $validated['package_id'],
-            'check_in' => $validated['check_in'],
-            'check_out' => $validated['check_out'],
-            'guests' => $validated['guests'],
-            'notes' => $validated['notes'],
-            'total_price' => $validated['total_price'],
-            'status' => 'pending',
-        ]);
+            $validator->after(function ($validator) use ($booking) {
+                if (!$booking->destination_id && !$booking->package_id && !$booking->offer_id) {
+                    $validator->errors()->add('at_least_one', 'At least one of destination_id, package_id, or offer_id must be provided.');
+                }
+            });
 
-        // Redirect back with success message
-        $redirectParams = [];
-        if ($validated['destination_id']) {
-            $redirectParams['destination_id'] = $validated['destination_id'];
-        }
-        if ($validated['package_id']) {
-            $redirectParams['package_id'] = $validated['package_id'];
-        }
+            if ($validator->fails()) {
+                throw new ValidationException($validator);
+            }
+        });
 
-        return Redirect::route('book.create', $redirectParams)
-            ->with('success', 'Booking confirmed successfully!');
+        static::updating(function ($booking) {
+            $validator = Validator::make($booking->toArray(), [
+                'destination_id' => 'nullable|exists:destinations,id',
+                'package_id' => 'nullable|exists:packages,id',
+                'offer_id' => 'nullable|exists:offers,id',
+            ], [
+                'at_least_one' => 'At least one of destination_id, package_id, or offer_id must be provided.',
+            ]);
+
+            $validator->after(function ($validator) use ($booking) {
+                if (!$booking->destination_id && !$booking->package_id && !$booking->offer_id) {
+                    $validator->errors()->add('at_least_one', 'At least one of destination_id, package_id, or offer_id must be provided.');
+                }
+            });
+
+            if ($validator->fails()) {
+                throw new ValidationException($validator);
+            }
+        });
     }
 }

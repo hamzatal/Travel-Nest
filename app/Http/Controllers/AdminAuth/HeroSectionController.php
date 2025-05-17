@@ -59,6 +59,8 @@ class HeroSectionController extends Controller
             'id' => $id,
             'data' => $request->except('image'),
             'has_file' => $request->hasFile('image'),
+            'files' => $request->allFiles(),
+            'headers' => $request->headers->all(),
         ]);
 
         try {
@@ -77,24 +79,39 @@ class HeroSectionController extends Controller
             $data = [
                 'title' => $validated['title'] ?? $hero->title,
                 'subtitle' => $validated['subtitle'] ?? $hero->subtitle,
-                'image' => $hero->image,
+                'image' => $hero->image ?? '',
             ];
 
+            // Handle image upload
             if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                Log::debug('New image detected:', [
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_size' => $file->getSize(),
+                    'file_type' => $file->getMimeType(),
+                ]);
+
+                // Delete old image if exists
                 if ($hero->image) {
                     Storage::disk('public')->delete($hero->image);
+                    Log::debug('Old image deleted:', ['old_path' => $hero->image]);
                 }
-                $imageName = time() . '.' . $request->image->extension();
-                $request->image->storeAs('hero', $imageName, 'public');
+
+                // Store new image
+                $imageName = time() . '.' . $file->extension();
+                $file->storeAs('hero', $imageName, 'public');
                 $data['image'] = 'hero/' . $imageName;
+
+                Log::debug('New image stored:', ['new_path' => $data['image']]);
+            } else {
+                Log::debug('No new image provided, retaining existing image:', ['image' => $data['image']]);
             }
 
             // Enable query logging
             DB::enableQueryLog();
 
-            // Force update using fill and save
-            $hero->fill($data);
-            $updated = $hero->save();
+            // Update using mass assignment
+            $updated = $hero->update($data);
 
             $queries = DB::getQueryLog();
             DB::disableQueryLog();
@@ -103,7 +120,7 @@ class HeroSectionController extends Controller
                 'id' => $hero->id,
                 'updated' => $updated,
                 'data' => $data,
-                'attributes_after' => $hero->getAttributes(),
+                'attributes_after' => $hero->fresh()->getAttributes(),
                 'queries' => $queries,
             ]);
 

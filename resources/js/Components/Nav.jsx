@@ -500,24 +500,6 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                 {/* Profile Button */}
                 <ProfileButton />
 
-                {/* Login/Signup Links */}
-                {(!auth || (!auth.user && !auth.company)) && (
-                    <>
-                        <Link
-                            href={route("login")}
-                            className="hidden md:block text-gray-300 hover:text-green-400 transition-colors"
-                        >
-                            Log in
-                        </Link>
-                        <Link
-                            href={route("register")}
-                            className="hidden md:block text-gray-300 hover:text-green-400 transition-colors"
-                        >
-                            Sign up
-                        </Link>
-                    </>
-                )}
-
                 {/* Mobile Menu Button */}
                 <button
                     className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 border border-green-500/30 hover:bg-green-600/30 transition-colors"
@@ -712,26 +694,6 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                             Book Now <Plane className="ml-2 w-5 h-5" />
                         </Link>
                     </div>
-
-                    {/* Mobile Login/Signup Links */}
-                    {(!auth || (!auth.user && !auth.company)) && (
-                        <div className="px-6 mt-4 space-y-2">
-                            <Link
-                                href={route("login")}
-                                className="flex items-center px-4 py-3 rounded-lg text-sm font-medium w-full text-gray-300 hover:bg-green-600/20 hover:text-white"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                Log in
-                            </Link>
-                            <Link
-                                href={route("register")}
-                                className="flex items-center px-4 py-3 rounded-lg text-sm font-medium w-full text-gray-300 hover:bg-green-600/20 hover:text-white"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                Sign up
-                            </Link>
-                        </div>
-                    )}
                 </div>
             )}
         </header>

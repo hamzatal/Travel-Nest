@@ -10,23 +10,47 @@ class Destination extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
-        'location',
+        'company_id',
+        'title',
         'description',
-        'image',
+        'location',
+        'category',
         'price',
         'discount_price',
-        'tag',
+        'image',
         'rating',
         'is_featured',
     ];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'discount_price' => 'decimal:2',
+        'rating' => 'float',
+        'is_featured' => 'boolean',
+    ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function bookings()
     {
-        return $this->hasMany(UserBooking::class, 'destination_id');
+        return $this->hasMany(Booking::class, 'destination_id');
     }
 
     public function favorites()
     {
         return $this->hasMany(Favorite::class, 'destination_id');
+    }
+
+    public function packages()
+    {
+        return $this->hasMany(Package::class, 'destination_id');
+    }
+
+    public function offers()
+    {
+        return $this->hasMany(Offer::class, 'destination_id');
     }
 }

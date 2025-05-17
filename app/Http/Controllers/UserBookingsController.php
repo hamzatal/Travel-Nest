@@ -18,20 +18,19 @@ class UserBookingsController extends Controller
             return redirect()->route('login')->with('error', 'Please log in to view your bookings and favorites.');
         }
 
-        // Fetch bookings with related destination, offer, and package data
         $bookings = Booking::where('user_id', $user->id)
             ->with([
                 'destination' => function ($query) {
                     $query->select([
                         'id',
-                        'name',
+                        'title',
                         'location',
                         'description',
                         'image',
                         'price',
                         'discount_price',
+                        'category',
                         'rating',
-                        'tag',
                     ]);
                 },
                 'offer' => function ($query) {
@@ -44,6 +43,7 @@ class UserBookingsController extends Controller
                         'discount_price',
                         'discount_type',
                         'image',
+                        'category',
                         'rating',
                         'end_date',
                     ]);
@@ -56,6 +56,7 @@ class UserBookingsController extends Controller
                         'price',
                         'discount_price',
                         'image',
+                        'category',
                     ]);
                 },
             ])
@@ -93,20 +94,30 @@ class UserBookingsController extends Controller
                 return $booking;
             });
 
-        // Fetch favorites with related destination and offer data
         $favorites = Favorite::where('user_id', $user->id)
             ->with([
                 'destination' => function ($query) {
                     $query->select([
                         'id',
-                        'name',
+                        'title',
                         'location',
                         'description',
                         'image',
                         'price',
                         'discount_price',
+                        'category',
                         'rating',
-                        'tag',
+                    ]);
+                },
+                'package' => function ($query) {
+                    $query->select([
+                        'id',
+                        'title',
+                        'description',
+                        'price',
+                        'discount_price',
+                        'image',
+                        'category',
                     ]);
                 },
                 'offer' => function ($query) {
@@ -119,18 +130,24 @@ class UserBookingsController extends Controller
                         'discount_price',
                         'discount_type',
                         'image',
+                        'category',
                         'rating',
                         'end_date',
                     ])->where('is_active', true);
                 },
             ])
-            ->select(['id', 'user_id', 'destination_id', 'offer_id', 'created_at'])
+            ->select(['id', 'user_id', 'destination_id', 'package_id', 'offer_id', 'created_at'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($favorite) {
                 if ($favorite->destination) {
                     $favorite->destination->image = $favorite->destination->image
                         ? Storage::url($favorite->destination->image)
+                        : null;
+                }
+                if ($favorite->package) {
+                    $favorite->package->image = $favorite->package->image
+                        ? Storage::url($favorite->package->image)
                         : null;
                 }
                 if ($favorite->offer) {

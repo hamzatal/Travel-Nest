@@ -5,87 +5,66 @@ import {
     Trash2,
     Plus,
     Edit2,
-    Image,
+    Image as ImageIcon,
     X,
     ToggleLeft,
     ToggleRight,
     Calendar,
     DollarSign,
-    Star,
     Tag,
+    MapPin,
 } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
 import toast, { Toaster } from "react-hot-toast";
 
 // Custom Scrollbar Styles
 const styles = `
-  /* WebKit Scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #1f2937; /* Dark gray to match theme */
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #4b5563; /* Grayish-blue */
-    border-radius: 4px;
-    transition: background 0.2s;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #2563eb; /* Blue on hover */
-  }
-  ::-webkit-scrollbar-corner {
-    background: #1f2937;
-  }
-  /* Firefox Scrollbar */
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937;
-  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #1f2937; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; transition: background 0.2s; }
+  ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+  ::-webkit-scrollbar-corner { background: #1f2937; }
+  * { scrollbar-width: thin; scrollbar-color: #4b5563 #1f2937; }
 `;
 
-// Inject styles into document
-const styleSheet = document.createElement("style");
-styleSheet.innerText = styles;
-document.head.appendChild(styleSheet);
+// Inject styles
+if (!document.getElementById("custom-scrollbar-styles")) {
+    const styleSheet = document.createElement("style");
+    styleSheet.id = "custom-scrollbar-styles";
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+}
 
 // Format date for display
 const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    try {
-        return new Date(dateString).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-        });
-    } catch {
-        return "N/A";
-    }
+    return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    });
 };
 
-// Convert ISO date to yyyy-MM-dd format
+// Convert ISO date to yyyy-MM-dd
 const formatISOToDateInput = (isoString) => {
     if (!isoString) return "";
-    try {
-        return isoString.split("T")[0]; // Extracts yyyy-MM-dd from 2025-05-15T00:00:00.000000Z
-    } catch {
-        return "";
-    }
+    return isoString.split("T")[0];
 };
 
 // Calculate discount percentage
 const calculateDiscount = (original, discounted) => {
     if (!discounted || !original) return null;
-    const percentage = Math.round(((original - discounted) / original) * 100);
-    return percentage;
+    return Math.round(((original - discounted) / original) * 100);
 };
 
 export default function AdminPackage() {
-    // Page props and form handling
     const { props } = usePage();
-    const { packages = [], flash = {} } = props;
+    const {
+        packages = [],
+        flash = {},
+        companies = [],
+        destinations = [],
+    } = props;
 
     const {
         data,
@@ -98,6 +77,7 @@ export default function AdminPackage() {
         reset,
         errors,
     } = useForm({
+        company_id: "",
         title: "",
         subtitle: "",
         description: "",
@@ -107,8 +87,9 @@ export default function AdminPackage() {
         start_date: "",
         end_date: "",
         image: null,
-        rating: "",
         is_featured: false,
+        destination_id: "",
+        location: "",
     });
 
     // State management
@@ -121,26 +102,39 @@ export default function AdminPackage() {
     const [imagePreview, setImagePreview] = useState(null);
     const [validationErrors, setValidationErrors] = useState({});
     const [charCount, setCharCount] = useState(0);
+    const [lastFlash, setLastFlash] = useState({ success: null, error: null });
 
     // Form validation
     const validateForm = (isAdd = false) => {
         const errors = {};
+        const today = new Date().toISOString().split("T")[0];
+
+        if (!data.company_id) {
+            errors.company_id = "Company is required";
+        }
+
+        if (!data.destination_id) {
+            errors.destination_id = "Destination is required";
+        }
+
         if (!data.title) {
             errors.title = "Title is required";
         } else if (data.title.length < 3) {
             errors.title = "Title must be at least 3 characters";
+        } else if (data.title.length > 255) {
+            errors.title = "Title must be 255 characters or less";
         }
 
-        if (isAdd && !data.subtitle) {
-            errors.subtitle = "Subtitle is required";
-        } else if (data.subtitle && data.subtitle.length < 3) {
-            errors.subtitle = "Subtitle must be at least 3 characters";
+        if (data.subtitle && data.subtitle.length > 255) {
+            errors.subtitle = "Subtitle must be 255 characters or less";
         }
 
         if (!data.description) {
             errors.description = "Description is required";
         } else if (data.description.length < 10) {
             errors.description = "Description must be at least 10 characters";
+        } else if (data.description.length > 5000) {
+            errors.description = "Description must be 5000 characters or less";
         }
 
         if (!data.price) {
@@ -155,7 +149,11 @@ export default function AdminPackage() {
         if (data.discount_price) {
             if (
                 isNaN(parseFloat(data.discount_price)) ||
-                parseFloat(data.discount_price) <= 0 ||
+                parseFloat(data.discount_price) < 0
+            ) {
+                errors.discount_price =
+                    "Discount price must be a non-negative number";
+            } else if (
                 parseFloat(data.discount_price) >= parseFloat(data.price)
             ) {
                 errors.discount_price =
@@ -163,30 +161,21 @@ export default function AdminPackage() {
             }
         }
 
-        if (isAdd && !data.start_date) {
-            errors.start_date = "Start date is required";
-        } else if (
-            data.start_date &&
-            !/^\d{4}-\d{2}-\d{2}$/.test(data.start_date)
-        ) {
-            errors.start_date = "Start date must be a valid date (YYYY-MM-DD)";
+        if (data.discount_price && !data.discount_type) {
+            errors.discount_type =
+                "Discount type is required when discount price is set";
         }
 
-        if (isAdd && !data.end_date) {
-            errors.end_date = "End date is required";
-        } else if (
-            data.end_date &&
-            !/^\d{4}-\d{2}-\d{2}$/.test(data.end_date)
-        ) {
-            errors.end_date = "End date must be a valid date (YYYY-MM-DD)";
+        if (data.start_date && data.start_date < today) {
+            errors.start_date = "Start date cannot be in the past";
         }
 
         if (
-            data.start_date &&
             data.end_date &&
-            new Date(data.end_date) < new Date(data.start_date)
+            data.start_date &&
+            data.end_date < data.start_date
         ) {
-            errors.end_date = "End date must be after or equal to start date";
+            errors.end_date = "End date must be on or after start date";
         }
 
         if (isAdd && !data.image) {
@@ -199,20 +188,18 @@ export default function AdminPackage() {
                 "image/png",
                 "image/jpg",
                 "image/gif",
+                "image/webp",
             ];
             if (!validTypes.includes(data.image.type)) {
-                errors.image = "Image must be JPEG, PNG, JPG, or GIF";
+                errors.image = "Image must be JPEG, PNG, JPG, GIF, or WebP";
             }
             if (data.image.size > 2 * 1024 * 1024) {
                 errors.image = "Image size must be less than 2MB";
             }
         }
 
-        if (data.rating) {
-            const rating = parseFloat(data.rating);
-            if (isNaN(rating) || rating < 0 || rating > 5) {
-                errors.rating = "Rating must be between 0 and 5";
-            }
+        if (data.location && data.location.length > 100) {
+            errors.location = "Location must be 100 characters or less";
         }
 
         setValidationErrors(errors);
@@ -222,8 +209,10 @@ export default function AdminPackage() {
     // Handle image change
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-        setData("image", file);
-        setImagePreview(file ? URL.createObjectURL(file) : null);
+        if (file) {
+            setData("image", file);
+            setImagePreview(URL.createObjectURL(file));
+        }
     };
 
     // Remove image
@@ -239,19 +228,19 @@ export default function AdminPackage() {
             toast.error("Please fix the form errors.");
             return;
         }
+
         post("/admin/packages", {
             preserveScroll: true,
-            forceFormData: true,
             onSuccess: () => {
                 setShowAddModal(false);
                 reset();
                 setImagePreview(null);
                 setCharCount(0);
-                toast.success("Package added successfully!");
+                setValidationErrors({});
             },
             onError: (errors) => {
-                console.log("Add Package Errors:", errors);
-                toast.error("Failed to add package. Please try again.");
+                setValidationErrors(errors);
+                toast.error("Failed to add package. Please check the form.");
             },
         });
     };
@@ -263,43 +252,22 @@ export default function AdminPackage() {
             toast.error("Please fix the form errors.");
             return;
         }
-        console.log("Form Data Sent:", {
-            ...data,
-            start_date: data.start_date || selectedPackage.start_date,
-            end_date: data.end_date || selectedPackage.end_date,
-        });
-        const formData = {
-            ...data,
-            start_date:
-                data.start_date ||
-                formatISOToDateInput(selectedPackage.start_date),
-            end_date:
-                data.end_date || formatISOToDateInput(selectedPackage.end_date),
-        };
-        const options = {
+
+        put(`/admin/packages/${selectedPackage.id}`, {
             preserveScroll: true,
             onSuccess: () => {
-                setShowEditModal(false); // Close the modal immediately
-                reset(); // Reset form data
+                setShowEditModal(false);
+                reset();
                 setImagePreview(null);
                 setSelectedPackage(null);
                 setCharCount(0);
-                toast.success("Package updated successfully!");
+                setValidationErrors({});
             },
             onError: (errors) => {
-                console.log("Edit Package Errors:", errors);
-                toast.error("Failed to update package. Please try again.");
+                setValidationErrors(errors);
+                toast.error("Failed to update package. Please check the form.");
             },
-            onFinish: () => {
-                if (!showEditModal) {
-                    setShowEditModal(false); // Ensure modal closes even if response is delayed
-                }
-            },
-        };
-        if (data.image) {
-            options.forceFormData = true;
-        }
-        put(`/admin/packages/${selectedPackage.id}`, formData, options);
+        });
     };
 
     // Handle delete package
@@ -310,12 +278,9 @@ export default function AdminPackage() {
                 onSuccess: () => {
                     setShowDeleteModal(false);
                     setPackageToDelete(null);
-                    toast.success("Package deleted successfully!");
                 },
                 onError: () => {
-                    setShowDeleteModal(false);
-                    setPackageToDelete(null);
-                    toast.error("Failed to delete package. Please try again.");
+                    toast.error("Failed to delete package.");
                 },
             });
         }
@@ -325,7 +290,7 @@ export default function AdminPackage() {
     const handleToggleFeatured = (id) => {
         patch(`/admin/packages/${id}/toggle-featured`, {
             preserveScroll: true,
-    
+            onError: () => toast.error("Failed to update featured status"),
         });
     };
 
@@ -333,22 +298,23 @@ export default function AdminPackage() {
     const openEditModal = (pkg) => {
         setSelectedPackage(pkg);
         setData({
+            company_id: pkg.company?.id || "",
             title: pkg.title || "",
             subtitle: pkg.subtitle || "",
             description: pkg.description || "",
-            price: pkg.price !== null ? pkg.price.toString() : "",
-            discount_price:
-                pkg.discount_price !== null
-                    ? pkg.discount_price.toString()
-                    : "",
+            price: pkg.price ? pkg.price.toString() : "",
+            discount_price: pkg.discount_price
+                ? pkg.discount_price.toString()
+                : "",
             discount_type: pkg.discount_type || "percentage",
             start_date: formatISOToDateInput(pkg.start_date),
             end_date: formatISOToDateInput(pkg.end_date),
             image: null,
-            rating: pkg.rating !== null ? pkg.rating.toString() : "",
             is_featured: !!pkg.is_featured,
+            destination_id: pkg.destination_id || "",
+            location: pkg.location || "",
         });
-        setImagePreview(pkg.image ? `/storage/${pkg.image}` : null);
+        setImagePreview(pkg.image || null);
         setCharCount(pkg.description ? pkg.description.length : 0);
         setShowEditModal(true);
     };
@@ -362,15 +328,34 @@ export default function AdminPackage() {
     // Filter packages
     const filteredPackages = packages.filter(
         (pkg) =>
-            pkg.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            pkg.subtitle?.toLowerCase().includes(searchQuery.toLowerCase())
+            (pkg.title || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (pkg.subtitle || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (pkg.company?.name || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (pkg.destination?.name || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (pkg.location || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase())
     );
 
     // Handle flash messages
     useEffect(() => {
-        if (flash.success) toast.success(flash.success);
-        if (flash.error) toast.error(flash.error);
-    }, [flash]);
+        if (flash.success && flash.success !== lastFlash.success) {
+            toast.success(flash.success);
+            setLastFlash((prev) => ({ ...prev, success: flash.success }));
+        }
+        if (flash.error && flash.error !== lastFlash.error) {
+            toast.error(flash.error);
+            setLastFlash((prev) => ({ ...prev, error: flash.error }));
+        }
+    }, [flash, lastFlash]);
 
     // Update char count
     useEffect(() => {
@@ -380,7 +365,7 @@ export default function AdminPackage() {
     // Clean up image preview
     useEffect(() => {
         return () => {
-            if (imagePreview && !imagePreview.startsWith("/storage")) {
+            if (imagePreview && typeof imagePreview === "string") {
                 URL.revokeObjectURL(imagePreview);
             }
         };
@@ -391,7 +376,6 @@ export default function AdminPackage() {
             <Head title="Packages - Travel Nest Admin" />
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
             <div className="lg:ml-64 p-6 lg:p-8">
-                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                     <h1 className="text-2xl font-bold text-white">Packages</h1>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
@@ -410,9 +394,14 @@ export default function AdminPackage() {
                                 reset();
                                 setImagePreview(null);
                                 setCharCount(0);
+                                setValidationErrors({});
                                 setShowAddModal(true);
                             }}
                             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            disabled={
+                                companies.length === 0 ||
+                                destinations.length === 0
+                            }
                         >
                             <Plus className="w-5 h-5 mr-2" />
                             Add Package
@@ -420,7 +409,19 @@ export default function AdminPackage() {
                     </div>
                 </div>
 
-                {/* Packages Grid */}
+                {companies.length === 0 && (
+                    <div className="bg-yellow-600 text-white p-4 rounded-lg mb-6">
+                        No companies available. Please add a company before
+                        creating packages.
+                    </div>
+                )}
+                {destinations.length === 0 && (
+                    <div className="bg-yellow-600 text-white p-4 rounded-lg mb-6">
+                        No destinations available. Please add destinations to
+                        create packages.
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredPackages.length > 0 ? (
                         filteredPackages.map((pkg) => (
@@ -430,13 +431,14 @@ export default function AdminPackage() {
                             >
                                 {pkg.image ? (
                                     <img
-                                        src={`/storage/${pkg.image}`}
-                                        alt={pkg.title}
+                                        src={pkg.image}
+                                        alt={pkg.title || "Package"}
                                         className="w-full h-48 object-cover"
+                                        loading="lazy"
                                     />
                                 ) : (
                                     <div className="w-full h-48 bg-gray-700 flex items-center justify-center">
-                                        <Image className="w-12 h-12 text-gray-400" />
+                                        <ImageIcon className="w-12 h-12 text-gray-400" />
                                     </div>
                                 )}
                                 <div className="p-4">
@@ -487,6 +489,18 @@ export default function AdminPackage() {
                                             </button>
                                         </div>
                                     </div>
+                                    <p className="text-sm text-gray-400 mb-1">
+                                        {pkg.company?.name || "No company"}
+                                    </p>
+                                    <p className="text-sm text-gray-400 mb-1">
+                                        <MapPin className="inline w-4 h-4 mr-1" />
+                                        {pkg.destination?.name ||
+                                            "No destination"}
+                                    </p>
+                                    <p className="text-sm text-gray-400 mb-1">
+                                        <MapPin className="inline w-4 h-4 mr-1" />
+                                        {pkg.location || "No location"}
+                                    </p>
                                     <p className="text-sm text-gray-400 mb-2">
                                         {pkg.subtitle || "N/A"}
                                     </p>
@@ -521,12 +535,6 @@ export default function AdminPackage() {
                                             {formatDate(pkg.end_date)}
                                         </span>
                                     </div>
-                                    <div className="flex items-center mb-2">
-                                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-1" />
-                                        <span className="text-sm text-gray-400">
-                                            {pkg.rating || 0}/5
-                                        </span>
-                                    </div>
                                     <p className="text-xs text-gray-500 mt-2">
                                         ID: {pkg.id} | Featured:{" "}
                                         {pkg.is_featured ? "Yes" : "No"}
@@ -541,7 +549,6 @@ export default function AdminPackage() {
                     )}
                 </div>
 
-                {/* Add Package Modal */}
                 {showAddModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -556,6 +563,7 @@ export default function AdminPackage() {
                                             reset();
                                             setImagePreview(null);
                                             setCharCount(0);
+                                            setValidationErrors({});
                                         }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
@@ -566,397 +574,102 @@ export default function AdminPackage() {
                                     onSubmit={handleAdd}
                                     className="space-y-4"
                                 >
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="title"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Title{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                id="title"
-                                                value={data.title}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "title",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            />
-                                            {(validationErrors.title ||
-                                                errors.title) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.title ||
-                                                        errors.title}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label
-                                                htmlFor="subtitle"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Subtitle{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                id="subtitle"
-                                                value={data.subtitle}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "subtitle",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            />
-                                            {(validationErrors.subtitle ||
-                                                errors.subtitle) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.subtitle ||
-                                                        errors.subtitle}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
                                     <div>
                                         <label
-                                            htmlFor="description"
+                                            htmlFor="company_id"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
-                                            Description{" "}
+                                            Company{" "}
                                             <span className="text-red-500">
                                                 *
                                             </span>
-                                            <span className="text-gray-500 text-xs ml-2">
-                                                ({charCount} characters)
-                                            </span>
                                         </label>
-                                        <textarea
-                                            id="description"
-                                            value={data.description}
+                                        <select
+                                            id="company_id"
+                                            value={data.company_id}
                                             onChange={(e) =>
                                                 setData(
-                                                    "description",
+                                                    "company_id",
                                                     e.target.value
                                                 )
                                             }
-                                            rows="4"
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.company_id ||
+                                                errors.company_id
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
                                             required
-                                        />
-                                        {(validationErrors.description ||
-                                            errors.description) && (
+                                        >
+                                            <option value="">
+                                                Select Company
+                                            </option>
+                                            {companies.map((company) => (
+                                                <option
+                                                    key={company.id}
+                                                    value={company.id}
+                                                >
+                                                    {company.company_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.company_id ||
+                                            errors.company_id) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.description ||
-                                                    errors.description}
+                                                {validationErrors.company_id ||
+                                                    errors.company_id}
                                             </p>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="price"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Price{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <div className="relative">
-                                                <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="number"
-                                                    id="price"
-                                                    value={data.price}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "price",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    step="0.01"
-                                                    min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    required
-                                                />
-                                            </div>
-                                            {(validationErrors.price ||
-                                                errors.price) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.price ||
-                                                        errors.price}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label
-                                                htmlFor="discount_price"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Discount Price
-                                            </label>
-                                            <div className="relative">
-                                                <Tag className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="number"
-                                                    id="discount_price"
-                                                    value={data.discount_price}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "discount_price",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    step="0.01"
-                                                    min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                            {(validationErrors.discount_price ||
-                                                errors.discount_price) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.discount_price ||
-                                                        errors.discount_price}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="start_date"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Start Date{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <div className="relative">
-                                                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="date"
-                                                    id="start_date"
-                                                    value={data.start_date}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "start_date",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    required
-                                                />
-                                            </div>
-                                            {(validationErrors.start_date ||
-                                                errors.start_date) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.start_date ||
-                                                        errors.start_date}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label
-                                                htmlFor="end_date"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                End Date{" "}
-                                                <span className="text-red-500">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <div className="relative">
-                                                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="date"
-                                                    id="end_date"
-                                                    value={data.end_date}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "end_date",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    required
-                                                />
-                                            </div>
-                                            {(validationErrors.end_date ||
-                                                errors.end_date) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.end_date ||
-                                                        errors.end_date}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
+
                                     <div>
                                         <label
-                                            htmlFor="image"
+                                            htmlFor="destination_id"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
-                                            Image
+                                            Destination{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
                                         </label>
-                                        <input
-                                            type="file"
-                                            id="image"
-                                            accept="image/*"
-                                            onChange={handleImageChange}
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
-                                        />
-                                        {imagePreview && (
-                                            <div className="relative mt-2">
-                                                <img
-                                                    src={imagePreview}
-                                                    alt="Image Preview"
-                                                    className="w-full h-40 object-cover rounded-lg"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={removeImage}
-                                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
+                                        <select
+                                            id="destination_id"
+                                            value={data.destination_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "destination_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.destination_id ||
+                                                errors.destination_id
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select Destination
+                                            </option>
+                                            {destinations.map((destination) => (
+                                                <option
+                                                    key={destination.id}
+                                                    value={destination.id}
                                                 >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        )}
-                                        {(validationErrors.image ||
-                                            errors.image) && (
+                                                    {destination.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.destination_id ||
+                                            errors.destination_id) && (
                                             <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.image ||
-                                                    errors.image}
+                                                {validationErrors.destination_id ||
+                                                    errors.destination_id}
                                             </p>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="rating"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Rating (0-5)
-                                            </label>
-                                            <div className="relative">
-                                                <Star className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="number"
-                                                    id="rating"
-                                                    value={data.rating}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "rating",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    step="0.1"
-                                                    min="0"
-                                                    max="5"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                            {(validationErrors.rating ||
-                                                errors.rating) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.rating ||
-                                                        errors.rating}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center mt-6">
-                                            <input
-                                                type="checkbox"
-                                                id="is_featured"
-                                                checked={data.is_featured}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "is_featured",
-                                                        e.target.checked
-                                                    )
-                                                }
-                                                className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
-                                            />
-                                            <label
-                                                htmlFor="is_featured"
-                                                className="ml-2 text-sm font-medium text-gray-400"
-                                            >
-                                                Featured Package
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end space-x-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShowAddModal(false);
-                                                reset();
-                                                setImagePreview(null);
-                                                setCharCount(0);
-                                            }}
-                                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                                        >
-                                            {processing ? (
-                                                <span className="inline-block mr-2 animate-spin">
-                                                    ⟳
-                                                </span>
-                                            ) : (
-                                                <Plus className="w-4 h-4 mr-2" />
-                                            )}
-                                            Save
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
-                {/* Edit Package Modal */}
-                {showEditModal && selectedPackage && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                            <div className="p-6">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-lg font-semibold text-white">
-                                        Edit Package
-                                    </h3>
-                                    <button
-                                        onClick={() => {
-                                            setShowEditModal(false);
-                                            reset();
-                                            setImagePreview(null);
-                                            setSelectedPackage(null);
-                                            setCharCount(0);
-                                        }}
-                                        className="text-gray-400 hover:text-gray-300"
-                                    >
-                                        <X className="w-6 h-6" />
-                                    </button>
-                                </div>
-                                <form
-                                    onSubmit={handleEdit}
-                                    className="space-y-4"
-                                >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
@@ -978,7 +691,12 @@ export default function AdminPackage() {
                                                         e.target.value
                                                     )
                                                 }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.title ||
+                                                    errors.title
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
                                                 required
                                             />
                                             {(validationErrors.title ||
@@ -1006,7 +724,12 @@ export default function AdminPackage() {
                                                         e.target.value
                                                     )
                                                 }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.subtitle ||
+                                                    errors.subtitle
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
                                             />
                                             {(validationErrors.subtitle ||
                                                 errors.subtitle) && (
@@ -1017,6 +740,43 @@ export default function AdminPackage() {
                                             )}
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="location"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Location
+                                        </label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                id="location"
+                                                value={data.location}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "location",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.location ||
+                                                    errors.location
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
+                                            />
+                                        </div>
+                                        {(validationErrors.location ||
+                                            errors.location) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.location ||
+                                                    errors.location}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div>
                                         <label
                                             htmlFor="description"
@@ -1027,7 +787,7 @@ export default function AdminPackage() {
                                                 *
                                             </span>
                                             <span className="text-gray-500 text-xs ml-2">
-                                                ({charCount} characters)
+                                                ({charCount}/5000)
                                             </span>
                                         </label>
                                         <textarea
@@ -1040,7 +800,12 @@ export default function AdminPackage() {
                                                 )
                                             }
                                             rows="4"
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.description ||
+                                                errors.description
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
                                             required
                                         />
                                         {(validationErrors.description ||
@@ -1051,6 +816,7 @@ export default function AdminPackage() {
                                             </p>
                                         )}
                                     </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
@@ -1075,8 +841,13 @@ export default function AdminPackage() {
                                                         )
                                                     }
                                                     step="0.01"
-                                                    min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    min="0.01"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.price ||
+                                                        errors.price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
                                                     required
                                                 />
                                             </div>
@@ -1109,7 +880,12 @@ export default function AdminPackage() {
                                                     }
                                                     step="0.01"
                                                     min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.discount_price ||
+                                                        errors.discount_price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
                                                 />
                                             </div>
                                             {(validationErrors.discount_price ||
@@ -1121,6 +897,44 @@ export default function AdminPackage() {
                                             )}
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="discount_type"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Discount Type
+                                        </label>
+                                        <select
+                                            id="discount_type"
+                                            value={data.discount_type}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "discount_type",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.discount_type ||
+                                                errors.discount_type
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                        >
+                                            <option value="percentage">
+                                                Percentage
+                                            </option>
+                                            <option value="fixed">Fixed</option>
+                                        </select>
+                                        {(validationErrors.discount_type ||
+                                            errors.discount_type) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.discount_type ||
+                                                    errors.discount_type}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
@@ -1141,7 +955,12 @@ export default function AdminPackage() {
                                                             e.target.value
                                                         )
                                                     }
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.start_date ||
+                                                        errors.start_date
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
                                                 />
                                             </div>
                                             {(validationErrors.start_date ||
@@ -1171,7 +990,12 @@ export default function AdminPackage() {
                                                             e.target.value
                                                         )
                                                     }
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.end_date ||
+                                                        errors.end_date
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
                                                 />
                                             </div>
                                             {(validationErrors.end_date ||
@@ -1183,19 +1007,29 @@ export default function AdminPackage() {
                                             )}
                                         </div>
                                     </div>
+
                                     <div>
                                         <label
                                             htmlFor="image"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
-                                            Image
+                                            Image{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
                                         </label>
                                         <input
                                             type="file"
                                             id="image"
                                             accept="image/*"
                                             onChange={handleImageChange}
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg ${
+                                                validationErrors.image ||
+                                                errors.image
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
                                         />
                                         {imagePreview && (
                                             <div className="relative mt-2">
@@ -1221,61 +1055,588 @@ export default function AdminPackage() {
                                             </p>
                                         )}
                                     </div>
+
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_featured"
+                                            checked={data.is_featured}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "is_featured",
+                                                    e.target.checked
+                                                )
+                                            }
+                                            className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
+                                        />
+                                        <label
+                                            htmlFor="is_featured"
+                                            className="ml-2 text-sm font-medium text-gray-400"
+                                        >
+                                            Featured Package
+                                        </label>
+                                    </div>
+
+                                    <div className="flex justify-end space-x-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowAddModal(false);
+                                                reset();
+                                                setImagePreview(null);
+                                                setCharCount(0);
+                                                setValidationErrors({});
+                                            }}
+                                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                        >
+                                            {processing ? (
+                                                <span className="inline-block mr-2 animate-spin">
+                                                    ⟳
+                                                </span>
+                                            ) : (
+                                                <Plus className="w-4 h-4 mr-2" />
+                                            )}
+                                            Save
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showEditModal && selectedPackage && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-semibold text-white">
+                                        Edit Package
+                                    </h3>
+                                    <button
+                                        onClick={() => {
+                                            setShowEditModal(false);
+                                            reset();
+                                            setImagePreview(null);
+                                            setSelectedPackage(null);
+                                            setCharCount(0);
+                                            setValidationErrors({});
+                                        }}
+                                        className="text-gray-400 hover:text-gray-300"
+                                    >
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+                                <form
+                                    onSubmit={handleEdit}
+                                    className="space-y-4"
+                                >
+                                    <div>
+                                        <label
+                                            htmlFor="company_id"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Company{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                        </label>
+                                        <select
+                                            id="company_id"
+                                            value={data.company_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "company_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.company_id ||
+                                                errors.company_id
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select Company
+                                            </option>
+                                            {companies.map((company) => (
+                                                <option
+                                                    key={company.id}
+                                                    value={company.id}
+                                                >
+                                                    {company.company_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.company_id ||
+                                            errors.company_id) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.company_id ||
+                                                    errors.company_id}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="destination_id"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Destination{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                        </label>
+                                        <select
+                                            id="destination_id"
+                                            value={data.destination_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "destination_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.destination_id ||
+                                                errors.destination_id
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select Destination
+                                            </option>
+                                            {destinations.map((destination) => (
+                                                <option
+                                                    key={destination.id}
+                                                    value={destination.id}
+                                                >
+                                                    {destination.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.destination_id ||
+                                            errors.destination_id) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.destination_id ||
+                                                    errors.destination_id}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
-                                                htmlFor="rating"
+                                                htmlFor="title"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                Rating (0-5)
+                                                Title{" "}
+                                                <span className="text-red-500">
+                                                    *
+                                                </span>
                                             </label>
-                                            <div className="relative">
-                                                <Star className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="number"
-                                                    id="rating"
-                                                    value={data.rating}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "rating",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    step="0.1"
-                                                    min="0"
-                                                    max="5"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                            {(validationErrors.rating ||
-                                                errors.rating) && (
+                                            <input
+                                                type="text"
+                                                id="title"
+                                                value={data.title}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "title",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.title ||
+                                                    errors.title
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
+                                                required
+                                            />
+                                            {(validationErrors.title ||
+                                                errors.title) && (
                                                 <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.rating ||
-                                                        errors.rating}
+                                                    {validationErrors.title ||
+                                                        errors.title}
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="flex items-center mt-6">
+                                        <div>
+                                            <label
+                                                htmlFor="subtitle"
+                                                className="block text-sm font-medium text-gray-400 mb-1"
+                                            >
+                                                Subtitle
+                                            </label>
                                             <input
-                                                type="checkbox"
-                                                id="is_featured"
-                                                checked={data.is_featured}
+                                                type="text"
+                                                id="subtitle"
+                                                value={data.subtitle}
                                                 onChange={(e) =>
                                                     setData(
-                                                        "is_featured",
-                                                        e.target.checked
+                                                        "subtitle",
+                                                        e.target.value
                                                     )
                                                 }
-                                                className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
+                                                className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.subtitle ||
+                                                    errors.subtitle
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
                                             />
-                                            <label
-                                                htmlFor="is_featured"
-                                                className="ml-2 text-sm font-medium text-gray-400"
-                                            >
-                                                Featured Package
-                                            </label>
+                                            {(validationErrors.subtitle ||
+                                                errors.subtitle) && (
+                                                <p className="text-red-400 text-xs mt-1">
+                                                    {validationErrors.subtitle ||
+                                                        errors.subtitle}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="location"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Location
+                                        </label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                id="location"
+                                                value={data.location}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        "location",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.location ||
+                                                    errors.location
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
+                                            />
+                                        </div>
+                                        {(validationErrors.location ||
+                                            errors.location) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.location ||
+                                                    errors.location}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="description"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Description{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                            <span className="text-gray-500 text-xs ml-2">
+                                                ({charCount}/5000)
+                                            </span>
+                                        </label>
+                                        <textarea
+                                            id="description"
+                                            value={data.description}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "description",
+                                                    e.target.value
+                                                )
+                                            }
+                                            rows="4"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.description ||
+                                                errors.description
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                        />
+                                        {(validationErrors.description ||
+                                            errors.description) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.description ||
+                                                    errors.description}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label
+                                                htmlFor="price"
+                                                className="block text-sm font-medium text-gray-400 mb-1"
+                                            >
+                                                Price{" "}
+                                                <span className="text-red-500">
+                                                    *
+                                                </span>
+                                            </label>
+                                            <div className="relative">
+                                                <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                                <input
+                                                    type="number"
+                                                    id="price"
+                                                    value={data.price}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "price",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    step="0.01"
+                                                    min="0.01"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.price ||
+                                                        errors.price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                    required
+                                                />
+                                            </div>
+                                            {(validationErrors.price ||
+                                                errors.price) && (
+                                                <p className="text-red-400 text-xs mt-1">
+                                                    {validationErrors.price ||
+                                                        errors.price}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label
+                                                htmlFor="discount_price"
+                                                className="block text-sm font-medium text-gray-400 mb-1"
+                                            >
+                                                Discount Price
+                                            </label>
+                                            <div className="relative">
+                                                <Tag className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                                <input
+                                                    type="number"
+                                                    id="discount_price"
+                                                    value={data.discount_price}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "discount_price",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    step="0.01"
+                                                    min="0"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.discount_price ||
+                                                        errors.discount_price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                />
+                                            </div>
+                                            {(validationErrors.discount_price ||
+                                                errors.discount_price) && (
+                                                <p className="text-red-400 text-xs mt-1">
+                                                    {validationErrors.discount_price ||
+                                                        errors.discount_price}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="discount_type"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Discount Type
+                                        </label>
+                                        <select
+                                            id="discount_type"
+                                            value={data.discount_type}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "discount_type",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.discount_type ||
+                                                errors.discount_type
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                        >
+                                            <option value="percentage">
+                                                Percentage
+                                            </option>
+                                            <option value="fixed">Fixed</option>
+                                        </select>
+                                        {(validationErrors.discount_type ||
+                                            errors.discount_type) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.discount_type ||
+                                                    errors.discount_type}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label
+                                                htmlFor="start_date"
+                                                className="block text-sm font-medium text-gray-400 mb-1"
+                                            >
+                                                Start Date
+                                            </label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                                <input
+                                                    type="date"
+                                                    id="start_date"
+                                                    value={data.start_date}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "start_date",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.start_date ||
+                                                        errors.start_date
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                />
+                                            </div>
+                                            {(validationErrors.start_date ||
+                                                errors.start_date) && (
+                                                <p className="text-red-400 text-xs mt-1">
+                                                    {validationErrors.start_date ||
+                                                        errors.start_date}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label
+                                                htmlFor="end_date"
+                                                className="block text-sm font-medium text-gray-400 mb-1"
+                                            >
+                                                End Date
+                                            </label>
+                                            <div className="relative">
+                                                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                                <input
+                                                    type="date"
+                                                    id="end_date"
+                                                    value={data.end_date}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "end_date",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.end_date ||
+                                                        errors.end_date
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                />
+                                            </div>
+                                            {(validationErrors.end_date ||
+                                                errors.end_date) && (
+                                                <p className="text-red-400 text-xs mt-1">
+                                                    {validationErrors.end_date ||
+                                                        errors.end_date}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="image"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Image
+                                        </label>
+                                        <input
+                                            type="file"
+                                            id="image"
+                                            accept="image/*"
+                                            onChange={handleImageChange}
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg ${
+                                                validationErrors.image ||
+                                                errors.image
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                        />
+                                        {imagePreview && (
+                                            <div className="relative mt-2">
+                                                <img
+                                                    src={imagePreview}
+                                                    alt="Image Preview"
+                                                    className="w-full h-40 object-cover rounded-lg"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={removeImage}
+                                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        {(validationErrors.image ||
+                                            errors.image) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.image ||
+                                                    errors.image}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_featured"
+                                            checked={data.is_featured}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "is_featured",
+                                                    e.target.checked
+                                                )
+                                            }
+                                            className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
+                                        />
+                                        <label
+                                            htmlFor="is_featured"
+                                            className="ml-2 text-sm font-medium text-gray-400"
+                                        >
+                                            Featured Package
+                                        </label>
+                                    </div>
+
                                     <div className="flex justify-end space-x-3">
                                         <button
                                             type="button"
@@ -1285,6 +1646,7 @@ export default function AdminPackage() {
                                                 setImagePreview(null);
                                                 setSelectedPackage(null);
                                                 setCharCount(0);
+                                                setValidationErrors({});
                                             }}
                                             className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                         >
@@ -1311,7 +1673,6 @@ export default function AdminPackage() {
                     </div>
                 )}
 
-                {/* Delete Package Modal */}
                 {showDeleteModal && packageToDelete && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div className="bg-gray-800 rounded-lg max-w-lg w-full">

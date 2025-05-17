@@ -5,30 +5,45 @@ import {
     Trash2,
     Plus,
     Edit2,
-    Image,
+    Image as ImageIcon,
     X,
     ToggleLeft,
     ToggleRight,
     MapPin,
     DollarSign,
-    Star,
-    Tag,
 } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
 import toast, { Toaster } from "react-hot-toast";
 
+// Custom Scrollbar Styles
+const styles = `
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #1f2937; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; transition: background 0.2s; }
+  ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+  ::-webkit-scrollbar-corner { background: #1f2937; }
+  * { scrollbar-width: thin; scrollbar-color: #4b5563 #1f2937; }
+`;
+
+// Inject styles
+if (!document.getElementById("custom-scrollbar-styles")) {
+    const styleSheet = document.createElement("style");
+    styleSheet.id = "custom-scrollbar-styles";
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+}
+
+// Calculate discount percentage
+const calculateDiscount = (original, discounted) => {
+    if (!discounted || !original) return null;
+    return Math.round(((original - discounted) / original) * 100);
+};
+
 export default function AdminDestinations() {
     const { props } = usePage();
-    const { destinations = [], flash = {} } = props;
+    const { destinations = [], companies = [], flash = {} } = props;
 
-    const [searchQuery, setSearchQuery] = useState("");
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [selectedDestination, setSelectedDestination] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
-    const [validationErrors, setValidationErrors] = useState({});
-    const [charCount, setCharCount] = useState(0);
+    // Log props for debugging
 
     const {
         data,
@@ -41,110 +56,147 @@ export default function AdminDestinations() {
         reset,
         errors,
     } = useForm({
-        name: "",
+        company_id: "",
+        title: "",
         location: "",
         description: "",
+        category: "",
         price: "",
         discount_price: "",
-        tag: "",
-        rating: 0,
-        is_featured: false,
         image: null,
+        is_featured: false,
     });
 
+    // State management
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedDestination, setSelectedDestination] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [validationErrors, setValidationErrors] = useState({});
+    const [charCount, setCharCount] = useState(0);
+    const [lastFlash, setLastFlash] = useState({ success: null, error: null });
+
+    // Form validation
     const validateForm = (isAdd = false) => {
         const errors = {};
-        if (!data.name) errors.name = "Name is required";
-        else if (data.name.length < 3)
-            errors.name = "Name must be at least 3 characters";
-        else if (data.name.length > 255)
-            errors.name = "Name must not exceed 255 characters";
 
-        if (!data.location) errors.location = "Location is required";
-        else if (data.location.length < 3)
+        if (!data.company_id) {
+            errors.company_id = "Company is required";
+        }
+
+        if (!data.title) {
+            errors.title = "Title is required";
+        } else if (data.title.length < 3) {
+            errors.title = "Title must be at least 3 characters";
+        } else if (data.title.length > 100) {
+            errors.title = "Title must not exceed 100 characters";
+        }
+
+        if (!data.location) {
+            errors.location = "Location is required";
+        } else if (data.location.length < 3) {
             errors.location = "Location must be at least 3 characters";
-        else if (data.location.length > 255)
-            errors.location = "Location must not exceed 255 characters";
+        } else if (data.location.length > 100) {
+            errors.location = "Location must not exceed 100 characters";
+        }
 
-        if (!data.description) errors.description = "Description is required";
-        else if (data.description.length < 10)
+        if (!data.description) {
+            errors.description = "Description is required";
+        } else if (data.description.length < 10) {
             errors.description = "Description must be at least 10 characters";
+        } else if (data.description.length > 5000) {
+            errors.description = "Description must be 5000 characters or less";
+        }
 
-        if (!data.price) errors.price = "Price is required";
-        else if (isNaN(parseFloat(data.price)) || parseFloat(data.price) < 0)
-            errors.price = "Price must be a non-negative number";
+        const validCategories = [
+            "Beach",
+            "Mountain",
+            "City",
+            "Cultural",
+            "Adventure",
+            "Historical",
+            "Wildlife",
+        ];
+        if (!data.category) {
+            errors.category = "Category is required";
+        } else if (!validCategories.includes(data.category)) {
+            errors.category = "Invalid category selected";
+        }
 
-        if (
-            data.discount_price &&
-            (isNaN(parseFloat(data.discount_price)) ||
-                parseFloat(data.discount_price) < 0)
-        ) {
-            errors.discount_price =
-                "Discount price must be a non-negative number";
+        if (!data.price) {
+            errors.price = "Price is required";
         } else if (
-            data.discount_price &&
-            parseFloat(data.discount_price) >= parseFloat(data.price)
+            isNaN(parseFloat(data.price)) ||
+            parseFloat(data.price) < 0
         ) {
-            errors.discount_price =
-                "Discount price must be less than regular price";
+            errors.price =
+                "Price must be a valid number greater than or equal to 0";
         }
 
-        if (data.tag && data.tag.length > 50)
-            errors.tag = "Tag must not exceed 50 characters";
-
-        if (
-            data.rating &&
-            (isNaN(parseFloat(data.rating)) ||
-                parseFloat(data.rating) < 0 ||
-                parseFloat(data.rating) > 5)
-        ) {
-            errors.rating = "Rating must be between 0 and 5";
+        if (data.discount_price) {
+            if (
+                isNaN(parseFloat(data.discount_price)) ||
+                parseFloat(data.discount_price) < 0
+            ) {
+                errors.discount_price =
+                    "Discount price must be a valid number greater than or equal to 0";
+            } else if (
+                parseFloat(data.discount_price) >= parseFloat(data.price)
+            ) {
+                errors.discount_price =
+                    "Discount price must be less than regular price";
+            }
         }
 
-        if (isAdd && !data.image) errors.image = "Image is required";
+        if (isAdd && !data.image) {
+            errors.image = "Image is required";
+        }
         if (data.image) {
             const validTypes = [
                 "image/jpeg",
                 "image/png",
                 "image/jpg",
                 "image/gif",
+                "image/webp",
             ];
-            if (!validTypes.includes(data.image.type))
-                errors.image = "Image must be JPEG, PNG, JPG, or GIF";
-            if (data.image.size > 2 * 1024 * 1024)
+            if (!validTypes.includes(data.image.type)) {
+                errors.image = "Image must be JPEG, PNG, JPG, GIF, or WebP";
+            }
+            if (data.image.size > 2 * 1024 * 1024) {
                 errors.image = "Image size must be less than 2MB";
+            }
         }
 
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
+    // Handle image change
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-        setData("image", file);
-        setImagePreview(file ? URL.createObjectURL(file) : null);
+        if (file) {
+            setData("image", file);
+            setImagePreview(URL.createObjectURL(file));
+        }
     };
 
+    // Remove image
     const removeImage = () => {
         setData("image", null);
         setImagePreview(null);
     };
 
-    const calculateDiscount = (original, discounted) => {
-        if (!discounted || !original) return null;
-        const percentage = Math.round(
-            ((original - discounted) / original) * 100
-        );
-        return percentage;
-    };
-
+    // Handle add destination
     const handleAdd = (e) => {
         e.preventDefault();
         if (!validateForm(true)) {
             toast.error("Please fix the form errors.");
             return;
         }
-        post(route("admin.destinations.store"), {
+
+        post("/admin/destinations", {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
@@ -152,141 +204,136 @@ export default function AdminDestinations() {
                 reset();
                 setImagePreview(null);
                 setCharCount(0);
+                setValidationErrors({});
             },
-            onError: () => {},
+            onError: (errors) => {
+                setValidationErrors(errors);
+                toast.error(
+                    "Failed to add destination. Please check the form."
+                );
+            },
         });
     };
 
+    // Handle edit destination
     const handleEdit = (e) => {
         e.preventDefault();
-
         if (!validateForm(false)) {
             toast.error("Please fix the form errors.");
             return;
         }
 
-        const formData = new FormData();
-        formData.append("name", data.name);
-        formData.append("location", data.location);
-        formData.append("description", data.description);
-        formData.append("price", data.price);
-        formData.append("discount_price", data.discount_price);
-        formData.append("tag", data.tag);
-        formData.append("rating", data.rating);
-        formData.append("is_featured", data.is_featured ? 1 : 0);
-
-        if (data.image instanceof File) {
-            formData.append("image", data.image);
-        }
-
-        formData.append("_method", "PUT");
-
-        axios
-            .post(
-                route("admin.destinations.update", selectedDestination.id),
-                formData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
-                }
-            )
-            .then((response) => {
+        put(`/admin/destinations/${selectedDestination.id}`, {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => {
                 setShowEditModal(false);
                 reset();
                 setImagePreview(null);
                 setSelectedDestination(null);
                 setCharCount(0);
-                toast.success("Destination updated successfully."); // ✅ عرض التوست
-
-                // تأخير إعادة التحميل 1.5 ثانية لإتاحة وقت لعرض الرسالة
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            })
-            .catch((error) => {
-                if (
-                    error.response &&
-                    error.response.data &&
-                    error.response.data.errors
-                ) {
-                    setValidationErrors(error.response.data.errors);
-                }
-                toast.error("Failed to update destination.");
-            });
+                setValidationErrors({});
+            },
+            onError: (errors) => {
+                setValidationErrors(errors);
+                toast.error(
+                    "Failed to update destination. Please check the form."
+                );
+            },
+        });
     };
-    
+
+    // Handle delete destination
     const handleDelete = () => {
-        deleteForm(
-            route("admin.destinations.destroy", selectedDestination.id),
-            {
+        if (selectedDestination) {
+            deleteForm(`/admin/destinations/${selectedDestination.id}`, {
                 preserveScroll: true,
                 onSuccess: () => {
                     setShowDeleteModal(false);
                     setSelectedDestination(null);
                 },
-                onError: () => {},
-            }
-        );
+                onError: () => {
+                    toast.error("Failed to delete destination.");
+                },
+            });
+        }
     };
 
+    // Handle toggle featured
     const handleToggleFeatured = (id) => {
-        patch(route("admin.destinations.toggle-featured", id), {
+        patch(`/admin/destinations/${id}/toggle-featured`, {
             preserveScroll: true,
-            onSuccess: () => {},
-            onError: () => {},
+            onError: () => toast.error("Failed to update featured status"),
         });
     };
 
+    // Open edit modal
     const openEditModal = (destination) => {
         setSelectedDestination(destination);
         setData({
-            name: destination.name || "",
+            company_id: destination.company?.id || "",
+            title: destination.title || "",
             location: destination.location || "",
             description: destination.description || "",
-            price: destination.price || "",
-            discount_price: destination.discount_price || "",
-            tag: destination.tag || "",
-            rating: destination.rating || 0,
-            is_featured: destination.is_featured || false,
+            category: destination.category || "",
+            price: destination.price ? destination.price.toString() : "",
+            discount_price: destination.discount_price
+                ? destination.discount_price.toString()
+                : "",
             image: null,
+            is_featured: !!destination.is_featured,
         });
-        setImagePreview(
-            destination.image ? `/storage/${destination.image}` : null
-        );
+        setImagePreview(destination.image || null);
         setCharCount(
             destination.description ? destination.description.length : 0
         );
         setShowEditModal(true);
     };
 
+    // Open delete modal
     const openDeleteModal = (destination) => {
         setSelectedDestination(destination);
         setShowDeleteModal(true);
     };
 
+    // Filter destinations
     const filteredDestinations = destinations.filter(
         (destination) =>
-            destination.name
-                ?.toLowerCase()
+            (destination.title || "")
+                .toLowerCase()
                 .includes(searchQuery.toLowerCase()) ||
-            destination.location
-                ?.toLowerCase()
+            (destination.location || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (destination.company?.company_name || "")
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (destination.category || "")
+                .toLowerCase()
                 .includes(searchQuery.toLowerCase())
     );
 
+    // Handle flash messages
     useEffect(() => {
-        if (flash.success) toast.success(flash.success);
-        if (flash.error) toast.error(flash.error);
-    }, [flash]);
+        if (flash.success && flash.success !== lastFlash.success) {
+            toast.success(flash.success);
+            setLastFlash((prev) => ({ ...prev, success: flash.success }));
+        }
+        if (flash.error && flash.error !== lastFlash.error) {
+            toast.error(flash.error);
+            setLastFlash((prev) => ({ ...prev, error: flash.error }));
+        }
+    }, [flash, lastFlash]);
 
+    // Update char count
     useEffect(() => {
-        setCharCount(data.description.length);
+        setCharCount(data.description ? data.description.length : 0);
     }, [data.description]);
 
+    // Clean up image preview
     useEffect(() => {
         return () => {
-            if (imagePreview && !imagePreview.startsWith("/storage")) {
+            if (imagePreview && typeof imagePreview === "string") {
                 URL.revokeObjectURL(imagePreview);
             }
         };
@@ -294,7 +341,7 @@ export default function AdminDestinations() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
-            <Head title="Destinations - Admin" />
+            <Head title="Destinations - Travel Nest Admin" />
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
             <div className="lg:ml-64 p-6 lg:p-8">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
@@ -317,15 +364,24 @@ export default function AdminDestinations() {
                                 reset();
                                 setImagePreview(null);
                                 setCharCount(0);
+                                setValidationErrors({});
                                 setShowAddModal(true);
                             }}
                             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            disabled={companies.length === 0}
                         >
                             <Plus className="w-5 h-5 mr-2" />
                             Add Destination
                         </button>
                     </div>
                 </div>
+
+                {companies.length === 0 && (
+                    <div className="bg-yellow-600 text-white p-4 rounded-lg mb-6">
+                        No companies available. Please add a company before
+                        creating destinations.
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredDestinations.length > 0 ? (
@@ -336,19 +392,20 @@ export default function AdminDestinations() {
                             >
                                 {destination.image ? (
                                     <img
-                                        src={`/storage/${destination.image}`}
-                                        alt={destination.name}
+                                        src={destination.image}
+                                        alt={destination.title || "Destination"}
                                         className="w-full h-48 object-cover"
+                                        loading="lazy"
                                     />
                                 ) : (
                                     <div className="w-full h-48 bg-gray-700 flex items-center justify-center">
-                                        <Image className="w-12 h-12 text-gray-400" />
+                                        <ImageIcon className="w-12 h-12 text-gray-400" />
                                     </div>
                                 )}
                                 <div className="p-4">
                                     <div className="flex justify-between items-center mb-2">
                                         <h3 className="text-lg font-semibold text-white">
-                                            {destination.name || "N/A"}
+                                            {destination.title || "N/A"}
                                         </h3>
                                         <div className="flex space-x-2">
                                             <button
@@ -395,8 +452,17 @@ export default function AdminDestinations() {
                                             </button>
                                         </div>
                                     </div>
-                                    <p className="text-sm text-gray-400 mb-2">
+                                    <p className="text-sm text-gray-400 mb-1">
+                                        {destination.company?.company_name ||
+                                            "No company"}
+                                    </p>
+                                    <p className="text-sm text-gray-400 mb-1">
+                                        <MapPin className="inline w-4 h-4 mr-1" />
                                         {destination.location || "N/A"}
+                                    </p>
+                                    <p className="text-sm text-gray-400 mb-2">
+                                        Category:{" "}
+                                        {destination.category || "N/A"}
                                     </p>
                                     <div className="flex items-center mb-2">
                                         <DollarSign className="w-4 h-4 text-green-400 mr-1" />
@@ -418,22 +484,10 @@ export default function AdminDestinations() {
                                                 </span>
                                             </span>
                                         ) : (
-                                            <span className="font-semibold">
+                                            <span className="font-semibold text-green-400">
                                                 ${destination.price}
                                             </span>
                                         )}
-                                    </div>
-                                    <div className="flex items-center mb-2">
-                                        <Tag className="w-4 h-4 text-gray-400 mr-1" />
-                                        <span className="text-sm text-gray-400">
-                                            {destination.tag || "None"}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-1" />
-                                        <span className="text-sm text-gray-400">
-                                            {destination.rating || 0}/5
-                                        </span>
                                     </div>
                                     <p className="text-xs text-gray-500 mt-2">
                                         ID: {destination.id} | Featured:{" "}
@@ -463,6 +517,7 @@ export default function AdminDestinations() {
                                             reset();
                                             setImagePreview(null);
                                             setCharCount(0);
+                                            setValidationErrors({});
                                         }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
@@ -473,34 +528,89 @@ export default function AdminDestinations() {
                                     onSubmit={handleAdd}
                                     className="space-y-4"
                                 >
+                                    <div>
+                                        <label
+                                            htmlFor="company_id"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Company{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                        </label>
+                                        <select
+                                            id="company_id"
+                                            value={data.company_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "company_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.company_id ||
+                                                errors.company_id
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                            disabled={companies.length === 0}
+                                        >
+                                            <option value="">
+                                                Select Company
+                                            </option>
+                                            {companies.map((company) => (
+                                                <option
+                                                    key={company.id}
+                                                    value={company.id}
+                                                >
+                                                    {company.company_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.company_id ||
+                                            errors.company_id) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.company_id ||
+                                                    errors.company_id}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
-                                                htmlFor="name"
+                                                htmlFor="title"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                Name{" "}
+                                                Title{" "}
                                                 <span className="text-red-500">
                                                     *
                                                 </span>
                                             </label>
                                             <input
                                                 type="text"
-                                                id="name"
-                                                value={data.name}
+                                                id="title"
+                                                value={data.title}
                                                 onChange={(e) =>
                                                     setData(
-                                                        "name",
+                                                        "title",
                                                         e.target.value
                                                     )
                                                 }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.title ||
+                                                    errors.title
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
+                                                required
                                             />
-                                            {(validationErrors.name ||
-                                                errors.name) && (
+                                            {(validationErrors.title ||
+                                                errors.title) && (
                                                 <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.name ||
-                                                        errors.name}
+                                                    {validationErrors.title ||
+                                                        errors.title}
                                                 </p>
                                             )}
                                         </div>
@@ -526,7 +636,13 @@ export default function AdminDestinations() {
                                                             e.target.value
                                                         )
                                                     }
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.location ||
+                                                        errors.location
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.location ||
@@ -538,6 +654,60 @@ export default function AdminDestinations() {
                                             )}
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="category"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Category{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                        </label>
+                                        <select
+                                            id="category"
+                                            value={data.category}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "category",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.category ||
+                                                errors.category
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select Category
+                                            </option>
+                                            {[
+                                                "Beach",
+                                                "Mountain",
+                                                "City",
+                                                "Cultural",
+                                                "Adventure",
+                                                "Historical",
+                                                "Wildlife",
+                                            ].map((cat) => (
+                                                <option key={cat} value={cat}>
+                                                    {cat}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.category ||
+                                            errors.category) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.category ||
+                                                    errors.category}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div>
                                         <label
                                             htmlFor="description"
@@ -548,7 +718,7 @@ export default function AdminDestinations() {
                                                 *
                                             </span>
                                             <span className="text-gray-500 text-xs ml-2">
-                                                ({charCount}/1000)
+                                                ({charCount}/5000)
                                             </span>
                                         </label>
                                         <textarea
@@ -561,7 +731,13 @@ export default function AdminDestinations() {
                                                 )
                                             }
                                             rows="4"
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.description ||
+                                                errors.description
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
                                         />
                                         {(validationErrors.description ||
                                             errors.description) && (
@@ -571,6 +747,7 @@ export default function AdminDestinations() {
                                             </p>
                                         )}
                                     </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
@@ -596,7 +773,13 @@ export default function AdminDestinations() {
                                                     }
                                                     step="0.01"
                                                     min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.price ||
+                                                        errors.price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.price ||
@@ -615,7 +798,7 @@ export default function AdminDestinations() {
                                                 Discount Price
                                             </label>
                                             <div className="relative">
-                                                <Tag className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                                <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                                                 <input
                                                     type="number"
                                                     id="discount_price"
@@ -628,7 +811,12 @@ export default function AdminDestinations() {
                                                     }
                                                     step="0.01"
                                                     min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.discount_price ||
+                                                        errors.discount_price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
                                                 />
                                             </div>
                                             {(validationErrors.discount_price ||
@@ -640,91 +828,7 @@ export default function AdminDestinations() {
                                             )}
                                         </div>
                                     </div>
-                                    <div>
-                                        <label
-                                            htmlFor="tag"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Tag
-                                        </label>
-                                        <div className="relative">
-                                            <Tag className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                id="tag"
-                                                value={data.tag}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "tag",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            {(validationErrors.tag ||
-                                                errors.tag) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.tag ||
-                                                        errors.tag}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="rating"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Rating (0-5)
-                                            </label>
-                                            <div className="relative">
-                                                <Star className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="number"
-                                                    id="rating"
-                                                    value={data.rating}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "rating",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    step="0.1"
-                                                    min="0"
-                                                    max="5"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                            {(validationErrors.rating ||
-                                                errors.rating) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.rating ||
-                                                        errors.rating}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center mt-6">
-                                            <input
-                                                type="checkbox"
-                                                id="is_featured"
-                                                checked={data.is_featured}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "is_featured",
-                                                        e.target.checked
-                                                    )
-                                                }
-                                                className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
-                                            />
-                                            <label
-                                                htmlFor="is_featured"
-                                                className="ml-2 text-sm font-medium text-gray-400"
-                                            >
-                                                Featured
-                                            </label>
-                                        </div>
-                                    </div>
+
                                     <div>
                                         <label
                                             htmlFor="image"
@@ -740,13 +844,19 @@ export default function AdminDestinations() {
                                             id="image"
                                             accept="image/*"
                                             onChange={handleImageChange}
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg ${
+                                                validationErrors.image ||
+                                                errors.image
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
                                         />
                                         {imagePreview && (
                                             <div className="relative mt-2">
                                                 <img
                                                     src={imagePreview}
-                                                    alt="Preview"
+                                                    alt="Image Preview"
                                                     className="w-full h-40 object-cover rounded-lg"
                                                 />
                                                 <button
@@ -766,6 +876,28 @@ export default function AdminDestinations() {
                                             </p>
                                         )}
                                     </div>
+
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_featured"
+                                            checked={data.is_featured}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "is_featured",
+                                                    e.target.checked
+                                                )
+                                            }
+                                            className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
+                                        />
+                                        <label
+                                            htmlFor="is_featured"
+                                            className="ml-2 text-sm font-medium text-gray-400"
+                                        >
+                                            Featured Destination
+                                        </label>
+                                    </div>
+
                                     <div className="flex justify-end space-x-3">
                                         <button
                                             type="button"
@@ -774,16 +906,24 @@ export default function AdminDestinations() {
                                                 reset();
                                                 setImagePreview(null);
                                                 setCharCount(0);
+                                                setValidationErrors({});
                                             }}
-                                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
+                                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                                         >
+                                            {processing ? (
+                                                <span className="inline-block mr-2 animate-spin">
+                                                    ⟳
+                                                </span>
+                                            ) : (
+                                                <Plus className="w-4 h-4 mr-2" />
+                                            )}
                                             Save
                                         </button>
                                     </div>
@@ -808,6 +948,7 @@ export default function AdminDestinations() {
                                             setImagePreview(null);
                                             setSelectedDestination(null);
                                             setCharCount(0);
+                                            setValidationErrors({});
                                         }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
@@ -818,34 +959,88 @@ export default function AdminDestinations() {
                                     onSubmit={handleEdit}
                                     className="space-y-4"
                                 >
+                                    <div>
+                                        <label
+                                            htmlFor="company_id"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Company{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                        </label>
+                                        <select
+                                            id="company_id"
+                                            value={data.company_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "company_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.company_id ||
+                                                errors.company_id
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select Company
+                                            </option>
+                                            {companies.map((company) => (
+                                                <option
+                                                    key={company.id}
+                                                    value={company.id}
+                                                >
+                                                    {company.company_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.company_id ||
+                                            errors.company_id) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.company_id ||
+                                                    errors.company_id}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
-                                                htmlFor="name"
+                                                htmlFor="title"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                Name{" "}
+                                                Title{" "}
                                                 <span className="text-red-500">
                                                     *
                                                 </span>
                                             </label>
                                             <input
                                                 type="text"
-                                                id="name"
-                                                value={data.name}
+                                                id="title"
+                                                value={data.title}
                                                 onChange={(e) =>
                                                     setData(
-                                                        "name",
+                                                        "title",
                                                         e.target.value
                                                     )
                                                 }
-                                                className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                    validationErrors.title ||
+                                                    errors.title
+                                                        ? "border-red-500"
+                                                        : ""
+                                                }`}
+                                                required
                                             />
-                                            {(validationErrors.name ||
-                                                errors.name) && (
+                                            {(validationErrors.title ||
+                                                errors.title) && (
                                                 <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.name ||
-                                                        errors.name}
+                                                    {validationErrors.title ||
+                                                        errors.title}
                                                 </p>
                                             )}
                                         </div>
@@ -871,7 +1066,13 @@ export default function AdminDestinations() {
                                                             e.target.value
                                                         )
                                                     }
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.location ||
+                                                        errors.location
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.location ||
@@ -883,6 +1084,60 @@ export default function AdminDestinations() {
                                             )}
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label
+                                            htmlFor="category"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Category{" "}
+                                            <span className="text-red-500">
+                                                *
+                                            </span>
+                                        </label>
+                                        <select
+                                            id="category"
+                                            value={data.category}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "category",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.category ||
+                                                errors.category
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
+                                        >
+                                            <option value="">
+                                                Select Category
+                                            </option>
+                                            {[
+                                                "Beach",
+                                                "Mountain",
+                                                "City",
+                                                "Cultural",
+                                                "Adventure",
+                                                "Historical",
+                                                "Wildlife",
+                                            ].map((cat) => (
+                                                <option key={cat} value={cat}>
+                                                    {cat}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(validationErrors.category ||
+                                            errors.category) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.category ||
+                                                    errors.category}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div>
                                         <label
                                             htmlFor="description"
@@ -893,7 +1148,7 @@ export default function AdminDestinations() {
                                                 *
                                             </span>
                                             <span className="text-gray-500 text-xs ml-2">
-                                                ({charCount}/1000)
+                                                ({charCount}/5000)
                                             </span>
                                         </label>
                                         <textarea
@@ -906,7 +1161,13 @@ export default function AdminDestinations() {
                                                 )
                                             }
                                             rows="4"
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.description ||
+                                                errors.description
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                            required
                                         />
                                         {(validationErrors.description ||
                                             errors.description) && (
@@ -916,6 +1177,7 @@ export default function AdminDestinations() {
                                             </p>
                                         )}
                                     </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label
@@ -941,7 +1203,13 @@ export default function AdminDestinations() {
                                                     }
                                                     step="0.01"
                                                     min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.price ||
+                                                        errors.price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
+                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.price ||
@@ -960,7 +1228,7 @@ export default function AdminDestinations() {
                                                 Discount Price
                                             </label>
                                             <div className="relative">
-                                                <Tag className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                                                <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                                                 <input
                                                     type="number"
                                                     id="discount_price"
@@ -973,7 +1241,12 @@ export default function AdminDestinations() {
                                                     }
                                                     step="0.01"
                                                     min="0"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className={`w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                        validationErrors.discount_price ||
+                                                        errors.discount_price
+                                                            ? "border-red-500"
+                                                            : ""
+                                                    }`}
                                                 />
                                             </div>
                                             {(validationErrors.discount_price ||
@@ -985,91 +1258,7 @@ export default function AdminDestinations() {
                                             )}
                                         </div>
                                     </div>
-                                    <div>
-                                        <label
-                                            htmlFor="tag"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Tag
-                                        </label>
-                                        <div className="relative">
-                                            <Tag className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                id="tag"
-                                                value={data.tag}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "tag",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            />
-                                            {(validationErrors.tag ||
-                                                errors.tag) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.tag ||
-                                                        errors.tag}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label
-                                                htmlFor="rating"
-                                                className="block text-sm font-medium text-gray-400 mb-1"
-                                            >
-                                                Rating (0-5)
-                                            </label>
-                                            <div className="relative">
-                                                <Star className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                                                <input
-                                                    type="number"
-                                                    id="rating"
-                                                    value={data.rating}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            "rating",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    step="0.1"
-                                                    min="0"
-                                                    max="5"
-                                                    className="w-full pl-10 p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                />
-                                            </div>
-                                            {(validationErrors.rating ||
-                                                errors.rating) && (
-                                                <p className="text-red-400 text-xs mt-1">
-                                                    {validationErrors.rating ||
-                                                        errors.rating}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center mt-6">
-                                            <input
-                                                type="checkbox"
-                                                id="is_featured"
-                                                checked={data.is_featured}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        "is_featured",
-                                                        e.target.checked
-                                                    )
-                                                }
-                                                className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
-                                            />
-                                            <label
-                                                htmlFor="is_featured"
-                                                className="ml-2 text-sm font-medium text-gray-400"
-                                            >
-                                                Featured
-                                            </label>
-                                        </div>
-                                    </div>
+
                                     <div>
                                         <label
                                             htmlFor="image"
@@ -1082,13 +1271,18 @@ export default function AdminDestinations() {
                                             id="image"
                                             accept="image/*"
                                             onChange={handleImageChange}
-                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg ${
+                                                validationErrors.image ||
+                                                errors.image
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
                                         />
                                         {imagePreview && (
                                             <div className="relative mt-2">
                                                 <img
                                                     src={imagePreview}
-                                                    alt="Preview"
+                                                    alt="Image Preview"
                                                     className="w-full h-40 object-cover rounded-lg"
                                                 />
                                                 <button
@@ -1108,6 +1302,28 @@ export default function AdminDestinations() {
                                             </p>
                                         )}
                                     </div>
+
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_featured"
+                                            checked={data.is_featured}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "is_featured",
+                                                    e.target.checked
+                                                )
+                                            }
+                                            className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500"
+                                        />
+                                        <label
+                                            htmlFor="is_featured"
+                                            className="ml-2 text-sm font-medium text-gray-400"
+                                        >
+                                            Featured Destination
+                                        </label>
+                                    </div>
+
                                     <div className="flex justify-end space-x-3">
                                         <button
                                             type="button"
@@ -1117,17 +1333,25 @@ export default function AdminDestinations() {
                                                 setImagePreview(null);
                                                 setSelectedDestination(null);
                                                 setCharCount(0);
+                                                setValidationErrors({});
                                             }}
-                                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
+                                            className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                                         >
-                                            Save
+                                            {processing ? (
+                                                <span className="inline-block mr-2 animate-spin">
+                                                    ⟳
+                                                </span>
+                                            ) : (
+                                                <Edit2 className="w-4 h-4 mr-2" />
+                                            )}
+                                            Update
                                         </button>
                                     </div>
                                 </form>
@@ -1142,29 +1366,34 @@ export default function AdminDestinations() {
                             <div className="p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="text-lg font-semibold text-white">
-                                        Delete Destination
+                                        Confirm Delete
                                     </h3>
                                     <button
-                                        onClick={() =>
-                                            setShowDeleteModal(false)
-                                        }
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setSelectedDestination(null);
+                                        }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
                                         <X className="w-6 h-6" />
                                     </button>
                                 </div>
-                                <p className="text-gray-400 mb-6">
-                                    Are you sure you want to delete "
-                                    {selectedDestination.name}"? This action
-                                    cannot be undone.
+                                <p className="text-gray-300 mb-6">
+                                    Are you sure you want to delete the
+                                    destination "
+                                    <span className="font-semibold">
+                                        {selectedDestination.title}
+                                    </span>
+                                    "? This action cannot be undone.
                                 </p>
                                 <div className="flex justify-end space-x-3">
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            setShowDeleteModal(false)
-                                        }
-                                        className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600"
+                                        onClick={() => {
+                                            setShowDeleteModal(false);
+                                            setSelectedDestination(null);
+                                        }}
+                                        className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                     >
                                         Cancel
                                     </button>
@@ -1172,8 +1401,15 @@ export default function AdminDestinations() {
                                         type="button"
                                         onClick={handleDelete}
                                         disabled={processing}
-                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
                                     >
+                                        {processing ? (
+                                            <span className="inline-block mr-2 animate-spin">
+                                                ⟳
+                                            </span>
+                                        ) : (
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                        )}
                                         Delete
                                     </button>
                                 </div>
@@ -1186,4 +1422,3 @@ export default function AdminDestinations() {
         </div>
     );
 }
-
