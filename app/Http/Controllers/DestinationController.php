@@ -7,7 +7,6 @@ use App\Models\Company;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class DestinationController extends Controller
@@ -35,7 +34,7 @@ class DestinationController extends Controller
                     ] : null,
                 ];
             }),
-            'companies' => Company::select(['id', 'company_name'])->get(),
+            'companies' => Company::select(['id', 'company_name'])->where('is_active', true)->get(),
         ]);
     }
 
@@ -57,7 +56,7 @@ class DestinationController extends Controller
 
             $imagePath = $request->file('image')->store('destinations', 'public');
 
-            $destination = Destination::create([
+            Destination::create([
                 'company_id' => $validated['company_id'],
                 'title' => $validated['title'],
                 'location' => $validated['location'],
@@ -67,15 +66,13 @@ class DestinationController extends Controller
                 'price' => $validated['price'],
                 'discount_price' => $validated['discount_price'] ?? null,
                 'rating' => $validated['rating'] ?? 0,
-                'is_featured' => $validated['is_featured'] ?? false,
+                'is_featured' => filter_var($validated['is_featured'] ?? false, FILTER_VALIDATE_BOOLEAN),
             ]);
 
             return redirect()->route('admin.destinations.index')->with('success', 'Destination created successfully.');
         } catch (ValidationException $e) {
-            Log::error('Store destination validation failed:', ['errors' => $e->errors()]);
             return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            Log::error('Store destination failed:', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to create destination. Please try again.');
         }
     }
@@ -86,17 +83,26 @@ class DestinationController extends Controller
             $destination = Destination::findOrFail($id);
 
             $validated = $request->validate([
-                'company_id' => 'nullable|exists:companies,id',
-                'title' => 'nullable|string|min:3|max:255',
-                'location' => 'nullable|string|min:3|max:255',
-                'category' => 'nullable|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
-                'description' => 'nullable|string|min:10|max:1000',
+                'company_id' => 'sometimes|required|exists:companies,id',
+                'title' => 'sometimes|required|string|min:3|max:255',
+                'location' => 'sometimes|required|string|min:3|max:255',
+                'category' => 'sometimes|required|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
+                'description' => 'sometimes|required|string|min:10|max:1000',
                 'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-                'price' => 'nullable|numeric|min:0',
-                'discount_price' => 'nullable|numeric|min:0|lt:price',
+                'price' => 'sometimes|required|numeric|min:0',
+                'discount_price' => 'nullable|numeric|min:0',
                 'rating' => 'nullable|numeric|min:0|max:5',
-                'is_featured' => 'nullable|boolean',
+                'is_featured' => 'sometimes|boolean',
             ]);
+
+            if (isset($validated['discount_price'])) {
+                $price = $validated['price'] ?? $destination->price;
+                if ($validated['discount_price'] >= $price) {
+                    throw ValidationException::withMessages([
+                        'discount_price' => ['Discount price must be less than the original price'],
+                    ]);
+                }
+            }
 
             $data = [
                 'company_id' => $validated['company_id'] ?? $destination->company_id,
@@ -107,7 +113,9 @@ class DestinationController extends Controller
                 'price' => $validated['price'] ?? $destination->price,
                 'discount_price' => $validated['discount_price'] ?? $destination->discount_price,
                 'rating' => $validated['rating'] ?? $destination->rating,
-                'is_featured' => $validated['is_featured'] ?? $destination->is_featured,
+                'is_featured' => isset($validated['is_featured'])
+                    ? filter_var($validated['is_featured'], FILTER_VALIDATE_BOOLEAN)
+                    : $destination->is_featured,
             ];
 
             if ($request->hasFile('image')) {
@@ -121,11 +129,9 @@ class DestinationController extends Controller
 
             return redirect()->route('admin.destinations.index')->with('success', 'Destination updated successfully.');
         } catch (ValidationException $e) {
-            Log::error('Update destination validation failed:', ['id' => $id, 'errors' => $e->errors()]);
             return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            Log::error('Update destination failed:', ['id' => $id, 'error' => $e->getMessage()]);
-            return back()->with('error', 'Failed to update destination. Please try again.');
+            return back()->with('error', 'Failed to update destination: ' . $e->getMessage());
         }
     }
 
@@ -142,7 +148,6 @@ class DestinationController extends Controller
 
             return redirect()->route('admin.destinations.index')->with('success', 'Destination deleted successfully.');
         } catch (\Exception $e) {
-            Log::error('Delete destination failed:', ['id' => $id, 'error' => $e->getMessage()]);
             return back()->with('error', 'Failed to delete destination. Please try again.');
         }
     }
@@ -159,7 +164,6 @@ class DestinationController extends Controller
 
             return redirect()->route('admin.destinations.index')->with('success', $message);
         } catch (\Exception $e) {
-            Log::error('Toggle featured failed:', ['id' => $id, 'error' => $e->getMessage()]);
             return back()->with('error', 'Failed to toggle featured status. Please try again.');
         }
     }
@@ -264,7 +268,6 @@ class DestinationController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Show destination failed:', ['id' => $id, 'error' => $e->getMessage()]);
             return Inertia::render('Errors/404', [
                 'message' => 'Destination not found.',
             ]);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Head, usePage, useForm } from "@inertiajs/react";
 import {
     Search,
@@ -15,7 +15,6 @@ import {
 import AdminSidebar from "@/Components/AdminSidebar";
 import toast, { Toaster } from "react-hot-toast";
 
-// Custom Scrollbar Styles
 const styles = `
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: #1f2937; border-radius: 4px; }
@@ -25,7 +24,6 @@ const styles = `
   * { scrollbar-width: thin; scrollbar-color: #4b5563 #1f2937; }
 `;
 
-// Inject styles
 if (!document.getElementById("custom-scrollbar-styles")) {
     const styleSheet = document.createElement("style");
     styleSheet.id = "custom-scrollbar-styles";
@@ -33,7 +31,6 @@ if (!document.getElementById("custom-scrollbar-styles")) {
     document.head.appendChild(styleSheet);
 }
 
-// Calculate discount percentage
 const calculateDiscount = (original, discounted) => {
     if (!discounted || !original) return null;
     return Math.round(((original - discounted) / original) * 100);
@@ -43,13 +40,10 @@ export default function AdminDestinations() {
     const { props } = usePage();
     const { destinations = [], companies = [], flash = {} } = props;
 
-    // Log props for debugging
-
     const {
         data,
         setData,
         post,
-        put,
         delete: deleteForm,
         patch,
         processing,
@@ -64,10 +58,10 @@ export default function AdminDestinations() {
         price: "",
         discount_price: "",
         image: null,
+        rating: "",
         is_featured: false,
     });
 
-    // State management
     const [searchQuery, setSearchQuery] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -76,38 +70,41 @@ export default function AdminDestinations() {
     const [imagePreview, setImagePreview] = useState(null);
     const [validationErrors, setValidationErrors] = useState({});
     const [charCount, setCharCount] = useState(0);
-    const [lastFlash, setLastFlash] = useState({ success: null, error: null });
 
-    // Form validation
+    const lastFlashRef = useRef({ success: null, error: null });
+
     const validateForm = (isAdd = false) => {
         const errors = {};
 
-        if (!data.company_id) {
-            errors.company_id = "Company is required";
+        if (isAdd || data.company_id !== selectedDestination?.company?.id) {
+            if (!data.company_id) errors.company_id = "Company is required";
         }
 
-        if (!data.title) {
-            errors.title = "Title is required";
-        } else if (data.title.length < 3) {
-            errors.title = "Title must be at least 3 characters";
-        } else if (data.title.length > 100) {
-            errors.title = "Title must not exceed 100 characters";
+        if (isAdd || data.title !== selectedDestination?.title) {
+            if (!data.title) errors.title = "Title is required";
+            else if (data.title.length < 3)
+                errors.title = "Title must be at least 3 characters";
+            else if (data.title.length > 255)
+                errors.title = "Title must not exceed 255 characters";
         }
 
-        if (!data.location) {
-            errors.location = "Location is required";
-        } else if (data.location.length < 3) {
-            errors.location = "Location must be at least 3 characters";
-        } else if (data.location.length > 100) {
-            errors.location = "Location must not exceed 100 characters";
+        if (isAdd || data.location !== selectedDestination?.location) {
+            if (!data.location) errors.location = "Location is required";
+            else if (data.location.length < 3)
+                errors.location = "Location must be at least 3 characters";
+            else if (data.location.length > 255)
+                errors.location = "Location must not exceed 255 characters";
         }
 
-        if (!data.description) {
-            errors.description = "Description is required";
-        } else if (data.description.length < 10) {
-            errors.description = "Description must be at least 10 characters";
-        } else if (data.description.length > 5000) {
-            errors.description = "Description must be 5000 characters or less";
+        if (isAdd || data.description !== selectedDestination?.description) {
+            if (!data.description)
+                errors.description = "Description is required";
+            else if (data.description.length < 10)
+                errors.description =
+                    "Description must be at least 10 characters";
+            else if (data.description.length > 1000)
+                errors.description =
+                    "Description must not exceed 1000 characters";
         }
 
         const validCategories = [
@@ -119,61 +116,65 @@ export default function AdminDestinations() {
             "Historical",
             "Wildlife",
         ];
-        if (!data.category) {
-            errors.category = "Category is required";
-        } else if (!validCategories.includes(data.category)) {
-            errors.category = "Invalid category selected";
+        if (isAdd || data.category !== selectedDestination?.category) {
+            if (!data.category) errors.category = "Category is required";
+            else if (!validCategories.includes(data.category))
+                errors.category = "Invalid category selected";
         }
 
-        if (!data.price) {
-            errors.price = "Price is required";
-        } else if (
-            isNaN(parseFloat(data.price)) ||
-            parseFloat(data.price) < 0
-        ) {
-            errors.price =
-                "Price must be a valid number greater than or equal to 0";
+        if (isAdd || data.price !== selectedDestination?.price?.toString()) {
+            if (!data.price) errors.price = "Price is required";
+            else if (
+                isNaN(parseFloat(data.price)) ||
+                parseFloat(data.price) < 0
+            )
+                errors.price =
+                    "Price must be a valid number greater than or equal to 0";
         }
 
         if (data.discount_price) {
             if (
                 isNaN(parseFloat(data.discount_price)) ||
                 parseFloat(data.discount_price) < 0
-            ) {
+            )
                 errors.discount_price =
                     "Discount price must be a valid number greater than or equal to 0";
-            } else if (
+            else if (
+                data.price &&
                 parseFloat(data.discount_price) >= parseFloat(data.price)
-            ) {
+            )
                 errors.discount_price =
-                    "Discount price must be less than regular price";
-            }
+                    "Discount price must be less than the original price";
         }
 
-        if (isAdd && !data.image) {
-            errors.image = "Image is required";
+        if (data.rating) {
+            const ratingValue = parseFloat(data.rating);
+            if (isNaN(ratingValue) || ratingValue < 0 || ratingValue > 5)
+                errors.rating = "Rating must be between 0 and 5";
         }
+
+        if (isAdd && !data.image) errors.image = "Image is required";
+
         if (data.image) {
             const validTypes = [
                 "image/jpeg",
                 "image/png",
                 "image/jpg",
                 "image/gif",
-                "image/webp",
             ];
-            if (!validTypes.includes(data.image.type)) {
-                errors.image = "Image must be JPEG, PNG, JPG, GIF, or WebP";
-            }
-            if (data.image.size > 2 * 1024 * 1024) {
+            if (
+                !(data.image instanceof File) ||
+                !validTypes.includes(data.image.type)
+            )
+                errors.image = "Image must be of type JPEG, PNG, JPG, or GIF";
+            else if (data.image.size > 2 * 1024 * 1024)
                 errors.image = "Image size must be less than 2MB";
-            }
         }
 
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
-    // Handle image change
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -182,13 +183,11 @@ export default function AdminDestinations() {
         }
     };
 
-    // Remove image
     const removeImage = () => {
         setData("image", null);
         setImagePreview(null);
     };
 
-    // Handle add destination
     const handleAdd = (e) => {
         e.preventDefault();
         if (!validateForm(true)) {
@@ -196,9 +195,24 @@ export default function AdminDestinations() {
             return;
         }
 
+        const formData = new FormData();
+        formData.append("company_id", data.company_id);
+        formData.append("title", data.title);
+        formData.append("location", data.location);
+        formData.append("description", data.description);
+        formData.append("category", data.category);
+        formData.append("price", data.price);
+        if (data.discount_price)
+            formData.append("discount_price", data.discount_price);
+        if (data.rating) formData.append("rating", data.rating);
+        formData.append("is_featured", data.is_featured ? "1" : "0");
+        if (data.image instanceof File) formData.append("image", data.image);
+
         post("/admin/destinations", {
+            data: formData,
+            headers: { "Content-Type": "multipart/form-data" },
             preserveScroll: true,
-            forceFormData: true,
+            preserveState: true,
             onSuccess: () => {
                 setShowAddModal(false);
                 reset();
@@ -209,13 +223,12 @@ export default function AdminDestinations() {
             onError: (errors) => {
                 setValidationErrors(errors);
                 toast.error(
-                    "Failed to add destination. Please check the form."
+                    "Failed to add destination: Please check the form."
                 );
             },
         });
     };
 
-    // Handle edit destination
     const handleEdit = (e) => {
         e.preventDefault();
         if (!validateForm(false)) {
@@ -223,8 +236,39 @@ export default function AdminDestinations() {
             return;
         }
 
-        put(`/admin/destinations/${selectedDestination.id}`, {
+        const formData = new FormData();
+        if (data.company_id !== selectedDestination.company?.id)
+            formData.append("company_id", data.company_id);
+        if (data.title !== selectedDestination.title)
+            formData.append("title", data.title);
+        if (data.location !== selectedDestination.location)
+            formData.append("location", data.location);
+        if (data.description !== selectedDestination.description)
+            formData.append("description", data.description);
+        if (data.category !== selectedDestination.category)
+            formData.append("category", data.category);
+        if (data.price !== selectedDestination.price?.toString())
+            formData.append("price", data.price);
+        if (
+            data.discount_price !==
+            (selectedDestination.discount_price?.toString() || "")
+        )
+            formData.append("discount_price", data.discount_price);
+        if (data.rating !== (selectedDestination.rating?.toString() || ""))
+            formData.append("rating", data.rating);
+        if (data.is_featured !== !!selectedDestination.is_featured)
+            formData.append("is_featured", data.is_featured ? "1" : "0");
+        if (data.image instanceof File) formData.append("image", data.image);
+        formData.append("_method", "PUT");
+
+        post(`/admin/destinations/${selectedDestination.id}`, {
+            data: formData,
+            headers: {
+                "Content-Type": "multipart/form-data",
+                "X-HTTP-Method-Override": "PUT",
+            },
             preserveScroll: true,
+            preserveState: true,
             forceFormData: true,
             onSuccess: () => {
                 setShowEditModal(false);
@@ -237,13 +281,12 @@ export default function AdminDestinations() {
             onError: (errors) => {
                 setValidationErrors(errors);
                 toast.error(
-                    "Failed to update destination. Please check the form."
+                    "Failed to update destination: Please check the form."
                 );
             },
         });
     };
 
-    // Handle delete destination
     const handleDelete = () => {
         if (selectedDestination) {
             deleteForm(`/admin/destinations/${selectedDestination.id}`, {
@@ -259,15 +302,15 @@ export default function AdminDestinations() {
         }
     };
 
-    // Handle toggle featured
     const handleToggleFeatured = (id) => {
         patch(`/admin/destinations/${id}/toggle-featured`, {
             preserveScroll: true,
-            onError: () => toast.error("Failed to update featured status"),
+            onError: () => {
+                toast.error("Failed to update featured status.");
+            },
         });
     };
 
-    // Open edit modal
     const openEditModal = (destination) => {
         setSelectedDestination(destination);
         setData({
@@ -280,6 +323,7 @@ export default function AdminDestinations() {
             discount_price: destination.discount_price
                 ? destination.discount_price.toString()
                 : "",
+            rating: destination.rating ? destination.rating.toString() : "",
             image: null,
             is_featured: !!destination.is_featured,
         });
@@ -290,13 +334,11 @@ export default function AdminDestinations() {
         setShowEditModal(true);
     };
 
-    // Open delete modal
     const openDeleteModal = (destination) => {
         setSelectedDestination(destination);
         setShowDeleteModal(true);
     };
 
-    // Filter destinations
     const filteredDestinations = destinations.filter(
         (destination) =>
             (destination.title || "")
@@ -313,24 +355,21 @@ export default function AdminDestinations() {
                 .includes(searchQuery.toLowerCase())
     );
 
-    // Handle flash messages
     useEffect(() => {
-        if (flash.success && flash.success !== lastFlash.success) {
+        if (flash.success && flash.success !== lastFlashRef.current.success) {
             toast.success(flash.success);
-            setLastFlash((prev) => ({ ...prev, success: flash.success }));
+            lastFlashRef.current.success = flash.success;
         }
-        if (flash.error && flash.error !== lastFlash.error) {
+        if (flash.error && flash.error !== lastFlashRef.current.error) {
             toast.error(flash.error);
-            setLastFlash((prev) => ({ ...prev, error: flash.error }));
+            lastFlashRef.current.error = flash.error;
         }
-    }, [flash, lastFlash]);
+    }, [flash.success, flash.error]);
 
-    // Update char count
     useEffect(() => {
         setCharCount(data.description ? data.description.length : 0);
     }, [data.description]);
 
-    // Clean up image preview
     useEffect(() => {
         return () => {
             if (imagePreview && typeof imagePreview === "string") {
@@ -378,8 +417,8 @@ export default function AdminDestinations() {
 
                 {companies.length === 0 && (
                     <div className="bg-yellow-600 text-white p-4 rounded-lg mb-6">
-                        No companies available. Please add a company before
-                        creating destinations.
+                        No active companies available. Please activate a company
+                        first.
                     </div>
                 )}
 
@@ -489,6 +528,9 @@ export default function AdminDestinations() {
                                             </span>
                                         )}
                                     </div>
+                                    <p className="text-sm text-gray-400 mb-2">
+                                        Rating: {destination.rating || "N/A"}
+                                    </p>
                                     <p className="text-xs text-gray-500 mt-2">
                                         ID: {destination.id} | Featured:{" "}
                                         {destination.is_featured ? "Yes" : "No"}
@@ -718,7 +760,7 @@ export default function AdminDestinations() {
                                                 *
                                             </span>
                                             <span className="text-gray-500 text-xs ml-2">
-                                                ({charCount}/5000)
+                                                ({charCount}/1000)
                                             </span>
                                         </label>
                                         <textarea
@@ -831,6 +873,42 @@ export default function AdminDestinations() {
 
                                     <div>
                                         <label
+                                            htmlFor="rating"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Rating (0-5)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            id="rating"
+                                            value={data.rating}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "rating",
+                                                    e.target.value
+                                                )
+                                            }
+                                            step="0.1"
+                                            min="0"
+                                            max="5"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.rating ||
+                                                errors.rating
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                        />
+                                        {(validationErrors.rating ||
+                                            errors.rating) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.rating ||
+                                                    errors.rating}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label
                                             htmlFor="image"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
@@ -850,7 +928,6 @@ export default function AdminDestinations() {
                                                     ? "border-red-500"
                                                     : ""
                                             }`}
-                                            required
                                         />
                                         {imagePreview && (
                                             <div className="relative mt-2">
@@ -965,8 +1042,8 @@ export default function AdminDestinations() {
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
                                             Company{" "}
-                                            <span className="text-red-500">
-                                                *
+                                            <span className="text-gray-500">
+                                                (Optional)
                                             </span>
                                         </label>
                                         <select
@@ -984,7 +1061,6 @@ export default function AdminDestinations() {
                                                     ? "border-red-500"
                                                     : ""
                                             }`}
-                                            required
                                         >
                                             <option value="">
                                                 Select Company
@@ -1014,8 +1090,8 @@ export default function AdminDestinations() {
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
                                                 Title{" "}
-                                                <span className="text-red-500">
-                                                    *
+                                                <span className="text-gray-500">
+                                                    (Optional)
                                                 </span>
                                             </label>
                                             <input
@@ -1034,7 +1110,6 @@ export default function AdminDestinations() {
                                                         ? "border-red-500"
                                                         : ""
                                                 }`}
-                                                required
                                             />
                                             {(validationErrors.title ||
                                                 errors.title) && (
@@ -1050,8 +1125,8 @@ export default function AdminDestinations() {
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
                                                 Location{" "}
-                                                <span className="text-red-500">
-                                                    *
+                                                <span className="text-gray-500">
+                                                    (Optional)
                                                 </span>
                                             </label>
                                             <div className="relative">
@@ -1072,7 +1147,6 @@ export default function AdminDestinations() {
                                                             ? "border-red-500"
                                                             : ""
                                                     }`}
-                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.location ||
@@ -1091,8 +1165,8 @@ export default function AdminDestinations() {
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
                                             Category{" "}
-                                            <span className="text-red-500">
-                                                *
+                                            <span className="text-gray-500">
+                                                (Optional)
                                             </span>
                                         </label>
                                         <select
@@ -1110,7 +1184,6 @@ export default function AdminDestinations() {
                                                     ? "border-red-500"
                                                     : ""
                                             }`}
-                                            required
                                         >
                                             <option value="">
                                                 Select Category
@@ -1144,11 +1217,11 @@ export default function AdminDestinations() {
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
                                             Description{" "}
-                                            <span className="text-red-500">
-                                                *
+                                            <span className="text-gray-500">
+                                                (Optional)
                                             </span>
                                             <span className="text-gray-500 text-xs ml-2">
-                                                ({charCount}/5000)
+                                                ({charCount}/1000)
                                             </span>
                                         </label>
                                         <textarea
@@ -1167,7 +1240,6 @@ export default function AdminDestinations() {
                                                     ? "border-red-500"
                                                     : ""
                                             }`}
-                                            required
                                         />
                                         {(validationErrors.description ||
                                             errors.description) && (
@@ -1185,8 +1257,8 @@ export default function AdminDestinations() {
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
                                                 Price{" "}
-                                                <span className="text-red-500">
-                                                    *
+                                                <span className="text-gray-500">
+                                                    (Optional)
                                                 </span>
                                             </label>
                                             <div className="relative">
@@ -1209,7 +1281,6 @@ export default function AdminDestinations() {
                                                             ? "border-red-500"
                                                             : ""
                                                     }`}
-                                                    required
                                                 />
                                             </div>
                                             {(validationErrors.price ||
@@ -1225,7 +1296,10 @@ export default function AdminDestinations() {
                                                 htmlFor="discount_price"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                Discount Price
+                                                Discount Price{" "}
+                                                <span className="text-gray-500">
+                                                    (Optional)
+                                                </span>
                                             </label>
                                             <div className="relative">
                                                 <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -1261,10 +1335,52 @@ export default function AdminDestinations() {
 
                                     <div>
                                         <label
+                                            htmlFor="rating"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Rating (0-5){" "}
+                                            <span className="text-gray-500">
+                                                (Optional)
+                                            </span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            id="rating"
+                                            value={data.rating}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "rating",
+                                                    e.target.value
+                                                )
+                                            }
+                                            step="0.1"
+                                            min="0"
+                                            max="5"
+                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                                validationErrors.rating ||
+                                                errors.rating
+                                                    ? "border-red-500"
+                                                    : ""
+                                            }`}
+                                        />
+                                        {(validationErrors.rating ||
+                                            errors.rating) && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.rating ||
+                                                    errors.rating}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label
                                             htmlFor="image"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
-                                            Image
+                                            Image{" "}
+                                            <span className="text-gray-500">
+                                                (Optional)
+                                            </span>
                                         </label>
                                         <input
                                             type="file"
