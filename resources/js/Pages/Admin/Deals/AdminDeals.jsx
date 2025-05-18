@@ -13,13 +13,21 @@ import {
     Tag,
     Calendar,
     Text,
+    MapPin,
+    Users,
+    Clock,
 } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function OffersView() {
     const { props } = usePage();
-    const { offers = [], flash = {} } = props;
+    const {
+        offers = [],
+        companies = [],
+        destinations = [],
+        flash = {},
+    } = props;
 
     const [searchQuery, setSearchQuery] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
@@ -43,12 +51,19 @@ export default function OffersView() {
     } = useForm({
         title: "",
         description: "",
+        location: "",
+        category: "",
         image: null,
         price: "",
         discount_price: "",
         discount_type: "",
         start_date: "",
         end_date: "",
+        company_id: "",
+        destination_id: "",
+        is_active: true,
+        duration: "",
+        group_size: "",
     });
 
     // Format date to YYYY-MM-DD
@@ -66,37 +81,83 @@ export default function OffersView() {
     // Validate form fields
     const validateForm = (isAdd = false) => {
         const errors = {};
-        if (!data.title) {
-            errors.title = "Title is required.";
-        } else if (data.title.length < 3 || data.title.length > 255) {
-            errors.title = "Title must be between 3 and 255 characters.";
+
+        if (isAdd || data.title !== selectedOffer?.title) {
+            if (!data.title) errors.title = "Title is required.";
+            else if (data.title.length < 3 || data.title.length > 255)
+                errors.title = "Title must be between 3 and 255 characters.";
         }
-        if (!data.description) {
-            errors.description = "Title is required.";
-        } else if (data.description.length < 10) {
-            errors.description = "Description must be at least 10 characters.";
+
+        if (isAdd || data.description !== selectedOffer?.description) {
+            if (!data.description)
+                errors.description = "Description is required.";
+            else if (data.description.length < 10)
+                errors.description =
+                    "Description must be at least 10 characters.";
         }
-        if (data.price && (isNaN(data.price) || data.price < 0)) {
-            errors.price =
-                "Price must be a valid number greater than or equal to 0.";
+
+        if (isAdd || data.location !== selectedOffer?.location) {
+            if (!data.location) errors.location = "Location is required.";
+            else if (data.location.length < 3 || data.location.length > 255)
+                errors.location =
+                    "Location must be between 3 and 255 characters.";
         }
-        if (
-            data.discount_price &&
-            (isNaN(data.discount_price) || data.discount_price < 0)
-        ) {
-            errors.discount_price =
-                "Discount price must be a valid number greater than or equal to 0.";
+
+        if (isAdd || data.category !== selectedOffer?.category) {
+            const validCategories = [
+                "Beach",
+                "Mountain",
+                "City",
+                "Cultural",
+                "Adventure",
+                "Historical",
+                "Wildlife",
+            ];
+            if (!data.category) errors.category = "Category is required.";
+            else if (!validCategories.includes(data.category))
+                errors.category = "Invalid category selected.";
         }
-        if (data.discount_type && data.discount_type.length > 50) {
-            errors.discount_type =
-                "Discount type must not exceed 50 characters.";
+
+        if (isAdd || data.price !== selectedOffer?.price?.toString()) {
+            if (!data.price) errors.price = "Price is required.";
+            else if (
+                isNaN(parseFloat(data.price)) ||
+                parseFloat(data.price) < 0
+            )
+                errors.price =
+                    "Price must be a valid number greater than or equal to 0.";
         }
+
+        if (data.discount_price) {
+            if (
+                isNaN(parseFloat(data.discount_price)) ||
+                parseFloat(data.discount_price) < 0
+            )
+                errors.discount_price =
+                    "Discount price must be a valid number greater than or equal to 0.";
+            else if (
+                data.price &&
+                parseFloat(data.discount_price) >= parseFloat(data.price)
+            )
+                errors.discount_price =
+                    "Discount price must be less than the original price.";
+        }
+
+        if (data.discount_type) {
+            const validDiscountTypes = ["percentage", "fixed"];
+            if (!validDiscountTypes.includes(data.discount_type))
+                errors.discount_type =
+                    "Discount type must be 'percentage' or 'fixed'.";
+        }
+
         if (data.start_date && !/^\d{4}-\d{2}-\d{2}$/.test(data.start_date)) {
             errors.start_date = "Start date must be a valid date (YYYY-MM-DD).";
         }
+
         if (data.end_date && !/^\d{4}-\d{2}-\d{2}$/.test(data.end_date)) {
             errors.end_date = "End date must be a valid date (YYYY-MM-DD).";
         }
+
         if (
             data.start_date &&
             data.end_date &&
@@ -104,14 +165,28 @@ export default function OffersView() {
         ) {
             errors.end_date = "End date must be after or equal to start date.";
         }
-        if (isAdd) {
-            if (!data.image) {
-                errors.image = "Image is required.";
-            }
-            if (!data.price) {
-                errors.price = "Price is required.";
-            }
+
+        if (isAdd || data.company_id !== selectedOffer?.company_id) {
+            if (!data.company_id) errors.company_id = "Company is required.";
+            else if (!companies.find((c) => c.id === parseInt(data.company_id)))
+                errors.company_id = "Invalid company selected.";
         }
+
+        if (isAdd || data.destination_id !== selectedOffer?.destination_id) {
+            if (!data.destination_id)
+                errors.destination_id = "Destination is required.";
+            else if (
+                !destinations.find(
+                    (d) => d.id === parseInt(data.destination_id)
+                )
+            )
+                errors.destination_id = "Invalid destination selected.";
+        }
+
+        if (isAdd && !data.image) {
+            errors.image = "Image is required.";
+        }
+
         if (data.image) {
             const validTypes = [
                 "image/jpeg",
@@ -119,13 +194,23 @@ export default function OffersView() {
                 "image/jpg",
                 "image/gif",
             ];
-            if (!validTypes.includes(data.image.type)) {
+            if (
+                !(data.image instanceof File) ||
+                !validTypes.includes(data.image.type)
+            )
                 errors.image = "Image must be a JPEG, PNG, JPG, or GIF.";
-            }
-            if (data.image.size > 2 * 1024 * 1024) {
+            else if (data.image.size > 2 * 1024 * 1024)
                 errors.image = "Image size must be less than 2MB.";
-            }
         }
+
+        if (data.duration && data.duration.length > 50) {
+            errors.duration = "Duration must not exceed 50 characters.";
+        }
+
+        if (data.group_size && data.group_size.length > 50) {
+            errors.group_size = "Group size must not exceed 50 characters.";
+        }
+
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -151,7 +236,10 @@ export default function OffersView() {
     const filteredOffers = offers.filter(
         (offer) =>
             offer.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            offer.description?.toLowerCase().includes(searchQuery.toLowerCase())
+            offer.description
+                ?.toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            offer.location?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // Handle add offer
@@ -161,17 +249,41 @@ export default function OffersView() {
             toast.error("Please fix the form errors.");
             return;
         }
+
+        const formData = new FormData();
+        formData.append("title", data.title);
+        formData.append("description", data.description);
+        formData.append("location", data.location);
+        formData.append("category", data.category);
+        if (data.image) formData.append("image", data.image);
+        formData.append("price", data.price);
+        if (data.discount_price)
+            formData.append("discount_price", data.discount_price);
+        if (data.discount_type)
+            formData.append("discount_type", data.discount_type);
+        if (data.start_date) formData.append("start_date", data.start_date);
+        if (data.end_date) formData.append("end_date", data.end_date);
+        formData.append("company_id", data.company_id);
+        formData.append("destination_id", data.destination_id);
+        formData.append("is_active", data.is_active ? "1" : "0");
+        if (data.duration) formData.append("duration", data.duration);
+        if (data.group_size) formData.append("group_size", data.group_size);
+
         post(route("admin.offers.store"), {
+            data: formData,
+            headers: { "Content-Type": "multipart/form-data" },
             preserveScroll: true,
-            forceFormData: true,
+            preserveState: true,
             onSuccess: () => {
                 setShowAddModal(false);
                 reset();
                 setImagePreview(null);
+                setValidationErrors({});
                 toast.success("Offer added successfully!");
             },
-            onError: () => {
-                toast.error("Failed to add offer. Please try again.");
+            onError: (errors) => {
+                setValidationErrors(errors);
+                toast.error("Failed to add offer. Please check the form.");
             },
         });
     };
@@ -183,26 +295,64 @@ export default function OffersView() {
             toast.error("Please fix the form errors.");
             return;
         }
-        console.log("Form Data Sent:", data);
-        const options = {
+
+        const formData = new FormData();
+        if (data.title !== selectedOffer.title)
+            formData.append("title", data.title);
+        if (data.description !== selectedOffer.description)
+            formData.append("description", data.description);
+        if (data.location !== selectedOffer.location)
+            formData.append("location", data.location);
+        if (data.category !== selectedOffer.category)
+            formData.append("category", data.category);
+        if (data.image instanceof File) formData.append("image", data.image);
+        if (data.price !== selectedOffer.price?.toString())
+            formData.append("price", data.price);
+        if (
+            data.discount_price !==
+            (selectedOffer.discount_price?.toString() || "")
+        )
+            formData.append("discount_price", data.discount_price);
+        if (data.discount_type !== selectedOffer.discount_type)
+            formData.append("discount_type", data.discount_type);
+        if (data.start_date !== formatDate(selectedOffer.start_date))
+            formData.append("start_date", data.start_date);
+        if (data.end_date !== formatDate(selectedOffer.end_date))
+            formData.append("end_date", data.end_date);
+        if (data.company_id !== selectedOffer.company_id)
+            formData.append("company_id", data.company_id);
+        if (data.destination_id !== selectedOffer.destination_id)
+            formData.append("destination_id", data.destination_id);
+        if (data.is_active !== selectedOffer.is_active)
+            formData.append("is_active", data.is_active ? "1" : "0");
+        if (data.duration !== selectedOffer.duration)
+            formData.append("duration", data.duration);
+        if (data.group_size !== selectedOffer.group_size)
+            formData.append("group_size", data.group_size);
+        formData.append("_method", "PUT");
+
+        post(route("admin.offers.update", selectedOffer.id), {
+            data: formData,
+            headers: {
+                "Content-Type": "multipart/form-data",
+                "X-HTTP-Method-Override": "PUT",
+            },
             preserveScroll: true,
+            preserveState: true,
+            forceFormData: true,
             onSuccess: () => {
                 setShowEditModal(false);
                 reset();
                 setImagePreview(null);
                 setSelectedOffer(null);
+                setValidationErrors({});
                 toast.success("Offer updated successfully!");
             },
             onError: (errors) => {
-                console.log("Inertia Errors:", errors);
-                toast.error("Failed to update offer. Please try again.");
+                setValidationErrors(errors);
+                toast.error("Failed to update offer. Please check the form.");
             },
-        };
-        // Only use forceFormData if an image is included
-        if (data.image) {
-            options.forceFormData = true;
-        }
-        put(route("admin.offers.update", selectedOffer.id), options);
+        });
     };
 
     // Handle delete offer
@@ -254,6 +404,8 @@ export default function OffersView() {
         setData({
             title: offer.title || "",
             description: offer.description || "",
+            location: offer.location || "",
+            category: offer.category || "",
             image: null,
             price: offer.price !== null ? offer.price.toString() : "",
             discount_price:
@@ -263,6 +415,11 @@ export default function OffersView() {
             discount_type: offer.discount_type || "",
             start_date: formatDate(offer.start_date) || "",
             end_date: formatDate(offer.end_date) || "",
+            company_id: offer.company_id || "",
+            destination_id: offer.destination_id || "",
+            is_active: offer.is_active || false,
+            duration: offer.duration || "",
+            group_size: offer.group_size || "",
         });
         setImagePreview(offer.image ? offer.image : null);
         setShowEditModal(true);
@@ -276,7 +433,7 @@ export default function OffersView() {
         if (flash.error) {
             toast.error(flash.error);
         }
-    }, []);
+    }, [flash]);
 
     // Clean up image preview URL
     useEffect(() => {
@@ -382,6 +539,12 @@ export default function OffersView() {
                                         </div>
                                     </div>
                                     <div className="flex items-start mb-2">
+                                        <MapPin className="w-4 h-4 text-gray-400 mr-1 mt-1" />
+                                        <p className="text-sm text-gray-400">
+                                            {offer.location || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-start mb-2">
                                         <Text className="w-4 h-4 text-gray-400 mr-1 mt-1" />
                                         <p className="text-sm text-gray-400 line-clamp-2">
                                             {offer.description || "N/A"}
@@ -417,6 +580,28 @@ export default function OffersView() {
                                             {formatDate(offer.end_date)}
                                         </span>
                                     </div>
+                                    <div className="flex items-center mb-2">
+                                        <Clock className="w-4 h-4 text-gray-400 mr-1" />
+                                        <span className="text-sm text-gray-400">
+                                            {offer.duration || "N/A"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <Users className="w-4 h-4 text-gray-400 mr-1" />
+                                        <span className="text-sm text-gray-400">
+                                            {offer.group_size || "N/A"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center mb-2">
+                                        <span className="text-sm text-gray-400">
+                                            Rating:{" "}
+                                            {offer.average_rating
+                                                ? offer.average_rating.toFixed(
+                                                      1
+                                                  )
+                                                : "No ratings yet"}
+                                        </span>
+                                    </div>
                                     <p className="text-xs text-gray-500 mt-2">
                                         Status:{" "}
                                         {offer.is_active
@@ -447,6 +632,7 @@ export default function OffersView() {
                                             setShowAddModal(false);
                                             setImagePreview(null);
                                             reset();
+                                            setValidationErrors({});
                                         }}
                                         className="text-gray-400 hover:text-gray-300"
                                     >
@@ -459,6 +645,91 @@ export default function OffersView() {
                                 >
                                     <div>
                                         <label
+                                            htmlFor="company_id"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Company
+                                        </label>
+                                        <select
+                                            id="company_id"
+                                            value={data.company_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "company_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">
+                                                Select a company
+                                            </option>
+                                            {companies.map((company) => (
+                                                <option
+                                                    key={company.id}
+                                                    value={company.id}
+                                                >
+                                                    {company.company_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {validationErrors.company_id && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.company_id}
+                                            </p>
+                                        )}
+                                        {errors.company_id && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {errors.company_id}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label
+                                            htmlFor="destination_id"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Destination
+                                        </label>
+                                        <select
+                                            id="destination_id"
+                                            value={data.destination_id}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "destination_id",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">
+                                                Select a destination
+                                            </option>
+                                            {destinations.map((destination) => (
+                                                <option
+                                                    key={destination.id}
+                                                    value={destination.id}
+                                                >
+                                                    {destination.title} (
+                                                    {destination.location})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {validationErrors.destination_id && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {
+                                                    validationErrors.destination_id
+                                                }
+                                            </p>
+                                        )}
+                                        {errors.destination_id && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {errors.destination_id}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label
                                             htmlFor="title"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
@@ -467,7 +738,6 @@ export default function OffersView() {
                                         <input
                                             type="text"
                                             id="title"
-                                            name="title"
                                             value={data.title}
                                             onChange={(e) =>
                                                 setData("title", e.target.value)
@@ -494,7 +764,6 @@ export default function OffersView() {
                                         </label>
                                         <textarea
                                             id="description"
-                                            name="description"
                                             value={data.description}
                                             onChange={(e) =>
                                                 setData(
@@ -518,6 +787,82 @@ export default function OffersView() {
                                     </div>
                                     <div>
                                         <label
+                                            htmlFor="location"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Location
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="location"
+                                            value={data.location}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "location",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        {validationErrors.location && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.location}
+                                            </p>
+                                        )}
+                                        {errors.location && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {errors.location}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label
+                                            htmlFor="category"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Category
+                                        </label>
+                                        <select
+                                            id="category"
+                                            value={data.category}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "category",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">
+                                                Select a category
+                                            </option>
+                                            {[
+                                                "Beach",
+                                                "Mountain",
+                                                "City",
+                                                "Cultural",
+                                                "Adventure",
+                                                "Historical",
+                                                "Wildlife",
+                                            ].map((cat) => (
+                                                <option key={cat} value={cat}>
+                                                    {cat}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {validationErrors.category && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.category}
+                                            </p>
+                                        )}
+                                        {errors.category && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {errors.category}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label
                                             htmlFor="image"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
@@ -526,7 +871,6 @@ export default function OffersView() {
                                         <input
                                             type="file"
                                             id="image"
-                                            name="image"
                                             accept="image/*"
                                             onChange={handleImageChange}
                                             className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg"
@@ -569,7 +913,6 @@ export default function OffersView() {
                                             <input
                                                 type="number"
                                                 id="price"
-                                                name="price"
                                                 value={data.price}
                                                 onChange={(e) =>
                                                     setData(
@@ -601,7 +944,6 @@ export default function OffersView() {
                                             <input
                                                 type="number"
                                                 id="discount_price"
-                                                name="discount_price"
                                                 value={data.discount_price}
                                                 onChange={(e) =>
                                                     setData(
@@ -631,12 +973,10 @@ export default function OffersView() {
                                             htmlFor="discount_type"
                                             className="block text-sm font-medium text-gray-400 mb-1"
                                         >
-                                            Discount Type (e.g., 30% OFF)
+                                            Discount Type
                                         </label>
-                                        <input
-                                            type="text"
+                                        <select
                                             id="discount_type"
-                                            name="discount_type"
                                             value={data.discount_type}
                                             onChange={(e) =>
                                                 setData(
@@ -645,7 +985,13 @@ export default function OffersView() {
                                                 )
                                             }
                                             className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        />
+                                        >
+                                            <option value="">None</option>
+                                            <option value="percentage">
+                                                Percentage
+                                            </option>
+                                            <option value="fixed">Fixed</option>
+                                        </select>
                                         {validationErrors.discount_type && (
                                             <p className="text-red-400 text-xs mt-1">
                                                 {validationErrors.discount_type}
@@ -663,12 +1009,11 @@ export default function OffersView() {
                                                 htmlFor="start_date"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                Start Date (YYYY-MM-DD)
+                                                Start Date
                                             </label>
                                             <input
                                                 type="date"
                                                 id="start_date"
-                                                name="start_date"
                                                 value={data.start_date}
                                                 onChange={(e) =>
                                                     setData(
@@ -696,12 +1041,11 @@ export default function OffersView() {
                                                 htmlFor="end_date"
                                                 className="block text-sm font-medium text-gray-400 mb-1"
                                             >
-                                                End Date (YYYY-MM-DD)
+                                                End Date
                                             </label>
                                             <input
                                                 type="date"
                                                 id="end_date"
-                                                name="end_date"
                                                 value={data.end_date}
                                                 onChange={(e) =>
                                                     setData(
@@ -723,6 +1067,88 @@ export default function OffersView() {
                                             )}
                                         </div>
                                     </div>
+                                    <div>
+                                        <label
+                                            htmlFor="duration"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Duration
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="duration"
+                                            value={data.duration}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "duration",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., 3 days"
+                                        />
+                                        {validationErrors.duration && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.duration}
+                                            </p>
+                                        )}
+                                        {errors.duration && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {errors.duration}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label
+                                            htmlFor="group_size"
+                                            className="block text-sm font-medium text-gray-400 mb-1"
+                                        >
+                                            Group Size
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="group_size"
+                                            value={data.group_size}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "group_size",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., 2-10"
+                                        />
+                                        {validationErrors.group_size && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {validationErrors.group_size}
+                                            </p>
+                                        )}
+                                        {errors.group_size && (
+                                            <p className="text-red-400 text-xs mt-1">
+                                                {errors.group_size}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="is_active"
+                                            checked={data.is_active}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "is_active",
+                                                    e.target.checked
+                                                )
+                                            }
+                                            className="mr-2"
+                                        />
+                                        <label
+                                            htmlFor="is_active"
+                                            className="text-sm text-gray-400"
+                                        >
+                                            Active
+                                        </label>
+                                    </div>
                                     <div className="flex justify-end space-x-3 pt-4">
                                         <button
                                             type="button"
@@ -730,6 +1156,7 @@ export default function OffersView() {
                                                 setShowAddModal(false);
                                                 setImagePreview(null);
                                                 reset();
+                                                setValidationErrors({});
                                             }}
                                             className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                         >
@@ -763,6 +1190,7 @@ export default function OffersView() {
                                             setShowEditModal(false);
                                             setImagePreview(null);
                                             reset();
+                                            setValidationErrors({});
                                         }}
                                         className="text-gray-400 hover:text-gray-300 transition-colors"
                                     >
@@ -780,6 +1208,111 @@ export default function OffersView() {
                                             </h4>
                                             <div className="mb-4">
                                                 <label
+                                                    htmlFor="company_id"
+                                                    className="block text-sm font-medium text-gray-300 mb-1"
+                                                >
+                                                    Company
+                                                </label>
+                                                <select
+                                                    id="company_id"
+                                                    value={data.company_id}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "company_id",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                >
+                                                    <option value="">
+                                                        Select a company
+                                                    </option>
+                                                    {companies.map(
+                                                        (company) => (
+                                                            <option
+                                                                key={company.id}
+                                                                value={
+                                                                    company.id
+                                                                }
+                                                            >
+                                                                {
+                                                                    company.company_name
+                                                                }
+                                                            </option>
+                                                        )
+                                                    )}
+                                                </select>
+                                                {validationErrors.company_id && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {
+                                                            validationErrors.company_id
+                                                        }
+                                                    </p>
+                                                )}
+                                                {errors.company_id && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {errors.company_id}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="mb-4">
+                                                <label
+                                                    htmlFor="destination_id"
+                                                    className="block text-sm font-medium text-gray-300 mb-1"
+                                                >
+                                                    Destination
+                                                </label>
+                                                <select
+                                                    id="destination_id"
+                                                    value={data.destination_id}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "destination_id",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                >
+                                                    <option value="">
+                                                        Select a destination
+                                                    </option>
+                                                    {destinations.map(
+                                                        (destination) => (
+                                                            <option
+                                                                key={
+                                                                    destination.id
+                                                                }
+                                                                value={
+                                                                    destination.id
+                                                                }
+                                                            >
+                                                                {
+                                                                    destination.title
+                                                                }{" "}
+                                                                (
+                                                                {
+                                                                    destination.location
+                                                                }
+                                                                )
+                                                            </option>
+                                                        )
+                                                    )}
+                                                </select>
+                                                {validationErrors.destination_id && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {
+                                                            validationErrors.destination_id
+                                                        }
+                                                    </p>
+                                                )}
+                                                {errors.destination_id && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {errors.destination_id}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="mb-4">
+                                                <label
                                                     htmlFor="title"
                                                     className="block text-sm font-medium text-gray-300 mb-1"
                                                 >
@@ -788,7 +1321,6 @@ export default function OffersView() {
                                                 <input
                                                     type="text"
                                                     id="title"
-                                                    name="title"
                                                     value={data.title}
                                                     onChange={(e) =>
                                                         setData(
@@ -798,7 +1330,6 @@ export default function OffersView() {
                                                     }
                                                     className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                     placeholder="Enter offer title"
-                                                    required
                                                 />
                                                 {validationErrors.title && (
                                                     <p className="text-red-400 text-xs mt-1">
@@ -820,7 +1351,6 @@ export default function OffersView() {
                                                 </label>
                                                 <textarea
                                                     id="description"
-                                                    name="description"
                                                     value={data.description}
                                                     onChange={(e) =>
                                                         setData(
@@ -831,7 +1361,6 @@ export default function OffersView() {
                                                     className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                     rows="4"
                                                     placeholder="Enter offer description"
-                                                    required
                                                 />
                                                 {validationErrors.description && (
                                                     <p className="text-red-400 text-xs mt-1">
@@ -843,6 +1372,90 @@ export default function OffersView() {
                                                 {errors.description && (
                                                     <p className="text-red-400 text-xs mt-1">
                                                         {errors.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="mt-4">
+                                                <label
+                                                    htmlFor="location"
+                                                    className="block text-sm font-medium text-gray-300 mb-1"
+                                                >
+                                                    Location
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    id="location"
+                                                    value={data.location}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "location",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="Enter location"
+                                                />
+                                                {validationErrors.location && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {
+                                                            validationErrors.location
+                                                        }
+                                                    </p>
+                                                )}
+                                                {errors.location && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {errors.location}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="mt-4">
+                                                <label
+                                                    htmlFor="category"
+                                                    className="block text-sm font-medium text-gray-300 mb-1"
+                                                >
+                                                    Category
+                                                </label>
+                                                <select
+                                                    id="category"
+                                                    value={data.category}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "category",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                >
+                                                    <option value="">
+                                                        Select a category
+                                                    </option>
+                                                    {[
+                                                        "Beach",
+                                                        "Mountain",
+                                                        "City",
+                                                        "Cultural",
+                                                        "Adventure",
+                                                        "Historical",
+                                                        "Wildlife",
+                                                    ].map((cat) => (
+                                                        <option
+                                                            key={cat}
+                                                            value={cat}
+                                                        >
+                                                            {cat}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {validationErrors.category && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {
+                                                            validationErrors.category
+                                                        }
+                                                    </p>
+                                                )}
+                                                {errors.category && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {errors.category}
                                                     </p>
                                                 )}
                                             </div>
@@ -861,7 +1474,6 @@ export default function OffersView() {
                                                 <input
                                                     type="file"
                                                     id="image"
-                                                    name="image"
                                                     accept="image/*"
                                                     onChange={handleImageChange}
                                                     className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg"
@@ -911,7 +1523,6 @@ export default function OffersView() {
                                                     <input
                                                         type="number"
                                                         id="price"
-                                                        name="price"
                                                         value={data.price}
                                                         onChange={(e) =>
                                                             setData(
@@ -946,7 +1557,6 @@ export default function OffersView() {
                                                     <input
                                                         type="number"
                                                         id="discount_price"
-                                                        name="discount_price"
                                                         value={
                                                             data.discount_price
                                                         }
@@ -981,13 +1591,10 @@ export default function OffersView() {
                                                     htmlFor="discount_type"
                                                     className="block text-sm font-medium text-gray-300 mb-1"
                                                 >
-                                                    Discount Type (e.g., 30%
-                                                    OFF)
+                                                    Discount Type
                                                 </label>
-                                                <input
-                                                    type="text"
+                                                <select
                                                     id="discount_type"
-                                                    name="discount_type"
                                                     value={data.discount_type}
                                                     onChange={(e) =>
                                                         setData(
@@ -996,8 +1603,17 @@ export default function OffersView() {
                                                         )
                                                     }
                                                     className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    placeholder="e.g., Summer Sale"
-                                                />
+                                                >
+                                                    <option value="">
+                                                        None
+                                                    </option>
+                                                    <option value="percentage">
+                                                        Percentage
+                                                    </option>
+                                                    <option value="fixed">
+                                                        Fixed
+                                                    </option>
+                                                </select>
                                                 {validationErrors.discount_type && (
                                                     <p className="text-red-400 text-xs mt-1">
                                                         {
@@ -1027,7 +1643,6 @@ export default function OffersView() {
                                                     <input
                                                         type="date"
                                                         id="start_date"
-                                                        name="start_date"
                                                         value={data.start_date}
                                                         onChange={(e) =>
                                                             setData(
@@ -1050,49 +1665,114 @@ export default function OffersView() {
                                                         </p>
                                                     )}
                                                 </div>
-                                                <div>
-                                                    <label
-                                                        htmlFor="end_date"
-                                                        className="block text-sm font-medium text-gray-300 mb-1"
-                                                    >
-                                                        End Date
-                                                    </label>
-                                                    <input
-                                                        type="date"
-                                                        id="end_date"
-                                                        name="end_date"
-                                                        value={data.end_date}
-                                                        onChange={(e) =>
-                                                            setData(
-                                                                "end_date",
-                                                                e.target.value
-                                                            )
+                                            </div>
+                                        </div>
+                                        <div className="bg-gray-700 bg-opacity-30 p-4 rounded-lg">
+                                            <h4 className="text-sm uppercase font-medium text-blue-400 mb-3">
+                                                Additional Details
+                                            </h4>
+                                            <div className="mb-4">
+                                                <label
+                                                    htmlFor="duration"
+                                                    className="block text-sm font-medium text-gray-300 mb-1"
+                                                >
+                                                    Duration
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    id="duration"
+                                                    value={data.duration}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "duration",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="e.g., 3 days"
+                                                />
+                                                {validationErrors.duration && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {
+                                                            validationErrors.duration
                                                         }
-                                                        className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                    />
-                                                    {validationErrors.end_date && (
-                                                        <p className="text-red-400 text-xs mt-1">
-                                                            {
-                                                                validationErrors.end_date
-                                                            }
-                                                        </p>
-                                                    )}
-                                                    {errors.end_date && (
-                                                        <p className="text-red-400 text-xs mt-1">
-                                                            {errors.end_date}
-                                                        </p>
-                                                    )}
-                                                </div>
+                                                    </p>
+                                                )}
+                                                {errors.duration && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {errors.duration}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <label
+                                                    htmlFor="group_size"
+                                                    className="block text-sm font-medium text-gray-300 mb-1"
+                                                >
+                                                    Group Size
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    id="group_size"
+                                                    value={data.group_size}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "group_size",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full p-2 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="e.g., 2-10"
+                                                />
+                                                {validationErrors.group_size && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {
+                                                            validationErrors.group_size
+                                                        }
+                                                    </p>
+                                                )}
+                                                {errors.group_size && (
+                                                    <p className="text-red-400 text-xs mt-1">
+                                                        {errors.group_size}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="bg-gray-700 bg-opacity-30 p-4 rounded-lg">
+                                            <h4 className="text-sm uppercase font-medium text-blue-400 mb-3">
+                                                Status
+                                            </h4>
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    id="is_active"
+                                                    checked={data.is_active}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            "is_active",
+                                                            e.target.checked
+                                                        )
+                                                    }
+                                                    className="mr-2 h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-700 rounded"
+                                                />
+                                                <label
+                                                    htmlFor="is_active"
+                                                    className="text-sm text-gray-300"
+                                                >
+                                                    Active
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
+                                    <div className="flex justify-end space-x-3 pt-6">
                                         <button
                                             type="button"
                                             onClick={() => {
                                                 setShowEditModal(false);
                                                 setImagePreview(null);
                                                 reset();
+                                                setValidationErrors({});
+                                                setSelectedOffer(null);
                                             }}
                                             className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
                                         >
@@ -1101,16 +1781,9 @@ export default function OffersView() {
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400"
                                         >
-                                            {processing ? (
-                                                <span className="inline-block mr-2 animate-spin">
-                                                    ⟳
-                                                </span>
-                                            ) : (
-                                                <Edit2 className="w-4 h-4 mr-2" />
-                                            )}
-                                            Update Offer
+                                            Save Changes
                                         </button>
                                     </div>
                                 </form>
@@ -1123,10 +1796,10 @@ export default function OffersView() {
                 {showDeleteModal && offerToDelete && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <div className="bg-gray-800 rounded-lg w-full max-w-md">
-                            <div className="p-4 sm:p-6">
+                            <div className="p-6">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="text-lg font-semibold text-white">
-                                        Confirm Delete
+                                        Confirm Deletion
                                     </h3>
                                     <button
                                         onClick={() => {
@@ -1140,14 +1813,11 @@ export default function OffersView() {
                                 </div>
                                 <p className="text-gray-300 mb-6">
                                     Are you sure you want to delete the offer "
-                                    <span className="font-semibold">
-                                        {offerToDelete.title}
-                                    </span>
-                                    "? This action cannot be undone.
+                                    {offerToDelete.title}"? This action cannot
+                                    be undone.
                                 </p>
                                 <div className="flex justify-end space-x-3">
                                     <button
-                                        type="button"
                                         onClick={() => {
                                             setShowDeleteModal(false);
                                             setOfferToDelete(null);
@@ -1157,18 +1827,10 @@ export default function OffersView() {
                                         Cancel
                                     </button>
                                     <button
-                                        type="button"
                                         onClick={confirmDelete}
                                         disabled={processing}
-                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-red-400"
                                     >
-                                        {processing ? (
-                                            <span className="inline-block mr-2 animate-spin">
-                                                ⟳
-                                            </span>
-                                        ) : (
-                                            <Trash2 className="w-4 h-4 mr-2" />
-                                        )}
                                         Delete
                                     </button>
                                 </div>
@@ -1176,9 +1838,8 @@ export default function OffersView() {
                         </div>
                     </div>
                 )}
-
-                <AdminSidebar />
             </div>
+            <AdminSidebar />
         </div>
     );
 }
