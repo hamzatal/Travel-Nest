@@ -60,6 +60,7 @@ Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.logi
 Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.submit');
 Route::post('/admin/logout', [LoginController::class, 'destroy'])->name('admin.logout');
 
+Route::post('/profile/password', [AdminController::class, 'updateAdminPassword'])->name('admin.profile.password');
 // ===================================================
 //! Frontend Routes
 // ===================================================

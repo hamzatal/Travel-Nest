@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class AdminController extends Controller
@@ -51,7 +52,6 @@ class AdminController extends Controller
     {
         try {
             $admin = Auth::guard('admin')->user();
-            // Check if the user ID belongs to an admin
             $isAdmin = Admin::where('id', $id)->exists();
             if ($isAdmin && $id == $admin->id) {
                 return back()->with('error', 'You cannot deactivate your own admin account.');
@@ -175,6 +175,32 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to update admin profile:', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to update profile.');
+        }
+    }
+
+    public function updateAdminPassword(Request $request)
+    {
+        try {
+            $admin = Auth::guard('admin')->user();
+
+            $validated = $request->validate([
+                'current_password' => ['required', function ($attribute, $value, $fail) use ($admin) {
+                    if (!Hash::check($value, $admin->password)) {
+                        $fail('The current password is incorrect.');
+                    }
+                }],
+                'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+            ]);
+
+            $admin->update([
+                'password' => Hash::make($validated['new_password']),
+            ]);
+
+            Log::info("Admin {$admin->id} updated password", ['admin_id' => $admin->id]);
+            return redirect()->route('admin.profile')->with('success', 'Password updated successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to update admin password:', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to update password.');
         }
     }
 }
