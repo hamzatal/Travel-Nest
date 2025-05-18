@@ -46,7 +46,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
+                    
                     <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg shadow-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -106,7 +107,7 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div className="bg-gradient-to-br from-pink-600 to-pink-800 rounded-lg shadow-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -143,25 +144,23 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-lg shadow-lg p-6">
-                        <div className="flex justify-between items-start">
+                    {/* <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-lg shadow-lg p-6">
                             <div>
                                 <p className="text-green-200">Revenue</p>
                                 <h3 className="text-3xl font-bold mt-1">
                                     $0
                                 </h3>{" "}
-                                {/* Update with real data */}
                             </div>
                             <div className="bg-green-500/30 p-3 rounded-lg">
                                 <BarChart2 className="w-6 h-6" />
                             </div>
-                        </div>
+                        </div> 
+
                         <div className="flex items-center mt-4 text-green-200 text-sm">
                             <TrendingUp className="w-4 h-4 mr-1" />
                             <span>0% increase this week</span>{" "}
-                            {/* Update with real data */}
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
