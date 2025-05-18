@@ -58,7 +58,6 @@ export default function AdminDestinations() {
         price: "",
         discount_price: "",
         image: null,
-        rating: "",
         is_featured: false,
     });
 
@@ -147,12 +146,6 @@ export default function AdminDestinations() {
                     "Discount price must be less than the original price";
         }
 
-        if (data.rating) {
-            const ratingValue = parseFloat(data.rating);
-            if (isNaN(ratingValue) || ratingValue < 0 || ratingValue > 5)
-                errors.rating = "Rating must be between 0 and 5";
-        }
-
         if (isAdd && !data.image) errors.image = "Image is required";
 
         if (data.image) {
@@ -204,7 +197,6 @@ export default function AdminDestinations() {
         formData.append("price", data.price);
         if (data.discount_price)
             formData.append("discount_price", data.discount_price);
-        if (data.rating) formData.append("rating", data.rating);
         formData.append("is_featured", data.is_featured ? "1" : "0");
         if (data.image instanceof File) formData.append("image", data.image);
 
@@ -254,8 +246,6 @@ export default function AdminDestinations() {
             (selectedDestination.discount_price?.toString() || "")
         )
             formData.append("discount_price", data.discount_price);
-        if (data.rating !== (selectedDestination.rating?.toString() || ""))
-            formData.append("rating", data.rating);
         if (data.is_featured !== !!selectedDestination.is_featured)
             formData.append("is_featured", data.is_featured ? "1" : "0");
         if (data.image instanceof File) formData.append("image", data.image);
@@ -323,7 +313,6 @@ export default function AdminDestinations() {
             discount_price: destination.discount_price
                 ? destination.discount_price.toString()
                 : "",
-            rating: destination.rating ? destination.rating.toString() : "",
             image: null,
             is_featured: !!destination.is_featured,
         });
@@ -528,9 +517,7 @@ export default function AdminDestinations() {
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-400 mb-2">
-                                        Rating: {destination.rating || "N/A"}
-                                    </p>
+                                   
                                     <p className="text-xs text-gray-500 mt-2">
                                         ID: {destination.id} | Featured:{" "}
                                         {destination.is_featured ? "Yes" : "No"}
@@ -871,41 +858,7 @@ export default function AdminDestinations() {
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label
-                                            htmlFor="rating"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Rating (0-5)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            id="rating"
-                                            value={data.rating}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "rating",
-                                                    e.target.value
-                                                )
-                                            }
-                                            step="0.1"
-                                            min="0"
-                                            max="5"
-                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                validationErrors.rating ||
-                                                errors.rating
-                                                    ? "border-red-500"
-                                                    : ""
-                                            }`}
-                                        />
-                                        {(validationErrors.rating ||
-                                            errors.rating) && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.rating ||
-                                                    errors.rating}
-                                            </p>
-                                        )}
-                                    </div>
+                                   
 
                                     <div>
                                         <label
@@ -1333,44 +1286,7 @@ export default function AdminDestinations() {
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label
-                                            htmlFor="rating"
-                                            className="block text-sm font-medium text-gray-400 mb-1"
-                                        >
-                                            Rating (0-5){" "}
-                                            <span className="text-gray-500">
-                                                (Optional)
-                                            </span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            id="rating"
-                                            value={data.rating}
-                                            onChange={(e) =>
-                                                setData(
-                                                    "rating",
-                                                    e.target.value
-                                                )
-                                            }
-                                            step="0.1"
-                                            min="0"
-                                            max="5"
-                                            className={`w-full p-2 bg-gray-800 text-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                                validationErrors.rating ||
-                                                errors.rating
-                                                    ? "border-red-500"
-                                                    : ""
-                                            }`}
-                                        />
-                                        {(validationErrors.rating ||
-                                            errors.rating) && (
-                                            <p className="text-red-400 text-xs mt-1">
-                                                {validationErrors.rating ||
-                                                    errors.rating}
-                                            </p>
-                                        )}
-                                    </div>
+                                   
 
                                     <div>
                                         <label
