@@ -74,7 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/destinations/{id}', [DestinationController::class, 'show'])->name('destinations.show');
     Route::get('/packages', [PackagesController::class, 'indexPublic'])->name('packages.index');
     Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
-    Route::get('/deals', [OfferController::class, 'index'])->name('deals');
+    Route::get('/offers', [OfferController::class, 'index'])->name('offers');
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
     Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
     Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');

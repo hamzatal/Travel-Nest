@@ -142,7 +142,7 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
         { label: "Home", href: "/home", icon: Hotel },
         { label: "Packages", href: "/packages", icon: PackageCheck },
         { label: "Destinations", href: "/destinations", icon: Map },
-        { label: "Deals", href: "/deals", icon: Bookmark },
+        { label: "Offers", href: "/offers", icon: Bookmark },
         { label: "About Us", href: "/about-us", icon: BookOpen },
         { label: "Contact", href: "/ContactPage", icon: Mail },
     ];
@@ -526,7 +526,7 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search deals, destinations..."
+                                placeholder="Search offers, destinations..."
                                 className="w-full pl-12 pr-12 py-3 bg-green-600/10 border-b border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 rounded-t-xl"
                             />
                             {searchQuery && (
