@@ -120,22 +120,49 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
     const handleClearSearch = () => {
         setSearchQuery("");
         setSearchResults([]);
+        setIsSearchOpen(false);
     };
 
     // Handle result selection
-    const handleResultSelect = (offer) => {
-        router.visit(`/offer/${offer.id}`);
+    const getItemUrl = (item) => {
+        switch (item.type) {
+            case "destination":
+                return `/destinations/${item.id}`;
+            case "package":
+                return `/packages/${item.id}`;
+            case "offer":
+                return `/offers/${item.id}`;
+            default:
+                return "#";
+        }
+    };
+
+    const handleResultSelect = (item) => {
+        router.visit(getItemUrl(item));
         setIsSearchOpen(false);
         setSearchQuery("");
         setSearchResults([]);
     };
 
+    // Handle search form submission
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            router.visit(`/search?q=${encodeURIComponent(searchQuery)}`);
+            setIsSearchOpen(false);
+            setSearchResults([]);
+            setSearchQuery("");
+        }
+    };
+
     // Format price
     const formatPrice = (price, discountPrice) => {
         if (discountPrice) {
-            return `$${discountPrice} (was $${price})`;
+            return `$${parseFloat(discountPrice).toFixed(2)} (was $${parseFloat(
+                price
+            ).toFixed(2)})`;
         }
-        return `$${price}`;
+        return `$${parseFloat(price).toFixed(2)}`;
     };
 
     const navItems = [
@@ -365,32 +392,35 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                                 transition={{ duration: 0.2 }}
                                 className="absolute top-full mt-2 right-0 w-96 bg-black/90 backdrop-blur-lg rounded-xl shadow-lg border border-green-500/30 z-50 overflow-hidden"
                             >
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                                        <Search className="w-5 h-5 text-gray-400 group-focus-within:text-green-400" />
+                                <form onSubmit={handleSearchSubmit}>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                                            <Search className="w-5 h-5 text-gray-400 group-focus-within:text-green-400" />
+                                        </div>
+                                        <motion.input
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) =>
+                                                setSearchQuery(e.target.value)
+                                            }
+                                            placeholder="Search deals, destinations..."
+                                            className="w-full pl-12 pr-12 py-3 bg-green-600/10 border-b border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 rounded-t-xl"
+                                            autoFocus
+                                        />
+                                        {searchQuery && (
+                                            <motion.button
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                onClick={handleClearSearch}
+                                                className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-green-400"
+                                                type="button"
+                                            >
+                                                <X className="w-5 h-5" />
+                                            </motion.button>
+                                        )}
                                     </div>
-                                    <motion.input
-                                        type="text"
-                                        value={searchQuery}
-                                        onChange={(e) =>
-                                            setSearchQuery(e.target.value)
-                                        }
-                                        placeholder="Search deals, destinations..."
-                                        className="w-full pl-12 pr-12 py-3 bg-green-600/10 border-b border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 rounded-t-xl"
-                                        autoFocus
-                                    />
-                                    {searchQuery && (
-                                        <motion.button
-                                            initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            exit={{ opacity: 0 }}
-                                            onClick={handleClearSearch}
-                                            className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-green-400"
-                                        >
-                                            <X className="w-5 h-5" />
-                                        </motion.button>
-                                    )}
-                                </div>
+                                </form>
 
                                 {/* Search Results Dropdown */}
                                 <AnimatePresence>
@@ -432,11 +462,9 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                                                     ) : (
                                                         <div className="divide-y divide-green-500/20">
                                                             {searchResults.map(
-                                                                (offer) => (
+                                                                (item) => (
                                                                     <motion.div
-                                                                        key={
-                                                                            offer.id
-                                                                        }
+                                                                        key={`${item.type}-${item.id}`}
                                                                         whileHover={{
                                                                             backgroundColor:
                                                                                 "rgba(16, 185, 129, 0.2)",
@@ -446,31 +474,44 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                                                                         }}
                                                                         onClick={() =>
                                                                             handleResultSelect(
-                                                                                offer
+                                                                                item
                                                                             )
                                                                         }
                                                                         className="px-4 py-3 cursor-pointer flex items-center space-x-4 transition-colors duration-200"
                                                                     >
                                                                         <img
                                                                             src={
-                                                                                offer.image ||
+                                                                                item.image ||
                                                                                 "https://via.placeholder.com/56x84"
                                                                             }
                                                                             alt={
-                                                                                offer.title
+                                                                                item.title
                                                                             }
                                                                             className="w-14 h-20 object-cover rounded-lg border border-green-500/30"
                                                                         />
                                                                         <div className="flex-1">
                                                                             <h3 className="text-base font-semibold text-white truncate">
                                                                                 {
-                                                                                    offer.title
+                                                                                    item.title
                                                                                 }
+                                                                                <span className="text-xs text-gray-400 ml-1">
+                                                                                    (
+                                                                                    {item.type
+                                                                                        .charAt(
+                                                                                            0
+                                                                                        )
+                                                                                        .toUpperCase() +
+                                                                                        item.type.slice(
+                                                                                            1
+                                                                                        )}
+
+                                                                                    )
+                                                                                </span>
                                                                             </h3>
                                                                             <p className="text-sm text-gray-400 truncate">
                                                                                 {formatPrice(
-                                                                                    offer.price,
-                                                                                    offer.discount_price
+                                                                                    item.price,
+                                                                                    item.discount_price
                                                                                 )}
                                                                             </p>
                                                                         </div>
@@ -518,28 +559,33 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                 <div className="lg:hidden absolute top-full left-0 right-0 bg-black/90 backdrop-blur-lg border-b border-green-500/30 py-4">
                     {/* Mobile Search */}
                     <div className="px-6 mb-4 relative" ref={searchRef}>
-                        <div className="relative overflow-hidden rounded-xl">
-                            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                                <Search className="w-5 h-5 text-gray-400 group-focus-within:text-green-400" />
+                        <form onSubmit={handleSearchSubmit}>
+                            <div className="relative overflow-hidden rounded-xl">
+                                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                                    <Search className="w-5 h-5 text-gray-400 group-focus-within:text-green-400" />
+                                </div>
+                                <motion.input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
+                                    placeholder="Search offers, destinations..."
+                                    className="w-full pl-12 pr-12 py-3 bg-green-600/10 border-b border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 rounded-t-xl"
+                                />
+                                {searchQuery && (
+                                    <motion.button
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={handleClearSearch}
+                                        className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-green-400"
+                                        type="button"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </motion.button>
+                                )}
                             </div>
-                            <motion.input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search offers, destinations..."
-                                className="w-full pl-12 pr-12 py-3 bg-green-600/10 border-b border-green-500/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 rounded-t-xl"
-                            />
-                            {searchQuery && (
-                                <motion.button
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    onClick={handleClearSearch}
-                                    className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 hover:text-green-400"
-                                >
-                                    <X className="w-5 h-5" />
-                                </motion.button>
-                            )}
 
                             {/* Mobile Search Results */}
                             <AnimatePresence>
@@ -578,11 +624,9 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                                                 ) : (
                                                     <div className="divide-y divide-green-500/20">
                                                         {searchResults.map(
-                                                            (offer) => (
+                                                            (item) => (
                                                                 <motion.div
-                                                                    key={
-                                                                        offer.id
-                                                                    }
+                                                                    key={`${item.type}-${item.id}`}
                                                                     whileHover={{
                                                                         backgroundColor:
                                                                             "rgba(16, 185, 129, 0.2)",
@@ -592,31 +636,44 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                                                                     }}
                                                                     onClick={() =>
                                                                         handleResultSelect(
-                                                                            offer
+                                                                            item
                                                                         )
                                                                     }
                                                                     className="px-4 py-3 cursor-pointer flex items-center space-x-4 transition-colors duration-200"
                                                                 >
                                                                     <img
                                                                         src={
-                                                                            offer.image ||
+                                                                            item.image ||
                                                                             "https://via.placeholder.com/56x84"
                                                                         }
                                                                         alt={
-                                                                            offer.title
+                                                                            item.title
                                                                         }
                                                                         className="w-14 h-20 object-cover rounded-lg border border-green-500/30"
                                                                     />
                                                                     <div className="flex-1">
                                                                         <h3 className="text-base font-semibold text-white truncate">
                                                                             {
-                                                                                offer.title
+                                                                                item.title
                                                                             }
+                                                                            <span className="text-xs text-gray-400 ml-1">
+                                                                                (
+                                                                                {item.type
+                                                                                    .charAt(
+                                                                                        0
+                                                                                    )
+                                                                                    .toUpperCase() +
+                                                                                    item.type.slice(
+                                                                                        1
+                                                                                    )}
+
+                                                                                )
+                                                                            </span>
                                                                         </h3>
                                                                         <p className="text-sm text-gray-400 truncate">
                                                                             {formatPrice(
-                                                                                offer.price,
-                                                                                offer.discount_price
+                                                                                item.price,
+                                                                                item.discount_price
                                                                             )}
                                                                         </p>
                                                                     </div>
@@ -630,7 +687,7 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </div>
+                        </form>
                     </div>
 
                     {/* Mobile Nav Items */}
