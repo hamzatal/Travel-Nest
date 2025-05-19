@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Head, usePage, Link } from "@inertiajs/react";
+import { Head, usePage, Link, router } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
@@ -26,17 +26,25 @@ const PackagesPage = ({ auth }) => {
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [isDarkMode, setIsDarkMode] = useState(true);
+    const [favorites, setFavorites] = useState(
+        packages.reduce(
+            (acc, pkg) => ({
+                ...acc,
+                [pkg.id]: pkg.is_favorite || false,
+            }),
+            {}
+        )
+    );
 
     const itemsPerPage = 8;
-
     const categories = [
         "Beach",
         "Mountain",
         "City",
-        "Countryside",
-        "Island",
-        "Historic",
-        "Luxury",
+        "Cultural",
+        "Adventure",
+        "Historical",
+        "Wildlife",
     ];
 
     const fadeIn = {
@@ -61,14 +69,38 @@ const PackagesPage = ({ auth }) => {
     };
 
     const toggleCategory = (category) => {
-        if (selectedCategories.includes(category)) {
-            setSelectedCategories(
-                selectedCategories.filter((c) => c !== category)
-            );
-        } else {
-            setSelectedCategories([...selectedCategories, category]);
-        }
+        setSelectedCategories((prev) =>
+            prev.includes(category)
+                ? prev.filter((c) => c !== category)
+                : [...prev, category]
+        );
         setCurrentPage(1);
+    };
+
+    const toggleFavorite = (packageId) => {
+        if (!user) {
+            toast.error("Please log in to add to favorites");
+            return;
+        }
+
+        router.post(
+            route("packages.favorite", packageId),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const { isFavorite, message } = page.props;
+                    setFavorites((prev) => ({
+                        ...prev,
+                        [packageId]: isFavorite,
+                    }));
+                    toast.success(message);
+                },
+                onError: () => {
+                    toast.error("Failed to toggle favorite");
+                },
+            }
+        );
     };
 
     const sortOptions = [
@@ -86,7 +118,7 @@ const PackagesPage = ({ auth }) => {
                         ?.toLowerCase()
                         .includes(searchQuery.toLowerCase())) &&
                 (selectedCategories.length === 0 ||
-                    (pkg.tag && selectedCategories.includes(pkg.tag)))
+                    selectedCategories.includes(pkg.category))
         )
         .sort((a, b) => {
             switch (sortBy) {
@@ -191,7 +223,7 @@ const PackagesPage = ({ auth }) => {
                             className="text-6xl font-extrabold mb-3 leading-tight"
                         >
                             Amazing{" "}
-                            <span className="text-blue-400">Packages</span>
+                            <span className="text-green-400">Packages</span>
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0 }}
@@ -207,7 +239,7 @@ const PackagesPage = ({ auth }) => {
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.3, duration: 0.7 }}
                         >
-                            <div className="w-24 h-1 bg-blue-500 mx-auto rounded-full"></div>
+                            <div className="w-24 h-1 bg-green-500 mx-auto rounded-full"></div>
                         </motion.div>
                     </div>
                 </div>
@@ -228,7 +260,7 @@ const PackagesPage = ({ auth }) => {
                                 placeholder="Search packages or locations..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+                                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
                             />
                             <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                         </div>
@@ -238,7 +270,7 @@ const PackagesPage = ({ auth }) => {
                                 <select
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-all duration-300"
+                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none transition-all duration-300"
                                 >
                                     {sortOptions.map((option) => (
                                         <option
@@ -278,7 +310,7 @@ const PackagesPage = ({ auth }) => {
                                 <div className="p-4 bg-gray-800 bg-opacity-70 rounded-lg mb-6 border border-gray-700">
                                     <div className="mb-4">
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Tags className="w-4 h-4 text-blue-400" />
+                                            <Tags className="w-4 h-4 text-green-400" />
                                             <h3 className="text-lg font-semibold">
                                                 Categories
                                             </h3>
@@ -294,7 +326,7 @@ const PackagesPage = ({ auth }) => {
                                                         selectedCategories.includes(
                                                             category
                                                         )
-                                                            ? "bg-blue-600 text-white"
+                                                            ? "bg-green-600 text-white"
                                                             : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                                                     }`}
                                                 >
@@ -324,7 +356,7 @@ const PackagesPage = ({ auth }) => {
                         {selectedCategories.length > 0 && (
                             <button
                                 onClick={() => setSelectedCategories([])}
-                                className="text-blue-400 hover:text-blue-300 text-sm"
+                                className="text-green-400 hover:text-green-300 text-sm"
                             >
                                 Clear Filters
                             </button>
@@ -336,7 +368,7 @@ const PackagesPage = ({ auth }) => {
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16" // Changed to 4 columns
                 >
                     <AnimatePresence mode="popLayout">
                         {paginatedPackages.length === 0 ? (
@@ -359,7 +391,7 @@ const PackagesPage = ({ auth }) => {
                                             setSearchQuery("");
                                             setSelectedCategories([]);
                                         }}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
                                     >
                                         Clear All Filters
                                     </button>
@@ -375,7 +407,7 @@ const PackagesPage = ({ auth }) => {
                                         y: -8,
                                         transition: { duration: 0.3 },
                                     }}
-                                    className="bg-gray-800 bg-opacity-80 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group"
+                                    className="bg-gray-800 bg-opacity-90 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group backdrop-blur-sm"
                                 >
                                     <div className="relative overflow-hidden">
                                         <img
@@ -388,58 +420,71 @@ const PackagesPage = ({ auth }) => {
                                             className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
                                         />
-                                        {pkg.tag && (
-                                            <span className="absolute top-3 left-3 px-2 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
-                                                {pkg.tag}
+                                        {pkg.category && (
+                                            <span className="absolute top-3 left-3 px-2 py-1 bg-green-600 rounded-full text-xs font-medium text-white">
+                                                {pkg.category}
                                             </span>
                                         )}
-                                        {calculateDiscount(
-                                            pkg.price,
-                                            pkg.discount_price
-                                        ) && (
-                                            <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                                                {calculateDiscount(
-                                                    pkg.price,
-                                                    pkg.discount_price
-                                                )}
-                                                % OFF
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
-                                        <button
-                                            className="absolute top-3 right-3 bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300 transform translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0"
-                                            aria-label="Add to favorites"
-                                        >
-                                            <Heart
-                                                size={18}
-                                                className="text-white"
-                                            />
-                                        </button>
+
+                                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+                                            {calculateDiscount(
+                                                pkg.price,
+                                                pkg.discount_price
+                                            ) && (
+                                                <div className="bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold text-center">
+                                                    {calculateDiscount(
+                                                        pkg.price,
+                                                        pkg.discount_price
+                                                    )}
+                                                    % OFF
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() =>
+                                                    toggleFavorite(pkg.id)
+                                                }
+                                                className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm"
+                                                aria-label={
+                                                    favorites[pkg.id]
+                                                        ? "Remove from favorites"
+                                                        : "Add to favorites"
+                                                }
+                                            >
+                                                <Heart
+                                                    size={18}
+                                                    className={
+                                                        favorites[pkg.id]
+                                                            ? "text-green-400 fill-green-400"
+                                                            : "text-gray-300"
+                                                    }
+                                                />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="p-5 flex flex-col flex-grow">
-                                        <div className="flex items-center justify-between mb-2">
+                                    <div className="p-5 flex flex-col flex-grow space-y-3">
+                                        <div className="flex items-center justify-between">
                                             <h3 className="text-xl font-bold text-white line-clamp-1">
                                                 {pkg.title}
                                             </h3>
                                         </div>
                                         {pkg.location && (
-                                            <div className="flex items-center gap-2 mb-2">
+                                            <div className="flex items-center gap-2">
                                                 <MapPin
                                                     size={16}
-                                                    className="text-blue-400"
+                                                    className="text-green-400"
                                                 />
                                                 <span className="text-gray-300 text-sm">
                                                     {pkg.location}
                                                 </span>
                                             </div>
                                         )}
-                                        <div className="flex items-center gap-1 mb-3">
+                                        <div className="flex items-center gap-1">
                                             {renderStars(pkg.rating || 0)}
                                             <span className="text-gray-400 text-sm ml-2">
                                                 ({pkg.rating || 0}/5)
                                             </span>
                                         </div>
-                                        <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                                        <p className="text-gray-300 text-sm line-clamp-3 leading-relaxed">
                                             {pkg.description ||
                                                 "No description available."}
                                         </p>
@@ -452,7 +497,7 @@ const PackagesPage = ({ auth }) => {
                                                     <div className="flex items-baseline gap-2">
                                                         {pkg.discount_price ? (
                                                             <>
-                                                                <span className="text-lg font-bold text-blue-400">
+                                                                <span className="text-lg font-bold text-green-400">
                                                                     $
                                                                     {
                                                                         pkg.discount_price
@@ -463,7 +508,7 @@ const PackagesPage = ({ auth }) => {
                                                                 </span>
                                                             </>
                                                         ) : (
-                                                            <span className="text-lg font-bold text-blue-400">
+                                                            <span className="text-lg font-bold text-green-400">
                                                                 ${pkg.price}
                                                             </span>
                                                         )}
@@ -475,7 +520,7 @@ const PackagesPage = ({ auth }) => {
                                             </div>
                                             <Link
                                                 href={`/packages/${pkg.id}`}
-                                                className="w-full inline-block text-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all duration-300 transform group-hover:shadow-lg"
+                                                className="w-full inline-block text-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
                                             >
                                                 View Details
                                             </Link>
@@ -535,7 +580,7 @@ const PackagesPage = ({ auth }) => {
                                             onClick={() => setCurrentPage(page)}
                                             className={`flex items-center justify-center w-10 h-10 rounded-full ${
                                                 currentPage === page
-                                                    ? "bg-blue-600 text-white"
+                                                    ? "bg-green-600 text-white"
                                                     : "bg-gray-800 text-white hover:bg-gray-700"
                                             } transition-all duration-300`}
                                         >

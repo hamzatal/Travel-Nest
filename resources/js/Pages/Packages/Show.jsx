@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Head, Link } from "@inertiajs/react";
+import React, { useState, useEffect } from "react";
+import { Head, Link, router } from "@inertiajs/react";
 import { motion } from "framer-motion";
 import {
     MapPin,
@@ -12,10 +12,11 @@ import {
 } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function PackageDetails({ package: pkg, auth }) {
     const [isDarkMode, setIsDarkMode] = useState(true);
-    const [isFavorite, setIsFavorite] = useState(false);
+    const [isFavorite, setIsFavorite] = useState(pkg.is_favorite || false);
 
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
@@ -49,6 +50,29 @@ export default function PackageDetails({ package: pkg, auth }) {
         return stars;
     };
 
+    const toggleFavorite = () => {
+        if (!auth?.user) {
+            toast.error("Please log in to add to favorites");
+            return;
+        }
+
+        router.post(
+            route("packages.favorite", pkg.id),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const { isFavorite, message } = page.props;
+                    setIsFavorite(isFavorite);
+                    toast.success(message);
+                },
+                onError: () => {
+                    toast.error("Failed to toggle favorite");
+                },
+            }
+        );
+    };
+
     const serviceFee = 9.99;
     const bookingFee = 4.99;
     const basePrice = parseFloat(pkg.discount_price || pkg.price || 0);
@@ -62,6 +86,7 @@ export default function PackageDetails({ package: pkg, auth }) {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
             <Head title={`${pkg.title} - Travel Nest`} />
+            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
 
             <Navbar
                 user={auth?.user}
@@ -99,7 +124,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.3, duration: 0.7 }}
                         >
-                            <div className="w-24 h-1 bg-blue-500 mx-auto rounded-full"></div>
+                            <div className="w-24 h-1 bg-green-500 mx-auto rounded-full"></div>
                         </motion.div>
                     </div>
                 </div>
@@ -115,7 +140,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                     <div className="flex items-center text-sm text-gray-400">
                         <Link
                             href="/packages"
-                            className="hover:text-blue-400 transition-colors duration-300 flex items-center"
+                            className="hover:text-green-400 transition-colors duration-300 flex items-center"
                         >
                             <ChevronLeft size={16} className="mr-1" />
                             Back to Packages
@@ -132,16 +157,16 @@ export default function PackageDetails({ package: pkg, auth }) {
                         variants={fadeIn}
                         className="lg:col-span-2"
                     >
-                        <div className="bg-gray-800 bg-opacity-70 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border border-gray-700">
+                        <div className="bg-gray-800 bg-opacity-90 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border border-gray-700">
                             <div className="relative">
                                 <img
                                     src={imageSrc}
                                     alt={pkg.title}
                                     className="w-full h-96 object-cover"
                                 />
-                                {pkg.tag && (
-                                    <span className="absolute top-4 left-4 px-3 py-1 bg-gray-900 bg-opacity-70 rounded-full text-sm font-medium text-gray-300">
-                                        {pkg.tag}
+                                {pkg.category && (
+                                    <span className="absolute top-4 left-4 px-3 py-1 bg-green-600 rounded-full text-sm font-medium text-white">
+                                        {pkg.category}
                                     </span>
                                 )}
                                 {calculateDiscount(
@@ -157,7 +182,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                                     </div>
                                 )}
                                 <button
-                                    onClick={() => setIsFavorite(!isFavorite)}
+                                    onClick={toggleFavorite}
                                     className={`absolute top-3 ${
                                         calculateDiscount(
                                             pkg.price,
@@ -165,15 +190,19 @@ export default function PackageDetails({ package: pkg, auth }) {
                                         )
                                             ? "right-2"
                                             : "right-4"
-                                    } bg-white bg-opacity-30 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300`}
-                                    aria-label="Add to favorites"
+                                    } bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm`}
+                                    aria-label={
+                                        isFavorite
+                                            ? "Remove from favorites"
+                                            : "Add to favorites"
+                                    }
                                 >
                                     <Heart
                                         size={20}
                                         className={
                                             isFavorite
-                                                ? "text-red-500 fill-red-500"
-                                                : "text-white"
+                                                ? "text-green-400 fill-green-400"
+                                                : "text-gray-300"
                                         }
                                     />
                                 </button>
@@ -187,9 +216,9 @@ export default function PackageDetails({ package: pkg, auth }) {
                                             ({pkg.rating || 0}/5)
                                         </span>
                                     </div>
-                                    {pkg.tag && (
-                                        <span className="px-3 py-1 bg-blue-600 bg-opacity-20 text-blue-400 rounded-full text-xs">
-                                            {pkg.tag}
+                                    {pkg.category && (
+                                        <span className="px-3 py-1 bg-green-600 bg-opacity-20 text-green-400 rounded-full text-xs">
+                                            {pkg.category}
                                         </span>
                                     )}
                                     {pkg.is_featured && (
@@ -208,10 +237,28 @@ export default function PackageDetails({ package: pkg, auth }) {
                                         {pkg.description ||
                                             "No description available."}
                                     </p>
+                                    {pkg.duration && (
+                                        <p className="text-gray-300">
+                                            <strong>Duration:</strong>{" "}
+                                            {pkg.duration}
+                                        </p>
+                                    )}
+                                    {pkg.group_size && (
+                                        <p className="text-gray-300">
+                                            <strong>Group Size:</strong>{" "}
+                                            {pkg.group_size}
+                                        </p>
+                                    )}
+                                    {pkg.company && (
+                                        <p className="text-gray-300">
+                                            <strong>Operated by:</strong>{" "}
+                                            {pkg.company.company_name}
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div className="mt-8">
-                                    <h3 className="text-xl font-semibold mb-4 text-blue-400">
+                                    <h3 className="text-xl font-semibold mb-4 text-green-400">
                                         Price Details
                                     </h3>
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
@@ -222,7 +269,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                                             <div className="flex items-baseline gap-2">
                                                 {pkg.discount_price ? (
                                                     <>
-                                                        <span className="text-2xl font-bold text-blue-400">
+                                                        <span className="text-2xl font-bold text-green-400">
                                                             $
                                                             {pkg.discount_price}
                                                         </span>
@@ -231,7 +278,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                                                         </span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-2xl font-bold text-blue-400">
+                                                    <span className="text-2xl font-bold text-green-400">
                                                         ${pkg.price}
                                                     </span>
                                                 )}
@@ -279,9 +326,9 @@ export default function PackageDetails({ package: pkg, auth }) {
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: 0.2 }}
                             variants={fadeIn}
-                            className="mt-8 bg-gray-800 bg-opacity-70 rounded-xl p-6 md:p-8 shadow-xl backdrop-blur-sm border border-gray-700"
+                            className="mt-8 bg-gray-800 bg-opacity-90 rounded-xl p-6 md:p-8 shadow-xl backdrop-blur-sm border border-gray-700"
                         >
-                            <h3 className="text-xl font-semibold mb-4 text-blue-400">
+                            <h3 className="text-xl font-semibold mb-4 text-green-400">
                                 Location Information
                             </h3>
                             <p className="text-gray-300 mb-4">
@@ -310,7 +357,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                         variants={fadeIn}
                         className="space-y-6"
                     >
-                        <div className="bg-gray-800 bg-opacity-70 rounded-xl p-6 shadow-xl backdrop-blur-sm border border-gray-700 sticky top-24 z-10">
+                        <div className="bg-gray-800 bg-opacity-90 rounded-xl p-6 shadow-xl backdrop-blur-sm border border-gray-700 sticky top-24 z-10">
                             <h3 className="text-xl font-semibold mb-4">
                                 Book this package
                             </h3>
@@ -323,7 +370,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                                     <div className="flex items-baseline gap-2">
                                         {pkg.discount_price ? (
                                             <>
-                                                <span className="text-lg font-bold text-blue-400">
+                                                <span className="text-lg font-bold text-green-400">
                                                     ${pkg.discount_price}
                                                 </span>
                                                 <span className="text-sm line-through text-gray-500">
@@ -331,7 +378,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                                                 </span>
                                             </>
                                         ) : (
-                                            <span className="text-lg font-bold text-blue-400">
+                                            <span className="text-lg font-bold text-green-400">
                                                 ${pkg.price}
                                             </span>
                                         )}
@@ -370,14 +417,14 @@ export default function PackageDetails({ package: pkg, auth }) {
                             <div className="space-y-3">
                                 <Link
                                     href={`/book?package_id=${pkg.id}`}
-                                    className="block w-full bg-blue-600 hover:bg-blue-500 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+                                    className="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
                                 >
                                     Book Now
                                 </Link>
 
                                 <button
-                                    className="block w-full bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
-                                    onClick={() => setIsFavorite(!isFavorite)}
+                                    onClick={toggleFavorite}
+                                    className="block w-full bg-transparent border border-green-500 text-green-400 hover:bg-green-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
                                 >
                                     {isFavorite
                                         ? "Saved to Favorites"
@@ -398,11 +445,11 @@ export default function PackageDetails({ package: pkg, auth }) {
                     viewport={{ once: true }}
                     transition={{ duration: 0.5 }}
                     variants={fadeIn}
-                    className="text-center bg-blue-900 bg-opacity-40 rounded-xl p-8 shadow-xl max-w-4xl mx-auto mt-16 border border-blue-800"
+                    className="text-center bg-green-900 bg-opacity-40 rounded-xl p-8 shadow-xl max-w-4xl mx-auto mt-16 border border-green-800"
                 >
                     <h2 className="text-2xl font-bold mb-4">
                         Ready to Experience{" "}
-                        <span className="text-blue-400">{pkg.title}</span>?
+                        <span className="text-green-400">{pkg.title}</span>?
                     </h2>
                     <p className="text-gray-300 mb-6">
                         Book your package now and create unforgettable memories
@@ -412,7 +459,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         href={`/book?package_id=${pkg.id}`}
-                        className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg transition-all duration-300"
+                        className="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
                     >
                         Book Now
                     </motion.a>

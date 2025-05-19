@@ -15,7 +15,6 @@ const WelcomePage = () => {
             <div className="absolute inset-0 bg-black opacity-50 z-0" />
 
             <div className="relative z-10 flex flex-col min-h-screen">
-                {/* النافبار */}
                 <nav className="flex justify-between items-center p-6">
                     <div className="flex items-center">
                         <Hotel className="w-10 h-10 text-green-500 mr-3" />
