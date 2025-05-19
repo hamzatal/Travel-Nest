@@ -1,26 +1,21 @@
-import React, { useState } from "react";
-import { Head, Link } from "@inertiajs/react";
+import React, { useState, useEffect } from "react";
+import { Head, Link, router } from "@inertiajs/react";
 import { motion } from "framer-motion";
-import {
-    MapPin,
-    Calendar,
-    DollarSign,
-    Tag,
-    ChevronLeft,
-    Star,
-    Heart,
-} from "lucide-react";
-import Navbar from "../Components/Nav";
-import Footer from "../Components/Footer";
+import { MapPin, ChevronLeft, Star, Heart } from "lucide-react";
+import Navbar from "../../Components/Nav";
+import Footer from "../../Components/Footer";
+import toast, { Toaster } from "react-hot-toast";
 
-export default function DestinationDetails({ destination, auth }) {
+export default function DestinationDetails({ destination, auth, flash }) {
     const [isDarkMode, setIsDarkMode] = useState(true);
-    const [isFavorite, setIsFavorite] = useState(false);
+    const [isFavorite, setIsFavorite] = useState(
+        destination.is_favorite || false
+    );
 
     // Animation variants
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
     };
 
     const calculateDiscount = (original, discounted) => {
@@ -50,7 +45,30 @@ export default function DestinationDetails({ destination, auth }) {
         return stars;
     };
 
-    // Calculate the actual total price
+    const toggleFavorite = () => {
+        if (!auth?.user) {
+            toast.error("Please log in to add to favorites");
+            return;
+        }
+
+        router.post(
+            route("destinations.favorite", destination.id),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const { isFavorite, message } = page.props;
+                    setIsFavorite(isFavorite);
+                    toast.success(message);
+                },
+                onError: () => {
+                    toast.error("Failed to toggle favorite");
+                },
+            }
+        );
+    };
+
+    // Calculate total price
     const serviceFee = 9.99;
     const bookingFee = 4.99;
     const basePrice = parseFloat(
@@ -60,7 +78,8 @@ export default function DestinationDetails({ destination, auth }) {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
-            <Head title={`${destination.name} - Travel Nest`} />
+            <Head title={`${destination.title} - Travel Nest`} />
+            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
 
             <Navbar
                 user={auth?.user}
@@ -80,13 +99,13 @@ export default function DestinationDetails({ destination, auth }) {
                             transition={{ duration: 0.7 }}
                             className="text-4xl md:text-6xl font-extrabold mb-2 leading-tight"
                         >
-                            {destination.name}
+                            {destination.title}
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2, duration: 0.7 }}
-                            className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
+                            className="text-lg md:text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
                             <MapPin
                                 className="inline-block mr-1 mb-1"
@@ -135,7 +154,7 @@ export default function DestinationDetails({ destination, auth }) {
                         variants={fadeIn}
                         className="lg:col-span-2"
                     >
-                        <div className="bg-gray-800 bg-opacity-70 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border border-gray-700">
+                        <div className="bg-gray-800 bg-opacity-70 rounded-xl overflow-hidden shadow-xl backdrop-blur-sm border border-gray-700">
                             {/* Main Image */}
                             <div className="relative">
                                 <img
@@ -143,47 +162,47 @@ export default function DestinationDetails({ destination, auth }) {
                                         destination.image ||
                                         "https://via.placeholder.com/1200x800?text=No+Image"
                                     }
-                                    alt={destination.name}
+                                    alt={destination.title}
                                     className="w-full h-96 object-cover"
+                                    loading="lazy"
                                 />
-                                {destination.tag && (
-                                    <span className="absolute top-4 left-4 px-3 py-1 bg-gray-900 bg-opacity-70 rounded-full text-sm font-medium text-gray-300">
-                                        {destination.tag}
+                                {destination.category && (
+                                    <span className="absolute top-4 left-4 px-3 py-1 bg-blue-600 rounded-full text-sm font-medium text-white">
+                                        {destination.category}
                                     </span>
                                 )}
-                                {calculateDiscount(
-                                    destination.price,
-                                    destination.discount_price
-                                ) && (
-                                    <div className="absolute top-4 right-12 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                        {calculateDiscount(
-                                            destination.price,
-                                            destination.discount_price
-                                        )}
-                                        % OFF
-                                    </div>
-                                )}
-                                <button
-                                    onClick={() => setIsFavorite(!isFavorite)}
-                                    className={`absolute top-3 ${
-                                        calculateDiscount(
-                                            destination.price,
-                                            destination.discount_price
-                                        )
-                                            ? "right-2"
-                                            : "right-4"
-                                    } bg-white bg-opacity-30 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300`}
-                                    aria-label="Add to favorites"
-                                >
-                                    <Heart
-                                        size={20}
-                                        className={
+                                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                                    {calculateDiscount(
+                                        destination.price,
+                                        destination.discount_price
+                                    ) && (
+                                        <div className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold text-center">
+                                            {calculateDiscount(
+                                                destination.price,
+                                                destination.discount_price
+                                            )}
+                                            % OFF
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={toggleFavorite}
+                                        className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm"
+                                        aria-label={
                                             isFavorite
-                                                ? "text-red-500 fill-red-500"
-                                                : "text-white"
+                                                ? "Remove from favorites"
+                                                : "Add to favorites"
                                         }
-                                    />
-                                </button>
+                                    >
+                                        <Heart
+                                            size={18}
+                                            className={
+                                                isFavorite
+                                                    ? "text-green-400 fill-green-400"
+                                                    : "text-gray-300"
+                                            }
+                                        />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Destination Details */}
@@ -195,9 +214,9 @@ export default function DestinationDetails({ destination, auth }) {
                                             ({destination.rating || 0}/5)
                                         </span>
                                     </div>
-                                    {destination.tag && (
+                                    {destination.category && (
                                         <span className="px-3 py-1 bg-blue-600 bg-opacity-20 text-blue-400 rounded-full text-xs">
-                                            {destination.tag}
+                                            {destination.category}
                                         </span>
                                     )}
                                     {destination.is_featured && (
@@ -205,10 +224,16 @@ export default function DestinationDetails({ destination, auth }) {
                                             Featured
                                         </span>
                                     )}
+                                    {destination.company && (
+                                        <span className="px-3 py-1 bg-gray-700 bg-opacity-20 text-gray-300 rounded-full text-xs">
+                                            by{" "}
+                                            {destination.company.company_name}
+                                        </span>
+                                    )}
                                 </div>
 
                                 <h2 className="text-2xl font-bold text-white mb-4">
-                                    About this destination
+                                    About this Destination
                                 </h2>
 
                                 <div className="prose prose-lg prose-invert">
@@ -245,7 +270,7 @@ export default function DestinationDetails({ destination, auth }) {
                                                     </span>
                                                 )}
                                                 <span className="text-sm text-gray-400">
-                                                    / night
+                                                    / person
                                                 </span>
                                             </div>
                                         </div>
@@ -324,13 +349,13 @@ export default function DestinationDetails({ destination, auth }) {
                         {/* Booking Card */}
                         <div className="bg-gray-800 bg-opacity-70 rounded-xl p-6 shadow-xl backdrop-blur-sm border border-gray-700 sticky top-24 z-10">
                             <h3 className="text-xl font-semibold mb-4">
-                                Book this destination
+                                Book this Destination
                             </h3>
 
                             <div className="mb-6">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-gray-400">
-                                        Price per night
+                                        Price per person
                                     </span>
                                     <div className="flex items-baseline gap-2">
                                         {destination.discount_price ? (
@@ -389,8 +414,8 @@ export default function DestinationDetails({ destination, auth }) {
                                 </Link>
 
                                 <button
+                                    onClick={toggleFavorite}
                                     className="block w-full bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
-                                    onClick={() => setIsFavorite(!isFavorite)}
                                 >
                                     {isFavorite
                                         ? "Saved to Favorites"
@@ -417,13 +442,13 @@ export default function DestinationDetails({ destination, auth }) {
                     <h2 className="text-2xl font-bold mb-4">
                         Ready to Experience{" "}
                         <span className="text-blue-400">
-                            {destination.name}
+                            {destination.title}
                         </span>
                         ?
                     </h2>
                     <p className="text-gray-300 mb-6">
-                        Book your stay now and create unforgettable memories at
-                        this amazing destination.
+                        Book your adventure now and create unforgettable
+                        memories at this amazing destination.
                     </p>
                     <motion.a
                         whileHover={{ scale: 1.05 }}

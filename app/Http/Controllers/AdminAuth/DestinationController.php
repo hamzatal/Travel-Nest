@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+/* X */ 
 use App\Models\Destination;
 use App\Models\Company;
 use Illuminate\Http\Request;

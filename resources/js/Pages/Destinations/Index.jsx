@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Head, usePage, Link } from "@inertiajs/react";
+import { Head, usePage, Link, router } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
@@ -11,8 +11,8 @@ import {
     Heart,
     Star,
 } from "lucide-react";
-import Navbar from "../Components/Nav";
-import Footer from "../Components/Footer";
+import Navbar from "../../Components/Nav";
+import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
 
 const DestinationsPage = ({ auth }) => {
@@ -25,21 +25,29 @@ const DestinationsPage = ({ auth }) => {
     const [sortBy, setSortBy] = useState("newest");
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
-
     const [isDarkMode, setIsDarkMode] = useState(true);
+    const [favorites, setFavorites] = useState(
+        destinations.reduce(
+            (acc, dest) => ({
+                ...acc,
+                [dest.id]: dest.is_favorite || false,
+            }),
+            {}
+        )
+    );
 
     const itemsPerPage = 8;
-
     const categories = [
         "Beach",
         "Mountain",
         "City",
-        "Countryside",
-        "Island",
-        "Historic",
-        "Luxury",
+        "Cultural",
+        "Adventure",
+        "Historical",
+        "Wildlife",
     ];
 
+    // Animation variants
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -62,14 +70,38 @@ const DestinationsPage = ({ auth }) => {
     };
 
     const toggleCategory = (category) => {
-        if (selectedCategories.includes(category)) {
-            setSelectedCategories(
-                selectedCategories.filter((c) => c !== category)
-            );
-        } else {
-            setSelectedCategories([...selectedCategories, category]);
-        }
+        setSelectedCategories((prev) =>
+            prev.includes(category)
+                ? prev.filter((c) => c !== category)
+                : [...prev, category]
+        );
         setCurrentPage(1);
+    };
+
+    const toggleFavorite = (destinationId) => {
+        if (!user) {
+            toast.error("Please log in to add to favorites");
+            return;
+        }
+
+        router.post(
+            route("destinations.favorite", destinationId),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const { isFavorite, message } = page.props;
+                    setFavorites((prev) => ({
+                        ...prev,
+                        [destinationId]: isFavorite,
+                    }));
+                    toast.success(message);
+                },
+                onError: () => {
+                    toast.error("Failed to toggle favorite");
+                },
+            }
+        );
     };
 
     const sortOptions = [
@@ -82,15 +114,17 @@ const DestinationsPage = ({ auth }) => {
     const filteredDestinations = destinations
         .filter(
             (destination) =>
-                (destination.name
+                (destination.title
                     ?.toLowerCase()
                     .includes(searchQuery.toLowerCase()) ||
                     destination.location
                         ?.toLowerCase()
+                        .includes(searchQuery.toLowerCase()) ||
+                    destination.company?.company_name
+                        ?.toLowerCase()
                         .includes(searchQuery.toLowerCase())) &&
                 (selectedCategories.length === 0 ||
-                    (destination.tag &&
-                        selectedCategories.includes(destination.tag)))
+                    selectedCategories.includes(destination.category))
         )
         .sort((a, b) => {
             switch (sortBy) {
@@ -114,7 +148,7 @@ const DestinationsPage = ({ auth }) => {
                     return discountB - discountA;
                 case "newest":
                 default:
-                    return b.id - a.id;
+                    return new Date(b.created_at) - new Date(a.created_at);
             }
         });
 
@@ -126,9 +160,8 @@ const DestinationsPage = ({ auth }) => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery]);
+    }, [searchQuery, selectedCategories]);
 
-    // Show flash messages as toasts
     useEffect(() => {
         if (flash.success) {
             toast.success(flash.success);
@@ -182,7 +215,8 @@ const DestinationsPage = ({ auth }) => {
                 toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             />
 
-            <div className="relative h-72 md:h-80 overflow-hidden">
+            {/* Hero Section */}
+            <div className="relative h-64 md:h-72 overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
                 <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-fill"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -191,7 +225,7 @@ const DestinationsPage = ({ auth }) => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.7 }}
-                            className="text-6xl font-extrabold mb-3 leading-tight"
+                            className="text-4xl md:text-6xl font-extrabold mb-3 leading-tight"
                         >
                             Amazing{" "}
                             <span className="text-blue-400">Destinations</span>
@@ -200,7 +234,7 @@ const DestinationsPage = ({ auth }) => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2, duration: 0.7 }}
-                            className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
+                            className="text-lg md:text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
                             Discover breathtaking places around the world for
                             your next adventure
@@ -228,7 +262,7 @@ const DestinationsPage = ({ auth }) => {
                         <div className="relative w-full md:w-96">
                             <input
                                 type="text"
-                                placeholder="Search destinations or locations..."
+                                placeholder="Search destinations, locations, or companies..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
@@ -339,7 +373,7 @@ const DestinationsPage = ({ auth }) => {
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-16"
                 >
                     <AnimatePresence mode="popLayout">
                         {paginatedDestinations.length === 0 ? (
@@ -370,8 +404,6 @@ const DestinationsPage = ({ auth }) => {
                             </motion.div>
                         ) : (
                             paginatedDestinations.map((destination) => (
-                            
-
                                 <motion.div
                                     key={destination.id}
                                     variants={cardVariants}
@@ -380,7 +412,7 @@ const DestinationsPage = ({ auth }) => {
                                         y: -8,
                                         transition: { duration: 0.3 },
                                     }}
-                                    className="bg-gray-800 bg-opacity-80 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group"
+                                    className="bg-gray-800 bg-opacity-70 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group"
                                 >
                                     <div className="relative overflow-hidden">
                                         <img
@@ -388,42 +420,58 @@ const DestinationsPage = ({ auth }) => {
                                                 destination.image ||
                                                 "https://via.placeholder.com/640x480?text=No+Image"
                                             }
-                                            alt={destination.name}
-                                            className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
+                                            alt={destination.title}
+                                            className="w-full h-48 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
                                         />
-                                        {destination.tag && (
+                                        {destination.category && (
                                             <span className="absolute top-3 left-3 px-2 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
-                                                {destination.tag}
+                                                {destination.category}
                                             </span>
                                         )}
-                                        {calculateDiscount(
-                                            destination.price,
-                                            destination.discount_price
-                                        ) && (
-                                            <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                                                {calculateDiscount(
-                                                    destination.price,
-                                                    destination.discount_price
-                                                )}
-                                                % OFF
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
-                                        <button
-                                            className="absolute top-3 right-3 bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300 transform translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0"
-                                            aria-label="Add to favorites"
-                                        >
-                                            <Heart
-                                                size={18}
-                                                className="text-white"
-                                            />
-                                        </button>
+                                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+                                            {calculateDiscount(
+                                                destination.price,
+                                                destination.discount_price
+                                            ) && (
+                                                <div className="bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold text-center">
+                                                    {calculateDiscount(
+                                                        destination.price,
+                                                        destination.discount_price
+                                                    )}
+                                                    % OFF
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() =>
+                                                    toggleFavorite(
+                                                        destination.id
+                                                    )
+                                                }
+                                                className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm"
+                                                aria-label={
+                                                    favorites[destination.id]
+                                                        ? "Remove from favorites"
+                                                        : "Add to favorites"
+                                                }
+                                            >
+                                                <Heart
+                                                    size={18}
+                                                    className={
+                                                        favorites[
+                                                            destination.id
+                                                        ]
+                                                            ? "text-green-400 fill-green-400"
+                                                            : "text-gray-300"
+                                                    }
+                                                />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="p-5 flex flex-col flex-grow">
                                         <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-xl font-bold text-white line-clamp-1">
-                                                {destination.name}
+                                            <h3 className="text-lg font-bold text-white line-clamp-1">
+                                                {destination.title}
                                             </h3>
                                         </div>
                                         <div className="flex items-center gap-2 mb-2">
@@ -444,8 +492,7 @@ const DestinationsPage = ({ auth }) => {
                                             </span>
                                         </div>
                                         <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                                            {destination.description ||
-                                                "No description available."}
+                                            {destination.description}
                                         </p>
                                         <div className="mt-auto">
                                             <div className="flex items-center justify-between mb-4">
@@ -478,14 +525,23 @@ const DestinationsPage = ({ auth }) => {
                                                             </span>
                                                         )}
                                                         <span className="text-xs text-gray-400">
-                                                            / night
+                                                            / person
                                                         </span>
                                                     </div>
                                                 </div>
+                                                {destination.company && (
+                                                    <span className="text-xs text-gray-400">
+                                                        by{" "}
+                                                        {
+                                                            destination.company
+                                                                .company_name
+                                                        }
+                                                    </span>
+                                                )}
                                             </div>
                                             <Link
                                                 href={`/destinations/${destination.id}`}
-                                                className="w-full inline-block text-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all duration-300 transform group-hover:shadow-lg"
+                                                className="w-full inline-block text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all duration-300 transform group-hover:shadow-lg"
                                             >
                                                 View Details
                                             </Link>

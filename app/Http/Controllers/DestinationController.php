@@ -235,7 +235,7 @@ class DestinationController extends Controller
             ];
         });
 
-        return Inertia::render('DestinationsPage', [
+        return Inertia::render('Destinations/Index', [
             'destinations' => $destinations,
         ]);
     }
@@ -245,7 +245,7 @@ class DestinationController extends Controller
         try {
             $destination = Destination::with('company')->findOrFail($id);
 
-            return Inertia::render('DestinationDetails', [
+            return Inertia::render('Destinations/Show', [
                 'destination' => [
                     'id' => $destination->id,
                     'title' => $destination->title,
