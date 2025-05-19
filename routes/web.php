@@ -8,7 +8,7 @@ use App\Http\Controllers\AdminAuth\AdminController;
 use App\Http\Controllers\AdminAuth\DashboardController;
 use App\Http\Controllers\AdminAuth\HeroSectionController;
 use App\Http\Controllers\AdminAuth\LoginController;
-use App\Http\Controllers\AdminAuth\OfferController as AdminOfferController; // Rename the controller
+use App\Http\Controllers\AdminAuth\OfferController as AdminOfferController;
 use App\Http\Controllers\AdminAuth\PackagesController;
 
 // ===================================================
@@ -40,63 +40,47 @@ use App\Http\Controllers\CompanyAuth\CompanyOfferController;
 use App\Http\Controllers\CompanyAuth\CompanyPackageController;
 
 // ===================================================
-//! Public Routes (No Authentication Required)
+//! Authentication Routes (Keep Public)
 // ===================================================
 
+require __DIR__ . '/auth.php';
+
+// ===================================================
+//! Public Routes (Not Authenticated)
+// ===================================================
+
+Route::get('/about-us', fn() => Inertia::render('about-us'))->name('about-us');
+Route::get('/ContactPage', fn() => Inertia::render('ContactPage'))->name('ContactPage');
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
-        'destinations' => app(DestinationController::class)->featured(),
     ]);
 })->name('welcome');
 
-Route::get('/home', [HomeController::class, 'index'])->name('home');
-
-//? Login Page
-Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
-Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.submit');
-Route::post('/admin/logout', [LoginController::class, 'destroy'])->name('admin.logout');
-
-Route::post('/profile/password', [AdminController::class, 'updateAdminPassword'])->name('admin.profile.password');
 // ===================================================
-//! Frontend Routes
-// ===================================================
-//? User Booking Page
-Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
-//? About Us Page
-Route::get('/about-us', fn() => Inertia::render('about-us'))->name('about-us');
-
-//? Contact Us Page
-Route::get('/ContactPage', fn() => Inertia::render('ContactPage'))->name('ContactPage');
-
-//? Destinations Routes
-Route::get('/destinations', [DestinationController::class, 'allDestinations'])->name('destinations.index');
-Route::get('/destinations/{id}', [DestinationController::class, 'show'])->name('destinations.show');
-
-//? Packages Routes
-Route::get('/packages', [PackagesController::class, 'indexPublic'])->name('packages.index');
-Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
-
-//? Deals Routes
-Route::get('/deals', [OfferController::class, 'index'])->name('deals');
-Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
-
-//? Booking Routes
-Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
-Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
-
-//? Booking Form
-Route::get('/book', [BookingController::class, 'create'])->name('book.create');
-Route::post('/book', [BookingController::class, 'store'])->name('book.store');
-
-// ===================================================
-//! Authentication Routes
+//! Public Routes (Protected)
 // ===================================================
 
-require __DIR__ . '/auth.php';
+Route::middleware(['auth', 'verified'])->group(function () {
+
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
+
+    //? Frontend Routes
+    Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
+    Route::get('/destinations', [DestinationController::class, 'allDestinations'])->name('destinations.index');
+    Route::get('/destinations/{id}', [DestinationController::class, 'show'])->name('destinations.show');
+    Route::get('/packages', [PackagesController::class, 'indexPublic'])->name('packages.index');
+    Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
+    Route::get('/deals', [OfferController::class, 'index'])->name('deals');
+    Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
+    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+    Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
+    Route::get('/book', [BookingController::class, 'create'])->name('book.create');
+    Route::post('/book', [BookingController::class, 'store'])->name('book.store');
+});
 
 // ===================================================
 //! Protected Routes (User Authenticated)
@@ -104,12 +88,8 @@ require __DIR__ . '/auth.php';
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
-
-    //? Search Route
     Route::get('/search', [SearchController::class, 'index'])->name('search');
     Route::get('/search/live', [SearchController::class, 'live'])->name('search.live');
-
-    //? Profile Routes
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('edit');
         Route::patch('/', [ProfileController::class, 'update'])->name('update');
@@ -132,40 +112,30 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
 //! Admin Routes
 // ===================================================
 
-//! Admin Protected Routes (Authenticated: Admin)
+Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
+Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.submit');
+
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
-
-    //? Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    //? Admin Profile
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::put('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
     Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
-
-    //? Users Management
+    Route::post('/profile/password', [AdminController::class, 'updateAdminPassword'])->name('profile.password');
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::post('/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('toggle-status');
     });
-
-    //? Contact Messages
     Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
     Route::patch('/messages/{id}/read', [AdminController::class, 'markAsRead'])->name('messages.read');
-
-    //? Destinations Routes
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [DestinationController::class, 'index'])->name('index');
         Route::post('/', [DestinationController::class, 'store'])->name('store');
         Route::put('/{destination}', [DestinationController::class, 'update'])->name('update');
         Route::delete('/{destination}', [DestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [DestinationController::class, 'toggleFeatured'])->name('toggle-featured');
-    
     });
-
-    //? Offers Routes
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [AdminOfferController::class, 'index'])->name('index');
         Route::post('/', [AdminOfferController::class, 'store'])->name('store');
@@ -173,8 +143,6 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{id}', [AdminOfferController::class, 'destroy'])->name('destroy');
         Route::patch('/{id}/toggle', [AdminOfferController::class, 'toggleActive'])->name('toggle');
     });
-    
-    //? Hero Sections Routes
     Route::prefix('hero')->name('hero.')->group(function () {
         Route::get('/', [HeroSectionController::class, 'index'])->name('index');
         Route::post('/', [HeroSectionController::class, 'store'])->name('store');
@@ -182,8 +150,6 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::patch('/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('toggle');
         Route::delete('/{id}', [HeroSectionController::class, 'destroy'])->name('delete');
     });
-
-    //? Packages Routes
     Route::prefix('packages')->name('packages.')->group(function () {
         Route::get('/', [PackagesController::class, 'index'])->name('index');
         Route::post('/', [PackagesController::class, 'store'])->name('store');
@@ -202,8 +168,6 @@ Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(
     Route::get('/profile', [CompanyController::class, 'profile'])->name('profile');
     Route::put('/profile', [CompanyController::class, 'updateProfile'])->name('profile');
     Route::put('/profile/password', [CompanyController::class, 'updatePassword'])->name('profile.password');
-
-    //? Destinations Routes
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [CompanyDestinationController::class, 'index'])->name('index');
         Route::post('/', [CompanyDestinationController::class, 'store'])->name('store');
@@ -211,8 +175,6 @@ Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(
         Route::delete('/{destination}', [CompanyDestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [CompanyDestinationController::class, 'toggleFeatured'])->name('toggle-featured');
     });
-
-    //? Offers Routes
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [CompanyOfferController::class, 'index'])->name('index');
         Route::post('/', [CompanyOfferController::class, 'store'])->name('store');
@@ -220,15 +182,6 @@ Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(
         Route::delete('/{id}', [CompanyOfferController::class, 'destroy'])->name('destroy');
         Route::patch('/{id}/toggle', [CompanyOfferController::class, 'toggleActive'])->name('toggle');
     });
-
-    //? Packages Routes
-    // Route::prefix('packages')->name('packages.')->group(function () {
-    //     Route::get('/', [CompanyPackageController::class, 'index'])->name('index');
-    //     Route::post('/', [CompanyPackageController::class, 'store'])->name('store');
-    //     Route::put('/{package}', [CompanyPackageController::class, 'update'])->name('update');
-    //     Route::patch('/{package}/toggle-featured', [CompanyPackageController::class, 'toggleFeatured'])->name('toggle-featured');
-    //     Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
-    // });
 });
 
 Route::post('/company/login', [CompanyController::class, 'login'])->name('company.login');

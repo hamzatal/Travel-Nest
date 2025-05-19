@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-    MapPin,
-    Lock,
-    Eye,
-    EyeOff,
-    Home,
-    LogIn,
-    PhoneCall,
-} from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Home, LogIn, PhoneCall } from "lucide-react";
 import { Head, Link, useForm } from "@inertiajs/react";
 
 const ResetPassword = ({ token, email }) => {
@@ -79,19 +71,31 @@ const ResetPassword = ({ token, email }) => {
             onSuccess: () => {
                 setNotification({
                     type: "success",
-                    message: "Password reset successfully!",
+                    message:
+                        "Password reset successfully! Redirecting to login...",
                 });
-                setTimeout(() => setNotification(null), 2000);
+                setTimeout(() => {
+                    window.location.href = route("login");
+                }, 2000);
+            },
+            onError: () => {
+                setNotification({
+                    type: "error",
+                    message: "Failed to reset password. Please try again.",
+                });
+                setTimeout(() => setNotification(null), 3000);
             },
             onFinish: () => reset("password", "password_confirmation"),
         });
     };
 
     return (
-        <div className="min-h-screen flex bg-gradient-to-br from-gray-900 via-gray-800 to-black relative">
+        <div
+            className="min-h-screen flex bg-cover bg-center bg-no-repeat relative"
+            style={{ backgroundImage: "url('/images/world.svg')" }}
+        >
             <Head title="Reset Password - Travel Nest" />
 
-            {/* Back to Home Button */}
             <Link
                 href="/"
                 className="fixed top-6 left-6 z-50 flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
@@ -107,7 +111,7 @@ const ResetPassword = ({ token, email }) => {
                 <PhoneCall className="w-5 h-5" />
                 <span className="font-medium">Contact Us</span>
             </Link>
-            {/* Back to Login Button */}
+
             <Link
                 href={route("login")}
                 className="fixed top-4 right-4 z-50 flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-all"
@@ -116,7 +120,6 @@ const ResetPassword = ({ token, email }) => {
                 <span>Login</span>
             </Link>
 
-            {/* Notification */}
             <AnimatePresence>
                 {notification && (
                     <motion.div
@@ -134,20 +137,24 @@ const ResetPassword = ({ token, email }) => {
                 )}
             </AnimatePresence>
 
-            {/* Form */}
             <div className="w-full flex flex-col justify-center items-center p-6">
-                <div className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800">
-                    <h2 className="text-2xl font-bold mb-6 text-white">
-                        Reset Password
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="w-full max-w-md p-8 rounded-xl shadow-xl bg-gray-800/90 backdrop-blur-sm hover:shadow-green-500/30 transition-shadow"
+                >
+                    <h2 className="text-2xl font-bold mb-6 text-white text-center">
+                        Reset Your Password
                     </h2>
 
                     <form onSubmit={submit} className="space-y-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-300">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Email
                             </label>
                             <div className="relative">
-                                <MapPin className="absolute left-3 top-3 text-gray-400" />
+                                <Mail className="absolute left-3 top-3 text-gray-400" />
                                 <input
                                     type="email"
                                     value={data.email}
@@ -168,7 +175,7 @@ const ResetPassword = ({ token, email }) => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-300">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 New Password
                             </label>
                             <div className="relative">
@@ -189,9 +196,13 @@ const ResetPassword = ({ token, email }) => {
                                     onClick={() =>
                                         setShowPassword(!showPassword)
                                     }
-                                    className="absolute right-3 top-3 text-gray-400"
+                                    className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
                                 >
-                                    {showPassword ? <EyeOff /> : <Eye />}
+                                    {showPassword ? (
+                                        <EyeOff className="w-5 h-5" />
+                                    ) : (
+                                        <Eye className="w-5 h-5" />
+                                    )}
                                 </button>
                             </div>
                             {errors.password && (
@@ -202,7 +213,7 @@ const ResetPassword = ({ token, email }) => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-300">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Confirm New Password
                             </label>
                             <div className="relative">
@@ -234,9 +245,13 @@ const ResetPassword = ({ token, email }) => {
                                             !showConfirmPassword
                                         )
                                     }
-                                    className="absolute right-3 top-3 text-gray-400"
+                                    className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
                                 >
-                                    {showConfirmPassword ? <EyeOff /> : <Eye />}
+                                    {showConfirmPassword ? (
+                                        <EyeOff className="w-5 h-5" />
+                                    ) : (
+                                        <Eye className="w-5 h-5" />
+                                    )}
                                 </button>
                             </div>
                             {errors.password_confirmation && (
@@ -254,7 +269,7 @@ const ResetPassword = ({ token, email }) => {
                             {processing ? "Resetting..." : "Reset Password"}
                         </button>
                     </form>
-                </div>
+                </motion.div>
             </div>
         </div>
     );
