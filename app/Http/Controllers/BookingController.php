@@ -6,6 +6,7 @@ use App\Models\Destination;
 use App\Models\Package;
 use App\Models\Offer;
 use App\Models\Booking;
+use App\Models\Favorite; // نضيف المودل
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -14,11 +15,11 @@ use Illuminate\Support\Facades\Storage;
 
 class BookingController extends Controller
 {
-    /**
-     * Display the booking page with all travel options
-     */
     public function index()
     {
+        $user = Auth::user();
+        $userId = $user ? $user->id : null;
+
         $destinations = Destination::select([
             'id',
             'title',
@@ -34,7 +35,7 @@ class BookingController extends Controller
             ->where('is_featured', true)
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($destination) {
+            ->map(function ($destination) use ($userId) {
                 $destination->image = $destination->image ? Storage::url($destination->image) : null;
                 $destination->title = $destination->title ?? 'Unknown Destination';
                 $destination->location = $destination->location ?? 'Unknown Location';
@@ -44,6 +45,11 @@ class BookingController extends Controller
                 $destination->category = $destination->category ?? '';
                 $destination->rating = $destination->rating ?? 0;
                 $destination->is_featured = $destination->is_featured ?? false;
+                $destination->is_favorite = $userId
+                    ? Favorite::where('user_id', $userId)
+                    ->where('destination_id', $destination->id)
+                    ->exists()
+                    : false;
                 return $destination;
             });
 
@@ -73,7 +79,7 @@ class BookingController extends Controller
             }])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($package) {
+            ->map(function ($package) use ($userId) {
                 $package->image = $package->image ? Storage::url($package->image) : null;
                 $package->title = $package->title ?? 'Unknown Package';
                 $package->subtitle = $package->subtitle ?? '';
@@ -89,6 +95,11 @@ class BookingController extends Controller
                 $package->duration = $package->duration ?? '';
                 $package->group_size = $package->group_size ?? '';
                 $package->destination_title = $package->destination ? $package->destination->title : null;
+                $package->is_favorite = $userId
+                    ? Favorite::where('user_id', $userId)
+                    ->where('package_id', $package->id)
+                    ->exists()
+                    : false;
                 return $package;
             });
 
@@ -108,7 +119,7 @@ class BookingController extends Controller
             ->where('is_active', true)
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($offer) {
+            ->map(function ($offer) use ($userId) {
                 $offer->image = $offer->image ? Storage::url($offer->image) : null;
                 $offer->title = $offer->title ?? 'Unknown Offer';
                 $offer->description = $offer->description ?? '';
@@ -118,6 +129,11 @@ class BookingController extends Controller
                 $offer->end_date = $offer->end_date ? $offer->end_date->format('Y-m-d') : null;
                 $offer->discount_type = $offer->discount_type ?? '';
                 $offer->category = $offer->category ?? '';
+                $offer->is_favorite = $userId
+                    ? Favorite::where('user_id', $userId)
+                    ->where('offer_id', $offer->id)
+                    ->exists()
+                    : false;
                 return $offer;
             });
 
@@ -142,9 +158,54 @@ class BookingController extends Controller
         ]);
     }
 
-    /**
-     * Show the booking form for a specific destination, package, or offer.
-     */
+    public function favorite(Request $request, $type, $id)
+    {
+        if (!Auth::check()) {
+            return Inertia::render('Book/BookNow', [
+                'error' => 'Please log in to add to favorites',
+            ]);
+        }
+
+        $user = Auth::user();
+        $field = match ($type) {
+            'destination' => 'destination_id',
+            'package' => 'package_id',
+            'offer' => 'offer_id',
+            default => null,
+        };
+
+        if (!$field) {
+            return Inertia::render('Book/BookNow', [
+                'error' => 'Invalid item type',
+            ]);
+        }
+
+        $exists = Favorite::where('user_id', $user->id)
+            ->where($field, $id)
+            ->exists();
+
+        if ($exists) {
+            Favorite::where('user_id', $user->id)
+                ->where($field, $id)
+                ->delete();
+            $message = 'Removed from favorites';
+            $isFavorite = false;
+        } else {
+            Favorite::create([
+                'user_id' => $user->id,
+                $field => $id,
+            ]);
+            $message = 'Added to favorites';
+            $isFavorite = true;
+        }
+
+        return Inertia::render('Book/BookNow', [
+            'success' => $message,
+            'isFavorite' => $isFavorite,
+            'itemType' => $type,
+            'itemId' => $id,
+        ]);
+    }
     public function create(Request $request)
     {
         $destinationId = $request->query('destination_id');

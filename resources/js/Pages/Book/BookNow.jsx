@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Head, usePage, Link } from "@inertiajs/react";
+import { Head, usePage, Link, router } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
@@ -12,18 +12,15 @@ import {
     Star,
     Calendar,
     Users,
-    Plane,
-    Package,
-    Hotel,
-    Briefcase,
     Compass,
     Tag,
+    Package,
 } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
 
-const BookNowPage = ({ auth }) => {
+const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
     const { props } = usePage();
     const { destinations = [], packages = [], offers = [], flash = {} } = props;
     const user = auth?.user || null;
@@ -37,6 +34,15 @@ const BookNowPage = ({ auth }) => {
     const [selectedTypes, setSelectedTypes] = useState(["all"]);
     const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
     const [isDarkMode, setIsDarkMode] = useState(true);
+    const [favorites, setFavorites] = useState(
+        initialFavorites.reduce(
+            (acc, fav) => ({
+                ...acc,
+                [`${fav.favoritable_type}-${fav.favoritable_id}`]: true,
+            }),
+            {}
+        )
+    );
 
     const itemsPerPage = 8;
 
@@ -44,19 +50,16 @@ const BookNowPage = ({ auth }) => {
     const allData = [
         ...destinations.map((item) => ({ ...item, type: "destination" })),
         ...packages.map((item) => ({ ...item, type: "package" })),
-        ...offers.map((item) => ({ ...item, type: "offer" })), // Changed from "deal" to "offer"
+        ...offers.map((item) => ({ ...item, type: "offer" })),
     ];
 
     const categories = [
         "Beach",
         "Mountain",
         "City",
-        "Countryside",
-        "Island",
-        "Historic",
-        "Luxury",
-        "Adventure",
         "Cultural",
+        "Adventure",
+        "Historical",
         "Wildlife",
     ];
 
@@ -72,7 +75,7 @@ const BookNowPage = ({ auth }) => {
             label: "Packages",
             icon: <Package className="w-4 h-4" />,
         },
-        { id: "offer", label: "Offers", icon: <Tag className="w-4 h-4" /> }, // Changed from "deal" to "offer"
+        { id: "offer", label: "Offers", icon: <Tag className="w-4 h-4" /> },
     ];
 
     // Animation variants
@@ -107,7 +110,6 @@ const BookNowPage = ({ auth }) => {
                 : selectedTypes.includes(type)
                 ? selectedTypes.filter((t) => t !== type)
                 : [...selectedTypes, type];
-
             setSelectedTypes(newTypes.length === 0 ? ["all"] : newTypes);
         }
         setCurrentPage(1);
@@ -115,14 +117,44 @@ const BookNowPage = ({ auth }) => {
 
     // Filter by category
     const toggleCategory = (category) => {
-        if (selectedCategories.includes(category)) {
-            setSelectedCategories(
-                selectedCategories.filter((c) => c !== category)
-            );
-        } else {
-            setSelectedCategories([...selectedCategories, category]);
-        }
+        setSelectedCategories((prev) =>
+            prev.includes(category)
+                ? prev.filter((c) => c !== category)
+                : [...prev, category]
+        );
         setCurrentPage(1);
+    };
+
+    // Toggle favorite
+    const toggleFavorite = (item) => {
+        if (!user) {
+            toast.error("Please log in to add to favorites");
+            return;
+        }
+
+        const type = item.type;
+        const id = item.id;
+        const key = `${type}-${id}`;
+        const isFavorite = !!favorites[key];
+
+        router.post(
+            `/favorites/${type}/${id}`,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const { isFavorite, message } = page.props;
+                    setFavorites((prev) => ({
+                        ...prev,
+                        [key]: isFavorite,
+                    }));
+                    toast.success(message);
+                },
+                onError: () => {
+                    toast.error("Failed to toggle favorite");
+                },
+            }
+        );
     };
 
     const sortOptions = [
@@ -143,8 +175,8 @@ const BookNowPage = ({ auth }) => {
             // Search filter
             const searchMatch =
                 (
-                    item.name?.toLowerCase() ||
                     item.title?.toLowerCase() ||
+                    item.name?.toLowerCase() ||
                     ""
                 ).includes(searchQuery.toLowerCase()) ||
                 (item.location?.toLowerCase() || "").includes(
@@ -153,14 +185,14 @@ const BookNowPage = ({ auth }) => {
                 (item.description?.toLowerCase() || "").includes(
                     searchQuery.toLowerCase()
                 ) ||
-                (item.destination_name?.toLowerCase() || "").includes(
+                (item.destination_title?.toLowerCase() || "").includes(
                     searchQuery.toLowerCase()
                 );
 
             // Category filter
             const categoryMatch =
                 selectedCategories.length === 0 ||
-                (item.tag && selectedCategories.includes(item.tag));
+                selectedCategories.includes(item.category);
 
             // Price filter
             const itemPrice = item.discount_price || item.price;
@@ -191,7 +223,10 @@ const BookNowPage = ({ auth }) => {
                     return discountB - discountA;
                 case "newest":
                 default:
-                    return b.id - a.id;
+                    return (
+                        new Date(b.created_at || b.id) -
+                        new Date(a.created_at || a.id)
+                    );
             }
         });
 
@@ -216,7 +251,7 @@ const BookNowPage = ({ auth }) => {
     }, [flash]);
 
     const calculateDiscount = (original, discounted) => {
-        if (!discounted) return null;
+        if (!discounted || isNaN(original) || isNaN(discounted)) return 0;
         const percentage = Math.round(
             ((original - discounted) / original) * 100
         );
@@ -289,9 +324,23 @@ const BookNowPage = ({ auth }) => {
             case "package":
                 return `/packages/${item.id}`;
             case "offer":
-                return `/offers/${item.id}`; // Fixed from /offer to /offers
+                return `/offers/${item.id}`;
             default:
                 return "#";
+        }
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
+        } catch {
+            return "N/A";
         }
     };
 
@@ -321,7 +370,7 @@ const BookNowPage = ({ auth }) => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.7 }}
-                            className="text-6xl font-extrabold mb-3 leading-tight"
+                            className="text-4xl md:text-6xl font-extrabold mb-3 leading-tight"
                         >
                             Book Your{" "}
                             <span className="text-green-400">Adventure</span>
@@ -330,18 +379,17 @@ const BookNowPage = ({ auth }) => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2, duration: 0.7 }}
-                            className="text-xl text-gray-300 mb-4 max-w-xl mx-auto"
+                            className="text-lg md:text-xl text-gray-300 mb-4 max-w-xl mx-auto"
                         >
                             Explore our destinations, packages, and special
                             offers to find your perfect getaway
                         </motion.p>
                         <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.3, duration: 0.7 }}
-                        >
-                            <div className="w-24 h-1 bg-green-500 mx-auto rounded-full"></div>
-                        </motion.div>
+                            initial={{ width: 0 }}
+                            animate={{ width: "6rem" }}
+                            transition={{ delay: 0.4, duration: 0.5 }}
+                            className="h-1 bg-green-500 mx-auto rounded-full"
+                        ></motion.div>
                     </div>
                 </div>
             </div>
@@ -352,7 +400,7 @@ const BookNowPage = ({ auth }) => {
                     whileInView="visible"
                     viewport={{ once: true }}
                     variants={fadeIn}
-                    className="mb-8"
+                    className="mb-12"
                 >
                     {/* Type Selection */}
                     <div className="flex flex-wrap justify-center gap-4 mb-8">
@@ -360,12 +408,11 @@ const BookNowPage = ({ auth }) => {
                             <button
                                 key={type.id}
                                 onClick={() => toggleType(type.id)}
-                                className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 
-                                    ${
-                                        selectedTypes.includes(type.id)
-                                            ? "bg-green-600 text-white shadow-lg shadow-green-900/30"
-                                            : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                                    }`}
+                                className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
+                                    selectedTypes.includes(type.id)
+                                        ? "bg-green-600 text-white shadow-lg shadow-green-900/30"
+                                        : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                }`}
                             >
                                 {type.icon}
                                 <span>{type.label}</span>
@@ -429,7 +476,8 @@ const BookNowPage = ({ auth }) => {
                             >
                                 <div className="p-6 bg-gray-800 bg-opacity-70 rounded-lg mb-6 border border-gray-700">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
+                                        {/* Categories */}
+                                        <div className="w-full">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Tags className="w-4 h-4 text-green-400" />
                                                 <h3 className="text-lg font-semibold">
@@ -445,7 +493,7 @@ const BookNowPage = ({ auth }) => {
                                                                 category
                                                             )
                                                         }
-                                                        className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 ${
+                                                        className={`px-2.5 py-1 rounded-full text-sm font-medium transition-all duration-300 whitespace-nowrap ${
                                                             selectedCategories.includes(
                                                                 category
                                                             )
@@ -459,15 +507,16 @@ const BookNowPage = ({ auth }) => {
                                             </div>
                                         </div>
 
-                                        <div>
+                                        {/* Price Range */}
+                                        <div className="w-full">
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Tag className="w-4 h-4 text-green-400" />
                                                 <h3 className="text-lg font-semibold">
                                                     Price Range
                                                 </h3>
                                             </div>
-                                            <div className="px-2">
-                                                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                                            <div className="px-3 bg-gray-900 text-white rounded-lg p-3">
+                                                <div className="flex justify-between text-xs text-gray-400 mb-2">
                                                     <span>
                                                         ${priceRange.min}
                                                     </span>
@@ -475,41 +524,109 @@ const BookNowPage = ({ auth }) => {
                                                         ${priceRange.max}
                                                     </span>
                                                 </div>
-                                                <div className="flex gap-4 items-center">
-                                                    <input
-                                                        type="range"
-                                                        min="0"
-                                                        max="10000"
-                                                        step="100"
-                                                        value={priceRange.min}
-                                                        onChange={(e) =>
-                                                            setPriceRange({
-                                                                ...priceRange,
-                                                                min: parseInt(
-                                                                    e.target
-                                                                        .value
-                                                                ),
-                                                            })
-                                                        }
-                                                        className="w-full accent-green-500"
-                                                    />
-                                                    <input
-                                                        type="range"
-                                                        min="0"
-                                                        max="10000"
-                                                        step="100"
-                                                        value={priceRange.max}
-                                                        onChange={(e) =>
-                                                            setPriceRange({
-                                                                ...priceRange,
-                                                                max: parseInt(
-                                                                    e.target
-                                                                        .value
-                                                                ),
-                                                            })
-                                                        }
-                                                        className="w-full accent-green-500"
-                                                    />
+
+                                                <div className="flex flex-col gap-4">
+                                                    {/* Min */}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm text-gray-300">
+                                                            Min:
+                                                        </span>
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="10000"
+                                                            value={
+                                                                priceRange.min
+                                                            }
+                                                            onChange={(e) =>
+                                                                setPriceRange({
+                                                                    ...priceRange,
+                                                                    min: Math.min(
+                                                                        parseInt(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        ),
+                                                                        priceRange.max
+                                                                    ),
+                                                                })
+                                                            }
+                                                            className="w-full accent-green-500"
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="10000"
+                                                            value={
+                                                                priceRange.min
+                                                            }
+                                                            onChange={(e) =>
+                                                                setPriceRange({
+                                                                    ...priceRange,
+                                                                    min: Math.min(
+                                                                        parseInt(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        ),
+                                                                        priceRange.max
+                                                                    ),
+                                                                })
+                                                            }
+                                                            className="w-24 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                        />
+                                                    </div>
+
+                                                    {/* Max */}
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm text-gray-300">
+                                                            Max:
+                                                        </span>
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="10000"
+                                                            value={
+                                                                priceRange.max
+                                                            }
+                                                            onChange={(e) =>
+                                                                setPriceRange({
+                                                                    ...priceRange,
+                                                                    max: Math.max(
+                                                                        parseInt(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        ),
+                                                                        priceRange.min
+                                                                    ),
+                                                                })
+                                                            }
+                                                            className="w-full accent-green-500"
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="10000"
+                                                            value={
+                                                                priceRange.max
+                                                            }
+                                                            onChange={(e) =>
+                                                                setPriceRange({
+                                                                    ...priceRange,
+                                                                    max: Math.max(
+                                                                        parseInt(
+                                                                            e
+                                                                                .target
+                                                                                .value
+                                                                        ),
+                                                                        priceRange.min
+                                                                    ),
+                                                                })
+                                                            }
+                                                            className="w-24 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -554,7 +671,7 @@ const BookNowPage = ({ auth }) => {
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16"
                 >
                     <AnimatePresence mode="popLayout">
                         {paginatedData.length === 0 ? (
@@ -598,7 +715,7 @@ const BookNowPage = ({ auth }) => {
                                         y: -8,
                                         transition: { duration: 0.3 },
                                     }}
-                                    className="bg-gray-800 bg-opacity-80 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group"
+                                    className="bg-gray-800 bg-opacity-80 rounded-xl overflow-hidden shadow-xl border border-gray-700 flex flex-col group backdrop-blur-sm"
                                 >
                                     <div className="relative overflow-hidden">
                                         <img
@@ -606,9 +723,13 @@ const BookNowPage = ({ auth }) => {
                                                 item.image ||
                                                 "https://via.placeholder.com/640x480?text=No+Image"
                                             }
-                                            alt={item.name || item.title}
-                                            className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
+                                            alt={item.title}
+                                            className="w-full h-48 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
+                                            onError={(e) => {
+                                                e.target.src =
+                                                    "https://via.placeholder.com/640x480?text=No+Image";
+                                            }}
                                         />
                                         <div className="absolute top-3 left-3 flex gap-2">
                                             <span
@@ -618,49 +739,64 @@ const BookNowPage = ({ auth }) => {
                                             >
                                                 {getTypeLabel(item.type)}
                                             </span>
-                                            {item.tag && (
+                                            {item.category && (
                                                 <span className="px-2 py-1 bg-gray-700 bg-opacity-80 rounded-full text-xs font-medium text-white">
-                                                    {item.tag}
+                                                    {item.category}
                                                 </span>
                                             )}
                                         </div>
-                                        {calculateDiscount(
-                                            item.price,
-                                            item.discount_price
-                                        ) && (
-                                            <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                                                {calculateDiscount(
-                                                    item.price,
-                                                    item.discount_price
-                                                )}
-                                                % OFF
-                                            </div>
-                                        )}
+                                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+                                            {calculateDiscount(
+                                                item.price,
+                                                item.discount_price
+                                            ) > 0 && (
+                                                <div className="bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                                    {calculateDiscount(
+                                                        item.price,
+                                                        item.discount_price
+                                                    )}
+                                                    % OFF
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() =>
+                                                    toggleFavorite(item)
+                                                }
+                                                className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-sm"
+                                                aria-label={
+                                                    favorites[
+                                                        `${item.type}-${item.id}`
+                                                    ]
+                                                        ? "Remove from favorites"
+                                                        : "Add to favorites"
+                                                }
+                                            >
+                                                <Heart
+                                                    size={18}
+                                                    className={
+                                                        favorites[
+                                                            `${item.type}-${item.id}`
+                                                        ]
+                                                            ? "text-green-400 fill-green-400"
+                                                            : "text-gray-300"
+                                                    }
+                                                />
+                                            </button>
+                                        </div>
                                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
-                                        <button
-                                            className="absolute top-3 right-3 bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300 transform translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0"
-                                            aria-label="Add to favorites"
-                                        >
-                                            <Heart
-                                                size={18}
-                                                className="text-white"
-                                            />
-                                        </button>
                                     </div>
                                     <div className="p-5 flex flex-col flex-grow">
                                         <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-xl font-bold text-white line-clamp-1">
-                                                {item.name ||
-                                                    item.title ||
-                                                    "Unknown"}
+                                            <h3 className="text-lg font-bold text-white line-clamp-1">
+                                                {item.title || "Unknown"}
                                             </h3>
                                         </div>
                                         <div className="flex items-center gap-2 mb-2">
                                             {getTypeIcon(item.type)}
                                             <span className="text-gray-300 text-sm">
                                                 {item.type === "package" &&
-                                                item.destination_name
-                                                    ? item.destination_name
+                                                item.destination_title
+                                                    ? item.destination_title
                                                     : item.location ||
                                                       "Unknown Location"}
                                             </span>
@@ -718,15 +854,13 @@ const BookNowPage = ({ auth }) => {
                                                             className="text-gray-400"
                                                         />
                                                         <span>
-                                                            {item.start_date?.slice(
-                                                                0,
-                                                                10
-                                                            ) || "N/A"}{" "}
+                                                            {formatDate(
+                                                                item.start_date
+                                                            )}{" "}
                                                             -{" "}
-                                                            {item.end_date?.slice(
-                                                                0,
-                                                                10
-                                                            ) || "N/A"}
+                                                            {formatDate(
+                                                                item.end_date
+                                                            )}
                                                         </span>
                                                     </div>
                                                 )}
@@ -758,18 +892,27 @@ const BookNowPage = ({ auth }) => {
                                                             <>
                                                                 <span className="text-lg font-bold text-green-400">
                                                                     $
-                                                                    {
+                                                                    {parseFloat(
                                                                         item.discount_price
-                                                                    }
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}
                                                                 </span>
                                                                 <span className="text-sm line-through text-gray-500">
                                                                     $
-                                                                    {item.price}
+                                                                    {parseFloat(
+                                                                        item.price
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}
                                                                 </span>
                                                             </>
                                                         ) : (
                                                             <span className="text-lg font-bold text-green-400">
-                                                                ${item.price}
+                                                                $
+                                                                {parseFloat(
+                                                                    item.price
+                                                                ).toFixed(2)}
                                                             </span>
                                                         )}
                                                         {item.type ===
@@ -783,7 +926,7 @@ const BookNowPage = ({ auth }) => {
                                             </div>
                                             <Link
                                                 href={getItemDetailUrl(item)}
-                                                className="w-full inline-block text-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-all duration-300 transform group-hover:shadow-lg"
+                                                className="w-full inline-block text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-all duration-300 transform group-hover:shadow-lg"
                                             >
                                                 View Details
                                             </Link>
