@@ -61,35 +61,37 @@ Route::get('/', function () {
 })->name('welcome');
 
 // ===================================================
-//! Public Routes (Protected)
+//! Protected Routes - Home page accessible to both users and companies
 // ===================================================
 
-Route::middleware(['auth', 'verified'])->group(function () {
-
+Route::middleware(['auth:web,company', 'verified'])->group(function () {
+    // Home page accessible to both regular users and companies
     Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-    //? Frontend Routes
-    Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
+    // Public routes that both user types can access
     Route::get('/destinations', [DestinationController::class, 'allDestinations'])->name('destinations.index');
     Route::get('/destinations/{id}', [DestinationController::class, 'show'])->name('destinations.show');
     Route::get('/packages', [PackagesController::class, 'indexPublic'])->name('packages.index');
     Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
     Route::get('/offers', [OfferController::class, 'index'])->name('offers');
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
+});
+
+// ===================================================
+//! Protected Routes - User Only
+// ===================================================
+
+Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
+    // Routes only for regular users
+    Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
     Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
     Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
     Route::get('/book', [BookingController::class, 'create'])->name('book.create');
     Route::post('/book', [BookingController::class, 'store'])->name('book.store');
-});
-
-// ===================================================
-//! Protected Routes (User Authenticated)
-// ===================================================
-
-Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
     Route::get('/search', [SearchController::class, 'index'])->name('search');
     Route::get('/search/live', [SearchController::class, 'live'])->name('search.live');
+
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('edit');
         Route::patch('/', [ProfileController::class, 'update'])->name('update');
@@ -100,10 +102,10 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 });
 
 // ===================================================
-//! ChatBot API (Authenticated)
+//! ChatBot API (Authenticated Users Only)
 // ===================================================
 
-Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function () {
+Route::middleware(['auth:web'])->prefix('chatbot')->name('chatbot.')->group(function () {
     Route::post('/message', [ChatBotController::class, 'processMessage'])->name('message');
     Route::get('/history', [ChatBotController::class, 'getHistory'])->name('history');
 });
@@ -188,10 +190,10 @@ Route::post('/company/login', [CompanyController::class, 'login'])->name('compan
 Route::post('/company/logout', [CompanyController::class, 'logout'])->name('company.logout');
 
 // ===================================================
-//! API Routes
+//! API Routes (Users Only)
 // ===================================================
 
-Route::middleware(['auth', 'web'])->prefix('api')->name('api.')->group(function () {
+Route::middleware(['auth:web', 'web'])->prefix('api')->name('api.')->group(function () {
     Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
