@@ -226,8 +226,14 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
             return null; // Don't render if auth is null or no user/company is authenticated
         }
 
-        const displayAvatar = auth.user?.avatar_url
-            ? auth.user.avatar_url
+        // Check if auth.user contains company-specific fields
+        const isCompanyUser =
+            auth.user && (auth.user.company_name || auth.user.license_number);
+        const effectiveUser = isCompanyUser ? null : auth.user;
+        const effectiveCompany = isCompanyUser ? auth.user : auth.company;
+
+        const displayAvatar = effectiveUser?.avatar_url
+            ? effectiveUser.avatar_url
             : "/images/avatar.webp";
 
         return (
@@ -236,7 +242,7 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                     onClick={toggleDropdown}
                     className="flex items-center justify-center w-10 h-10 rounded-full bg-green-600/20 focus:outline-none border-2 border-green-500 hover:bg-green-600/30 transition-colors"
                 >
-                    {auth.user && auth.user.avatar_url ? (
+                    {effectiveUser && effectiveUser.avatar_url ? (
                         <img
                             src={displayAvatar}
                             alt="User Avatar"
@@ -244,7 +250,7 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                         />
                     ) : (
                         <div className="w-full h-full rounded-full flex items-center justify-center">
-                            {auth.company ? (
+                            {effectiveCompany ? (
                                 <Building2 className="w-6 h-6 text-white" />
                             ) : (
                                 <User className="w-6 h-6 text-white" />
@@ -262,7 +268,7 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
                             transition={{ duration: 0.2 }}
                             className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg bg-black/80 backdrop-blur-lg text-white border border-green-500/30 overflow-hidden z-60"
                         >
-                            {(auth.user
+                            {(effectiveUser
                                 ? userDropdownItems
                                 : companyDropdownItems
                             ).map((item) => (
@@ -288,7 +294,6 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
             </div>
         );
     };
-
     // Add custom CSS for scrollbar and separator
     useEffect(() => {
         const style = document.createElement("style");

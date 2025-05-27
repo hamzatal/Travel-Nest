@@ -6,7 +6,7 @@ import {
     Trash2,
     Plus,
     Edit2,
-    Image,
+    Image as ImageIcon, // Renamed to avoid conflict with Image component
     X,
     ToggleLeft,
     ToggleRight,
@@ -17,38 +17,40 @@ import {
     User,
     Building2,
     MapPin,
-    BookAIcon,
     BookOpenCheck,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 
+// Placeholder image URL - ensure this path is correct relative to your public directory
+const defaultImage = "/images/placeholder.jpg";
+
 // Custom Scrollbar Styles
 const styles = `
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #1f2937;
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #4b5563;
-    border-radius: 4px;
-    transition: background 0.2s;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #2563eb;
-  }
-  ::-webkit-scrollbar-corner {
-    background: #1f2937;
-  }
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: #4b5563 #1f2937;
-  }
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #1f2937;
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #2563eb;
+    }
+    ::-webkit-scrollbar-corner {
+        background: #1f2937;
+    }
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: #4b5563 #1f2937;
+    }
 `;
 
 // Inject styles with cleanup
@@ -65,7 +67,11 @@ const injectStyles = () => {
 const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
-        return new Date(dateString).toLocaleDateString("en-US", {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return "N/A";
+        }
+        return date.toLocaleDateString("en-US", {
             year: "numeric",
             month: "short",
             day: "numeric",
@@ -75,11 +81,13 @@ const formatDate = (dateString) => {
     }
 };
 
-// Format ISO date to yyyy-MM-dd
+// Format ISO date to YYYY-MM-dd
 const formatISOToDateInput = (isoString) => {
     if (!isoString) return "";
     try {
-        return isoString.split("T")[0];
+        // Handle both 'YYYY-MM-DD HH:MM:SS' and 'YYYY-MM-DDTHH:MM:SS.sssZ' formats
+        const datePart = isoString.split("T")[0].split(" ")[0];
+        return datePart;
     } catch {
         return "";
     }
@@ -87,8 +95,20 @@ const formatISOToDateInput = (isoString) => {
 
 // Calculate discount percentage
 const calculateDiscount = (original, discounted) => {
-    if (!discounted || !original) return null;
-    const percentage = Math.round(((original - discounted) / original) * 100);
+    const originalPrice = parseFloat(original);
+    const discountedPrice = parseFloat(discounted);
+
+    if (
+        isNaN(originalPrice) ||
+        isNaN(discountedPrice) ||
+        originalPrice <= 0 ||
+        discountedPrice >= originalPrice
+    ) {
+        return null;
+    }
+    const percentage = Math.round(
+        ((originalPrice - discountedPrice) / originalPrice) * 100
+    );
     return percentage;
 };
 
@@ -115,10 +135,10 @@ const renderStars = (rating) => {
 export default function Dashboard() {
     const { props } = usePage();
     const {
-        destinations = [],
-        offers = [],
-        packages = [],
-        bookings = [],
+        destinations = { data: [] },
+        offers = { data: [] },
+        packages = { data: [] },
+        bookings = { data: [] },
         flash = {},
         auth = { user: null },
     } = props;
@@ -127,13 +147,12 @@ export default function Dashboard() {
     // State management
     const [activeTab, setActiveTab] = useState("bookings");
     const [searchQuery, setSearchQuery] = useState("");
-    const [showAddModal, setShowAddModal] = useState(null);
-    const [showEditModal, setShowEditModal] = useState(null);
-    const [showDeleteModal, setShowDeleteModal] = useState(null);
+    const [showAddModal, setShowAddModal] = useState(null); // 'destination', 'offer', 'package'
+    const [showEditModal, setShowEditModal] = useState(null); // 'destination', 'offer', 'package'
+    const [showDeleteModal, setShowDeleteModal] = useState(false); // true/false
     const [selectedItem, setSelectedItem] = useState(null);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
-    const [validationErrors, setValidationErrors] = useState({});
     const [charCount, setCharCount] = useState(0);
     const [isDarkMode, setIsDarkMode] = useState(true);
 
@@ -146,26 +165,32 @@ export default function Dashboard() {
         patch,
         processing,
         reset,
-        errors,
+        errors, // Inertia.js errors
     } = useForm({
-        title: "",
-        subtitle: "",
+        // Common fields
         description: "",
         price: "",
         discount_price: "",
+        image: null,
+        is_featured: false,
+        is_active: true,
+
+        // Destination specific fields
+        name: "", // maps to 'title' in DB for destinations
+        location: "",
+        tag: "", // maps to 'category' in DB for destinations
+
+        // Offer/Package specific fields
+        title: "",
+        subtitle: "", // for packages
         discount_type: "percentage",
         start_date: "",
         end_date: "",
-        image: null,
-        location: "",
         rating: "",
-        is_featured: false,
-        is_active: true,
-        name: "",
-        tag: "",
+        destination_id: "", // for offers and packages
     });
 
-    // Inject styles
+    // Inject custom scrollbar styles
     useEffect(() => {
         const cleanup = injectStyles();
         return cleanup;
@@ -180,6 +205,39 @@ export default function Dashboard() {
             toast.error(flash.error);
         }
     }, [flash]);
+
+    // Update charCount when description changes
+    useEffect(() => {
+        setCharCount(data.description ? data.description.length : 0);
+    }, [data.description]);
+
+    // Update form errors whenever Inertia.js errors object changes
+    // This allows backend validation errors to be displayed
+    useEffect(() => {
+        if (Object.keys(errors).length > 0) {
+            // Toast error only if there are actual validation errors that haven't been shown
+            const validationKeys = [
+                "name",
+                "title",
+                "description",
+                "price",
+                "discount_price",
+                "start_date",
+                "end_date",
+                "image",
+                "location",
+                "rating",
+                "tag",
+                "destination_id",
+            ];
+            const hasValidationErrors = validationKeys.some(
+                (key) => errors[key]
+            );
+            if (hasValidationErrors) {
+                toast.error("Please fix the form errors.");
+            }
+        }
+    }, [errors]);
 
     // Animation variants
     const fadeIn = {
@@ -203,97 +261,11 @@ export default function Dashboard() {
         exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
     };
 
-    // Validation
-    const validateForm = (type, isAdd = false) => {
-        const errors = {};
-        if (["destination", "offer", "package"].includes(type)) {
-            if (!data.title && type !== "destination") {
-                errors.title = "Title is required";
-            }
-            if (!data.name && type === "destination") {
-                errors.name = "Name is required";
-            }
-            if (!data.description) {
-                errors.description = "Description is required";
-            }
-            if (!data.price) {
-                errors.price = "Price is required";
-            }
-            if (
-                data.price &&
-                (isNaN(parseFloat(data.price)) || parseFloat(data.price) <= 0)
-            ) {
-                errors.price = "Price must be a positive number";
-            }
-            if (data.discount_price) {
-                if (
-                    isNaN(parseFloat(data.discount_price)) ||
-                    parseFloat(data.discount_price) <= 0 ||
-                    parseFloat(data.discount_price) >= parseFloat(data.price)
-                ) {
-                    errors.discount_price =
-                        "Discount price must be less than regular price";
-                }
-            }
-            if (type !== "destination") {
-                if (isAdd && !data.start_date) {
-                    errors.start_date = "Start date is required";
-                }
-                if (isAdd && !data.end_date) {
-                    errors.end_date = "End date is required";
-                }
-                if (
-                    data.start_date &&
-                    data.end_date &&
-                    new Date(data.end_date) < new Date(data.start_date)
-                ) {
-                    errors.end_date =
-                        "End date must be after or equal to start date";
-                }
-            }
-            if (type === "destination" && !data.location) {
-                errors.location = "Location is required";
-            }
-            if (isAdd && type !== "offer" && !data.image) {
-                errors.image = "Image is required";
-            }
-            if (data.image) {
-                const validTypes = [
-                    "image/jpeg",
-                    "image/png",
-                    "image/jpg",
-                    "image/gif",
-                ];
-                if (
-                    typeof data.image === "object" &&
-                    !validTypes.includes(data.image.type)
-                ) {
-                    errors.image = "Image must be JPEG, PNG, JPG, or GIF";
-                }
-                if (
-                    typeof data.image === "object" &&
-                    data.image.size > 2 * 1024 * 1024
-                ) {
-                    errors.image = "Image size must be less than 2MB";
-                }
-            }
-            if (data.rating) {
-                const rating = parseFloat(data.rating);
-                if (isNaN(rating) || rating < 0 || rating > 5) {
-                    errors.rating = "Rating must be between 0 and 5";
-                }
-            }
-        }
-        setValidationErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
-
     // Handle image change
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         setData("image", file);
         setImagePreview(file ? URL.createObjectURL(file) : null);
-        setValidationErrors((prev) => ({ ...prev, image: null }));
     };
 
     // Remove image
@@ -305,10 +277,25 @@ export default function Dashboard() {
     // Handle add
     const handleAdd = (e, type) => {
         e.preventDefault();
-        if (!validateForm(type, true)) {
-            toast.error("Please fix the form errors.");
+
+        // Client-side validation
+        if (type === "destination" && !data.name) {
+            toast.error("Destination name is required");
             return;
         }
+        if (type !== "destination" && !data.title) {
+            toast.error("Title is required");
+            return;
+        }
+        if (!data.description) {
+            toast.error("Description is required");
+            return;
+        }
+        if (!data.price || data.price <= 0) {
+            toast.error("Valid price is required");
+            return;
+        }
+
         const routeName = `company.${type}s.store`;
         post(route(routeName), {
             preserveScroll: true,
@@ -317,17 +304,16 @@ export default function Dashboard() {
                 setShowAddModal(null);
                 reset();
                 setImagePreview(null);
-                setCharCount(0);
-                setValidationErrors({});
                 toast.success(
                     `${
                         type.charAt(0).toUpperCase() + type.slice(1)
                     } created successfully!`
                 );
             },
-            onError: (errors) => {
-                setValidationErrors(errors);
-                toast.error("Failed to create. Please check the form.");
+            onError: (inertiaErrors) => {
+                toast.error(
+                    "Failed to create. Please check the form for errors."
+                );
             },
         });
     };
@@ -335,41 +321,54 @@ export default function Dashboard() {
     // Handle edit
     const handleEdit = (e, type) => {
         e.preventDefault();
-        if (!validateForm(type)) {
-            toast.error("Please fix the form errors.");
-            return;
-        }
+        if (!selectedItem) return;
+
+        // Filter out empty or unchanged fields
+        const updatedData = {};
+        Object.keys(data).forEach((key) => {
+            if (
+                data[key] !== "" &&
+                data[key] !== null &&
+                data[key] !== undefined
+            ) {
+                updatedData[key] = data[key];
+            }
+        });
+
         const routeName = `company.${type}s.update`;
         put(route(routeName, selectedItem.id), {
+            data: updatedData, // Send only updated fields
             preserveScroll: true,
-            forceFormData: true,
+            forceFormData: true, // Important for file uploads
             onSuccess: () => {
                 setShowEditModal(null);
+                setSelectedItem(null);
                 reset();
                 setImagePreview(null);
-                setCharCount(0);
-                setValidationErrors({});
                 toast.success(
                     `${
                         type.charAt(0).toUpperCase() + type.slice(1)
                     } updated successfully!`
                 );
             },
-            onError: (errors) => {
-                setValidationErrors(errors);
-                toast.error("Failed to update. Please check the form.");
+            onError: (inertiaErrors) => {
+                toast.error(
+                    "Failed to update. Please check the form for errors."
+                );
             },
         });
     };
 
     // Handle delete
     const handleDelete = () => {
+        if (!itemToDelete) return;
+
         const type = itemToDelete.type;
         const routeName = `company.${type}s.destroy`;
         deleteForm(route(routeName, itemToDelete.id), {
             preserveScroll: true,
             onSuccess: () => {
-                setShowDeleteModal(null);
+                setShowDeleteModal(false);
                 setItemToDelete(null);
                 toast.success(
                     `${
@@ -386,8 +385,9 @@ export default function Dashboard() {
     // Handle toggle featured/active
     const handleToggle = (item, type, field) => {
         const routeName = `company.${type}s.${
-            field === "is_featured" ? "toggle-featured" : "toggle"
+            field === "is_featured" ? "toggle-featured" : "toggle-active"
         }`;
+        // Use patch for partial updates (toggling a single field)
         patch(route(routeName, item.id), {
             preserveScroll: true,
             onSuccess: () => {
@@ -405,36 +405,44 @@ export default function Dashboard() {
 
     // Open add modal
     const openAddModal = (type) => {
-        reset();
-        setImagePreview(null);
-        setCharCount(0);
-        setValidationErrors({});
+        reset(); // Clear form data
+        setImagePreview(null); // Clear image preview
         setShowAddModal(type);
     };
 
     // Open edit modal
     const openEditModal = (item, type) => {
         setSelectedItem(item);
-        setData({
-            title: item.title || "",
-            subtitle: item.subtitle || "",
+        // Map backend data to frontend form data structure
+        const commonData = {
             description: item.description || "",
             price: item.price || "",
             discount_price: item.discount_price || "",
-            discount_type: item.discount_type || "percentage",
-            start_date: formatISOToDateInput(item.start_date) || "",
-            end_date: formatISOToDateInput(item.end_date) || "",
-            image: null,
-            location: item.location || "",
-            rating: item.rating || "",
+            image: null, // Image input needs to be null for security, user re-uploads
             is_featured: item.is_featured || false,
-            is_active: item.is_active || true,
-            name: item.name || "",
-            tag: item.tag || "",
-        });
-        setImagePreview(item.image ? `/storage/${item.image}` : null);
-        setCharCount(item.description ? item.description.length : 0);
-        setValidationErrors({});
+            is_active: item.is_active !== undefined ? item.is_active : true, // Ensure boolean for offers/packages
+            rating: item.rating || "",
+        };
+
+        let specificData = {};
+        if (type === "destination") {
+            specificData = {
+                name: item.name || "", // DB 'title' is 'name' in frontend
+                location: item.location || "",
+                tag: item.category || "", // DB 'category' is 'tag' in frontend
+            };
+        } else if (type === "offer" || type === "package") {
+            specificData = {
+                title: item.title || "",
+                subtitle: item.subtitle || "", // Only for package
+                discount_type: item.discount_type || "percentage",
+                start_date: formatISOToDateInput(item.start_date) || "",
+                end_date: formatISOToDateInput(item.end_date) || "",
+                destination_id: item.destination_id || "",
+            };
+        }
+        setData({ ...commonData, ...specificData });
+        setImagePreview(item.image ? item.image : null); // Show current image if exists
         setShowEditModal(type);
     };
 
@@ -445,47 +453,54 @@ export default function Dashboard() {
     };
 
     // Filter items
-    const filteredDestinations = destinations.filter(
-        (item) =>
-            (item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                item.location
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase())) &&
-            item.is_active !== false
-    );
-    const filteredOffers = offers.filter(
-        (item) =>
-            item.title?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            item.is_active !== false
-    );
-    const filteredPackages = packages.filter(
-        (item) =>
-            item.title?.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            item.is_active !== false
-    );
-    const filteredBookings = bookings.filter(
-        (item) =>
-            (item.user?.name
-                ?.toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-                item.user?.email
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                item.destination?.name
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                item.package?.title
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                item.offer?.title
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase())) &&
-            item.is_active !== false
-    );
+    const filterItems = (items, type) => {
+        return items.filter((item) => {
+            const query = searchQuery.toLowerCase();
+            if (type === "destination") {
+                return (
+                    item.name?.toLowerCase().includes(query) ||
+                    item.location?.toLowerCase().includes(query) ||
+                    item.description?.toLowerCase().includes(query) ||
+                    item.category?.toLowerCase().includes(query)
+                );
+            } else if (type === "offer" || type === "package") {
+                return (
+                    item.title?.toLowerCase().includes(query) ||
+                    item.subtitle?.toLowerCase().includes(query) || // for packages
+                    item.description?.toLowerCase().includes(query) ||
+                    item.location?.toLowerCase().includes(query) ||
+                    item.category?.toLowerCase().includes(query)
+                );
+            } else if (type === "booking") {
+                return (
+                    item.user?.name?.toLowerCase().includes(query) ||
+                    item.user?.email?.toLowerCase().includes(query) ||
+                    item.destination?.name?.toLowerCase().includes(query) ||
+                    item.package?.title?.toLowerCase().includes(query) ||
+                    item.offer?.title?.toLowerCase().includes(query)
+                );
+            }
+            return false;
+        });
+    };
+
+    const filteredDestinations = filterItems(destinations.data, "destination");
+    const filteredOffers = filterItems(offers.data, "offer");
+    const filteredPackages = filterItems(packages.data, "package");
+    const filteredBookings = filterItems(bookings.data, "booking");
 
     // Render form fields
-    const renderFormFields = (type, isAdd = false) => {
+    const renderFormFields = (type) => {
         const isDestination = type === "destination";
+        const isOffer = type === "offer";
+        const isPackage = type === "package";
+
+        // Get available destinations for offers/packages dropdown
+        const availableDestinations = destinations.data.map((d) => ({
+            id: d.id,
+            name: d.name, // Use the 'name' property as returned by the controller for display
+        }));
+
         return (
             <div className="space-y-6">
                 {isDestination ? (
@@ -502,65 +517,104 @@ export default function Dashboard() {
                                     setData("name", e.target.value)
                                 }
                                 className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    validationErrors.name
-                                        ? "border-red-500"
-                                        : ""
+                                    errors.name ? "border-red-500" : ""
                                 }`}
                                 placeholder="Enter destination name"
                             />
                         </div>
-                        {validationErrors.name && (
+                        {errors.name && (
                             <p className="text-red-500 text-sm mt-1">
-                                {validationErrors.name}
+                                {errors.name}
                             </p>
                         )}
                     </div>
                 ) : (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Title
-                        </label>
-                        <div className="relative">
-                            <Tag className="absolute left-3 top-3 text-gray-400" />
-                            <input
-                                type="text"
-                                value={data.title}
-                                onChange={(e) =>
-                                    setData("title", e.target.value)
-                                }
-                                className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    validationErrors.title
-                                        ? "border-red-500"
-                                        : ""
-                                }`}
-                                placeholder="Enter title"
-                            />
+                    <>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Title
+                            </label>
+                            <div className="relative">
+                                <Tag className="absolute left-3 top-3 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={data.title}
+                                    onChange={(e) =>
+                                        setData("title", e.target.value)
+                                    }
+                                    className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                                        errors.title ? "border-red-500" : ""
+                                    }`}
+                                    placeholder="Enter title"
+                                />
+                            </div>
+                            {errors.title && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.title}
+                                </p>
+                            )}
                         </div>
-                        {validationErrors.title && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {validationErrors.title}
-                            </p>
+                        {isPackage && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    Subtitle
+                                </label>
+                                <div className="relative">
+                                    <Tag className="absolute left-3 top-3 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        value={data.subtitle}
+                                        onChange={(e) =>
+                                            setData("subtitle", e.target.value)
+                                        }
+                                        className="pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        placeholder="Enter subtitle"
+                                    />
+                                </div>
+                            </div>
                         )}
-                    </div>
-                )}
-                {type === "package" && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Subtitle
-                        </label>
-                        <div className="relative">
-                            <Tag className="absolute left-3 top-3 text-gray-400" />
-                            <input
-                                type="text"
-                                value={data.subtitle}
-                                onChange={(e) =>
-                                    setData("subtitle", e.target.value)
-                                }
-                                className="pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                placeholder="Enter subtitle"
-                            />
-                        </div>
-                    </div>
+                        {(isOffer || isPackage) && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    Associated Destination
+                                </label>
+                                <div className="relative">
+                                    <MapPin className="absolute left-3 top-3 text-gray-400" />
+                                    <select
+                                        value={data.destination_id}
+                                        onChange={(e) =>
+                                            setData(
+                                                "destination_id",
+                                                e.target.value
+                                            )
+                                        }
+                                        className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                                            errors.destination_id
+                                                ? "border-red-500"
+                                                : ""
+                                        }`}
+                                    >
+                                        <option value="">
+                                            Select a destination
+                                        </option>
+                                        {availableDestinations.map((dest) => (
+                                            <option
+                                                key={dest.id}
+                                                value={dest.id}
+                                            >
+                                                {dest.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {errors.destination_id && (
+                                    <p className="text-red-500 text-sm mt-1">
+                                        {errors.destination_id}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </>
                 )}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -568,22 +622,17 @@ export default function Dashboard() {
                     </label>
                     <textarea
                         value={data.description}
-                        onChange={(e) => {
-                            setData("description", e.target.value);
-                            setCharCount(e.target.value.length);
-                        }}
+                        onChange={(e) => setData("description", e.target.value)}
                         className={`w-full py-3 px-4 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-y min-h-[100px] ${
-                            validationErrors.description ? "border-red-500" : ""
+                            errors.description ? "border-red-500" : ""
                         }`}
                         placeholder="Enter description"
-                        maxLength={500}
+                        maxLength={5000}
                     />
                     <div className="flex justify-between text-sm text-gray-400 mt-1">
-                        <span>{charCount}/500</span>
-                        {validationErrors.description && (
-                            <p className="text-red-500">
-                                {validationErrors.description}
-                            </p>
+                        <span>{charCount}/5000</span>
+                        {errors.description && (
+                            <p className="text-red-500">{errors.description}</p>
                         )}
                     </div>
                 </div>
@@ -601,18 +650,16 @@ export default function Dashboard() {
                                     setData("price", e.target.value)
                                 }
                                 className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    validationErrors.price
-                                        ? "border-red-500"
-                                        : ""
+                                    errors.price ? "border-red-500" : ""
                                 }`}
                                 placeholder="Enter price"
                                 step="0.01"
-                                min="0"
+                                min="0.01"
                             />
                         </div>
-                        {validationErrors.price && (
+                        {errors.price && (
                             <p className="text-red-500 text-sm mt-1">
-                                {validationErrors.price}
+                                {errors.price}
                             </p>
                         )}
                     </div>
@@ -629,7 +676,7 @@ export default function Dashboard() {
                                     setData("discount_price", e.target.value)
                                 }
                                 className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    validationErrors.discount_price
+                                    errors.discount_price
                                         ? "border-red-500"
                                         : ""
                                 }`}
@@ -638,9 +685,9 @@ export default function Dashboard() {
                                 min="0"
                             />
                         </div>
-                        {validationErrors.discount_price && (
+                        {errors.discount_price && (
                             <p className="text-red-500 text-sm mt-1">
-                                {validationErrors.discount_price}
+                                {errors.discount_price}
                             </p>
                         )}
                     </div>
@@ -664,15 +711,15 @@ export default function Dashboard() {
                                             )
                                         }
                                         className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                            validationErrors.start_date
+                                            errors.start_date
                                                 ? "border-red-500"
                                                 : ""
                                         }`}
                                     />
                                 </div>
-                                {validationErrors.start_date && (
+                                {errors.start_date && (
                                     <p className="text-red-500 text-sm mt-1">
-                                        {validationErrors.start_date}
+                                        {errors.start_date}
                                     </p>
                                 )}
                             </div>
@@ -689,15 +736,15 @@ export default function Dashboard() {
                                             setData("end_date", e.target.value)
                                         }
                                         className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                            validationErrors.end_date
+                                            errors.end_date
                                                 ? "border-red-500"
                                                 : ""
                                         }`}
                                     />
                                 </div>
-                                {validationErrors.end_date && (
+                                {errors.end_date && (
                                     <p className="text-red-500 text-sm mt-1">
-                                        {validationErrors.end_date}
+                                        {errors.end_date}
                                     </p>
                                 )}
                             </div>
@@ -722,73 +769,82 @@ export default function Dashboard() {
                 {isDestination && (
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Location
+                            Category (Tag)
                         </label>
                         <div className="relative">
-                            <MapPin className="absolute left-3 top-3 text-gray-400" />
-                            <input
-                                type="text"
-                                value={data.location}
-                                onChange={(e) =>
-                                    setData("location", e.target.value)
-                                }
+                            <Tag className="absolute left-3 top-3 text-gray-400" />
+                            <select
+                                value={data.tag}
+                                onChange={(e) => setData("tag", e.target.value)}
                                 className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    validationErrors.location
-                                        ? "border-red-500"
-                                        : ""
+                                    errors.tag ? "border-red-500" : ""
                                 }`}
-                                placeholder="Enter location"
-                            />
+                            >
+                                <option value="">Select a category</option>
+                                {[
+                                    "Beach",
+                                    "Mountain",
+                                    "City",
+                                    "Cultural",
+                                    "Adventure",
+                                    "Historical",
+                                    "Wildlife",
+                                ].map((category) => (
+                                    <option key={category} value={category}>
+                                        {category}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
-                        {validationErrors.location && (
+                        {errors.tag && (
                             <p className="text-red-500 text-sm mt-1">
-                                {validationErrors.location}
+                                {errors.tag}
                             </p>
                         )}
                     </div>
                 )}
-                <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                        {isDestination ? "Tag" : "Rating"}
-                    </label>
-                    <div className="relative">
-                        {isDestination ? (
-                            <Tag className="absolute left-3 top-3 text-gray-400" />
-                        ) : (
-                            <Star className="absolute left-3 top-3 text-gray-400" />
+                {type !== "offer" && ( // Offers don't have direct rating/tag in card, but rating can be used
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            {isDestination ? "Category (Tag)" : "Rating"}
+                        </label>
+                        <div className="relative">
+                            {isDestination ? (
+                                <Tag className="absolute left-3 top-3 text-gray-400" />
+                            ) : (
+                                <Star className="absolute left-3 top-3 text-gray-400" />
+                            )}
+                            <input
+                                type={isDestination ? "text" : "number"}
+                                value={isDestination ? data.tag : data.rating}
+                                onChange={(e) =>
+                                    setData(
+                                        isDestination ? "tag" : "rating",
+                                        e.target.value
+                                    )
+                                }
+                                className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                                    errors[isDestination ? "tag" : "rating"]
+                                        ? "border-red-500"
+                                        : ""
+                                }`}
+                                placeholder={
+                                    isDestination
+                                        ? "Enter category (e.g., Beach, City)"
+                                        : "Enter rating (0-5)"
+                                }
+                                step={isDestination ? undefined : "0.1"}
+                                min={isDestination ? undefined : "0"}
+                                max={isDestination ? undefined : "5"}
+                            />
+                        </div>
+                        {errors[isDestination ? "tag" : "rating"] && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors[isDestination ? "tag" : "rating"]}
+                            </p>
                         )}
-                        <input
-                            type={isDestination ? "text" : "number"}
-                            value={isDestination ? data.tag : data.rating}
-                            onChange={(e) =>
-                                setData(
-                                    isDestination ? "tag" : "rating",
-                                    e.target.value
-                                )
-                            }
-                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                validationErrors[
-                                    isDestination ? "tag" : "rating"
-                                ]
-                                    ? "border-red-500"
-                                    : ""
-                            }`}
-                            placeholder={
-                                isDestination
-                                    ? "Enter tag"
-                                    : "Enter rating (0-5)"
-                            }
-                            step={isDestination ? undefined : "0.1"}
-                            min={isDestination ? undefined : "0"}
-                            max={isDestination ? undefined : "5"}
-                        />
                     </div>
-                    {validationErrors[isDestination ? "tag" : "rating"] && (
-                        <p className="text-red-500 text-sm mt-1">
-                            {validationErrors[isDestination ? "tag" : "rating"]}
-                        </p>
-                    )}
-                </div>
+                )}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         Image
@@ -817,25 +873,27 @@ export default function Dashboard() {
                             </button>
                         </div>
                     )}
-                    {validationErrors.image && (
+                    {errors.image && (
                         <p className="text-red-500 text-sm mt-1">
-                            {validationErrors.image}
+                            {errors.image}
                         </p>
                     )}
                 </div>
                 <div className="flex items-center space-x-4">
-                    <label className="flex items-center text-sm text-gray-300">
-                        <input
-                            type="checkbox"
-                            checked={data.is_featured}
-                            onChange={(e) =>
-                                setData("is_featured", e.target.checked)
-                            }
-                            className="mr-2 rounded border-gray-600 text-blue-500 focus:ring-blue-500"
-                        />
-                        Featured
-                    </label>
-                    {type !== "destination" && (
+                    {(isDestination || isPackage) && (
+                        <label className="flex items-center text-sm text-gray-300">
+                            <input
+                                type="checkbox"
+                                checked={data.is_featured}
+                                onChange={(e) =>
+                                    setData("is_featured", e.target.checked)
+                                }
+                                className="mr-2 rounded border-gray-600 text-blue-500 focus:ring-blue-500"
+                            />
+                            Featured
+                        </label>
+                    )}
+                    {(isOffer || isPackage) && (
                         <label className="flex items-center text-sm text-gray-300">
                             <input
                                 type="checkbox"
@@ -857,47 +915,100 @@ export default function Dashboard() {
     const renderCards = (items, type) => {
         const isDestination = type === "destination";
         const isOffer = type === "offer";
+        const isPackage = type === "package";
         const isBooking = type === "booking";
-        if (isBooking) {
-            return items.map((item) => {
-                const entity = item.destination || item.offer || item.package;
-                return (
-                    <motion.div
-                        key={`booking-${item.id}`}
-                        variants={cardVariants}
-                        layout
-                        whileHover={{
-                            y: -8,
-                            transition: { duration: 0.3 },
-                        }}
-                        className="rounded-2xl overflow-hidden shadow-lg bg-gray-800 hover:bg-gray-750 border border-gray-700 flex flex-col group transition-all duration-300"
-                    >
-                        <div className="relative overflow-hidden">
-                            <img
-                                src={
-                                    entity?.image
-                                        ? `/storage/${entity.image}`
-                                        : "https://via.placeholder.com/640x480?text=No+Image"
-                                }
-                                alt={entity?.name || entity?.title || "Booking"}
-                                className="w-full h-56 object-cover transform group-hover:scale-110 transition-transform duration-500"
-                                loading="lazy"
-                                onError={(e) => {
-                                    e.target.src =
-                                        "https://via.placeholder.com/640x480?text=No+Image";
-                                }}
-                            />
+
+        if (items.length === 0) {
+            return (
+                <motion.div
+                    variants={fadeIn}
+                    className="col-span-full text-center py-16"
+                >
+                    <div className="max-w-md mx-auto">
+                        <Search className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                        <h3 className="text-2xl font-bold mb-2 text-white">
+                            No {type.charAt(0).toUpperCase() + type.slice(1)}s
+                            Found
+                        </h3>
+                        <p className="text-base mb-6 text-gray-400">
+                            {isBooking
+                                ? "There are no bookings to display."
+                                : `Add new ${type}s to manage your offerings.`}
+                        </p>
+                    </div>
+                </motion.div>
+            );
+        }
+
+        return items.map((item) => {
+            const entity = isBooking
+                ? item.destination || item.offer || item.package
+                : item;
+            const itemTitle = isDestination ? item.name : item.title;
+            const itemDescription = item.description;
+            const itemPrice = parseFloat(item.price);
+            const itemDiscountPrice = parseFloat(item.discount_price);
+            const itemRating = item.rating || 0;
+            const itemImage = entity?.image || defaultImage; // Use entity image for bookings, item image for others
+            const displayTag = isDestination
+                ? item.category
+                : item.discount_type;
+
+            return (
+                <motion.div
+                    key={`${type}-${item.id}`}
+                    variants={cardVariants}
+                    layout
+                    whileHover={{
+                        y: -8,
+                        transition: { duration: 0.3 },
+                    }}
+                    className="rounded-2xl overflow-hidden shadow-lg bg-gray-800 hover:bg-gray-750 border border-gray-700 flex flex-col group transition-all duration-300"
+                >
+                    <div className="relative overflow-hidden">
+                        <img
+                            src={itemImage}
+                            alt={itemTitle || "Image"}
+                            className="w-full h-56 object-cover transform group-hover:scale-110 transition-transform duration-500"
+                            loading="lazy"
+                        />
+                        {isBooking ? (
                             <span className="absolute top-3 right-3 px-3 py-1 bg-green-600 rounded-full text-xs font-medium text-white">
                                 {item.status}
                             </span>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
+                        ) : (
+                            <>
+                                {displayTag && (
+                                    <span className="absolute top-3 left-3 px-3 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
+                                        {displayTag}
+                                    </span>
+                                )}
+                                {calculateDiscount(
+                                    itemPrice,
+                                    itemDiscountPrice
+                                ) !== null && (
+                                    <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                        {calculateDiscount(
+                                            itemPrice,
+                                            itemDiscountPrice
+                                        )}
+                                        % OFF
+                                    </div>
+                                )}
+                            </>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
+                    </div>
+                    <div className="p-6 flex flex-col flex-grow">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-lg font-bold line-clamp-1 text-white">
+                                {itemTitle ||
+                                    (isBooking &&
+                                        (entity?.name || entity?.title)) ||
+                                    "N/A"}
+                            </h3>
                         </div>
-                        <div className="p-6 flex flex-col flex-grow">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-lg font-bold line-clamp-1 text-white">
-                                    {entity?.name || entity?.title || "N/A"}
-                                </h3>
-                            </div>
+                        {isBooking && item.user && (
                             <div className="flex items-center gap-2 mb-3">
                                 <User
                                     size={16}
@@ -907,6 +1018,19 @@ export default function Dashboard() {
                                     {item.user?.name || "N/A"}
                                 </span>
                             </div>
+                        )}
+                        {isDestination && item.location && (
+                            <div className="flex items-center gap-2 mb-3">
+                                <MapPin
+                                    size={16}
+                                    className="text-blue-500 flex-shrink-0"
+                                />
+                                <span className="text-sm text-gray-300">
+                                    {item.location}
+                                </span>
+                            </div>
+                        )}
+                        {isBooking && (
                             <div className="flex items-center gap-2 mb-3">
                                 <Calendar size={16} className="text-blue-500" />
                                 <span className="text-sm text-gray-300">
@@ -914,199 +1038,156 @@ export default function Dashboard() {
                                     {formatDate(item.check_out)}
                                 </span>
                             </div>
+                        )}
+                        {isBooking && (
                             <div className="flex items-center gap-2 mb-4">
                                 <span className="text-sm text-gray-300">
                                     Guests: {item.guests}
                                 </span>
                             </div>
-                            <div className="mt-auto">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <span className="block text-xs font-medium text-gray-400">
-                                            Total Price
-                                        </span>
-                                        <span className="text-lg font-bold text-blue-500">
-                                            $
-                                            {parseFloat(
-                                                item.total_price
-                                            ).toFixed(2)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                );
-            });
-        }
-        return items.map((item) => (
-            <motion.div
-                key={`${type}-${item.id}`}
-                variants={cardVariants}
-                layout
-                whileHover={{
-                    y: -8,
-                    transition: { duration: 0.3 },
-                }}
-                className="rounded-2xl overflow-hidden shadow-lg bg-gray-800 hover:bg-gray-750 border border-gray-700 flex flex-col group transition-all duration-300"
-            >
-                <div className="relative overflow-hidden">
-                    <img
-                        src={
-                            item.image
-                                ? `/storage/${item.image}`
-                                : "https://via.placeholder.com/640x480?text=No+Image"
-                        }
-                        alt={isDestination ? item.name : item.title}
-                        className="w-full h-56 object-cover transform group-hover:scale-110 transition-transform duration-500"
-                        loading="lazy"
-                        onError={(e) => {
-                            e.target.src =
-                                "https://via.placeholder.com/640x480?text=No+Image";
-                        }}
-                    />
-                    {(item.tag || item.discount_type) && (
-                        <span className="absolute top-3 left-3 px-3 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
-                            {item.tag || item.discount_type}
-                        </span>
-                    )}
-                    {calculateDiscount(item.price, item.discount_price) && (
-                        <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                            {calculateDiscount(item.price, item.discount_price)}
-                            % OFF
-                        </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
-                </div>
-                <div className="p-6 flex flex-col flex-grow">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-bold line-clamp-1 text-white">
-                            {isDestination ? item.name : item.title}
-                        </h3>
-                    </div>
-                    {isDestination && item.location && (
-                        <div className="flex items-center gap-2 mb-3">
-                            <MapPin
-                                size={16}
-                                className="text-blue-500 flex-shrink-0"
-                            />
-                            <span className="text-sm text-gray-300">
-                                {item.location}
-                            </span>
-                        </div>
-                    )}
-                    <div className="flex items-center gap-1 mb-4">
-                        {renderStars(item.rating || 0)}
-                        <span className="text-sm ml-2 text-gray-400">
-                            ({item.rating || 0}/5)
-                        </span>
-                    </div>
-                    <p className="text-sm mb-4 line-clamp-2 text-gray-300">
-                        {item.description || "No description available."}
-                    </p>
-                    {isOffer && item.end_date && (
-                        <div className="flex items-center gap-2 mb-4">
-                            <Calendar size={16} className="text-blue-500" />
-                            <span className="text-sm text-gray-300">
-                                Valid until {formatDate(item.end_date)}
-                            </span>
-                        </div>
-                    )}
-                    <div className="mt-auto">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <span className="block text-xs font-medium text-gray-400">
-                                    Starting from
+                        )}
+                        {!isBooking && (
+                            <div className="flex items-center gap-1 mb-4">
+                                {renderStars(itemRating)}
+                                <span className="text-sm ml-2 text-gray-400">
+                                    ({itemRating}/5)
                                 </span>
-                                <div className="flex items-baseline gap-2">
-                                    {item.discount_price ? (
-                                        <>
+                            </div>
+                        )}
+                        {!isBooking && (
+                            <p className="text-sm mb-4 line-clamp-2 text-gray-300">
+                                {itemDescription || "No description available."}
+                            </p>
+                        )}
+                        {(isOffer || isPackage) && item.end_date && (
+                            <div className="flex items-center gap-2 mb-4">
+                                <Calendar size={16} className="text-blue-500" />
+                                <span className="text-sm text-gray-300">
+                                    Valid until {formatDate(item.end_date)}
+                                </span>
+                            </div>
+                        )}
+                        <div className="mt-auto">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <span className="block text-xs font-medium text-gray-400">
+                                        {isBooking
+                                            ? "Total Price"
+                                            : "Starting from"}
+                                    </span>
+                                    <div className="flex items-baseline gap-2">
+                                        {item.discount_price && !isBooking ? (
+                                            <>
+                                                <span className="text-lg font-bold text-blue-500">
+                                                    $
+                                                    {parseFloat(
+                                                        item.discount_price
+                                                    ).toFixed(2)}
+                                                </span>
+                                                <span className="text-sm line-through text-gray-400">
+                                                    $
+                                                    {parseFloat(
+                                                        item.price
+                                                    ).toFixed(2)}
+                                                </span>
+                                            </>
+                                        ) : (
                                             <span className="text-lg font-bold text-blue-500">
                                                 $
                                                 {parseFloat(
-                                                    item.discount_price
+                                                    item.price ||
+                                                        item.total_price ||
+                                                        0
                                                 ).toFixed(2)}
                                             </span>
-                                            <span className="text-sm line-through text-gray-400">
-                                                $
-                                                {parseFloat(item.price).toFixed(
-                                                    2
-                                                )}
+                                        )}
+                                        {!isBooking && (
+                                            <span className="text-xs text-gray-400">
+                                                / person
                                             </span>
-                                        </>
-                                    ) : (
-                                        <span className="text-lg font-bold text-blue-500">
-                                            ${parseFloat(item.price).toFixed(2)}
-                                        </span>
-                                    )}
-                                    <span className="text-xs text-gray-400">
-                                        / person
-                                    </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() =>
-                                        handleToggle(item, type, "is_featured")
-                                    }
-                                    className="text-gray-400 hover:text-blue-500"
-                                    title="Toggle Featured"
-                                >
-                                    {item.is_featured ? (
-                                        <Star className="w-5 h-5 text-yellow-400" />
-                                    ) : (
-                                        <Star className="w-5 h-5" />
-                                    )}
-                                </motion.button>
-                                {isOffer && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() =>
-                                            handleToggle(
-                                                item,
-                                                type,
-                                                "is_active"
-                                            )
-                                        }
-                                        className="text-gray-400 hover:text-blue-500"
-                                        title="Toggle Active"
-                                    >
-                                        {item.is_active ? (
-                                            <ToggleRight className="w-5 h-5 text-blue-500" />
-                                        ) : (
-                                            <ToggleLeft className="w-5 h-5" />
+                            {!isBooking && (
+                                <>
+                                    <div className="flex items-center space-x-2 mb-4">
+                                        {(isDestination || isPackage) && (
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() =>
+                                                    handleToggle(
+                                                        item,
+                                                        type,
+                                                        "is_featured"
+                                                    )
+                                                }
+                                                className="text-gray-400 hover:text-blue-500"
+                                                title="Toggle Featured"
+                                            >
+                                                {item.is_featured ? (
+                                                    <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                                                ) : (
+                                                    <Star className="w-5 h-5" />
+                                                )}
+                                            </motion.button>
                                         )}
-                                    </motion.button>
-                                )}
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => openEditModal(item, type)}
-                                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 transform group-hover:shadow-lg"
-                            >
-                                <Edit2 className="w-4 h-4" />
-                                Edit
-                            </motion.button>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => openDeleteModal(item, type)}
-                                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-red-600 text-white hover:bg-red-700 transition-all duration-300 transform group-hover:shadow-lg"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                            </motion.button>
+                                        {(isOffer ||
+                                            isPackage ||
+                                            isDestination) && (
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() =>
+                                                    handleToggle(
+                                                        item,
+                                                        type,
+                                                        "is_active"
+                                                    )
+                                                }
+                                                className="text-gray-400 hover:text-blue-500"
+                                                title="Toggle Active"
+                                            >
+                                                {item.is_active ? (
+                                                    <ToggleRight className="w-5 h-5 text-blue-500" />
+                                                ) : (
+                                                    <ToggleLeft className="w-5 h-5" />
+                                                )}
+                                            </motion.button>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                                openEditModal(item, type)
+                                            }
+                                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 transform group-hover:shadow-lg"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                            Edit
+                                        </motion.button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                                openDeleteModal(item, type)
+                                            }
+                                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-red-600 text-white hover:bg-red-700 transition-all duration-300 transform group-hover:shadow-lg"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Delete
+                                        </motion.button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
-                </div>
-            </motion.div>
-        ));
+                </motion.div>
+            );
+        });
     };
 
     return (
@@ -1220,7 +1301,7 @@ export default function Dashboard() {
                             <div className="relative w-full md:w-96">
                                 <input
                                     type="text"
-                                    placeholder="Search bookings, destinations, offers, or packages..."
+                                    placeholder={`Search ${activeTab}...`}
                                     value={searchQuery}
                                     onChange={(e) =>
                                         setSearchQuery(e.target.value)
@@ -1245,7 +1326,15 @@ export default function Dashboard() {
                         </div>
                         <div className="flex justify-between items-center mb-6">
                             <p className="text-sm text-gray-400">
-                                Showing {filteredBookings.length} {activeTab}
+                                Showing{" "}
+                                {activeTab === "bookings"
+                                    ? filteredBookings.length
+                                    : activeTab === "destinations"
+                                    ? filteredDestinations.length
+                                    : activeTab === "offers"
+                                    ? filteredOffers.length
+                                    : filteredPackages.length}{" "}
+                                {activeTab}
                             </p>
                         </div>
                     </motion.div>
@@ -1259,75 +1348,7 @@ export default function Dashboard() {
                     >
                         <AnimatePresence mode="popLayout">
                             {activeTab === "bookings" &&
-                            filteredBookings.length === 0 ? (
-                                <motion.div
-                                    variants={fadeIn}
-                                    className="col-span-full text-center py-16"
-                                >
-                                    <div className="max-w-md mx-auto">
-                                        <Search className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                                        <h3 className="text-2xl font-bold mb-2 text-white">
-                                            No Bookings Found
-                                        </h3>
-                                        <p className="text-base mb-6 text-gray-400">
-                                            There are no bookings to display.
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ) : activeTab === "destinations" &&
-                              filteredDestinations.length === 0 ? (
-                                <motion.div
-                                    variants={fadeIn}
-                                    className="col-span-full text-center py-16"
-                                >
-                                    <div className="max-w-md mx-auto">
-                                        <Search className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                                        <h3 className="text-2xl font-bold mb-2 text-white">
-                                            No Destinations Found
-                                        </h3>
-                                        <p className="text-base mb-6 text-gray-400">
-                                            Add new destinations to manage your
-                                            offerings.
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ) : activeTab === "offers" &&
-                              filteredOffers.length === 0 ? (
-                                <motion.div
-                                    variants={fadeIn}
-                                    className="col-span-full text-center py-16"
-                                >
-                                    <div className="max-w-md mx-auto">
-                                        <Search className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                                        <h3 className="text-2xl font-bold mb-2 text-white">
-                                            No Offers Found
-                                        </h3>
-                                        <p className="text-base mb-6 text-gray-400">
-                                            Add new offers to attract customers.
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ) : activeTab === "packages" &&
-                              filteredPackages.length === 0 ? (
-                                <motion.div
-                                    variants={fadeIn}
-                                    className="col-span-full text-center py-16"
-                                >
-                                    <div className="max-w-md mx-auto">
-                                        <Search className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                                        <h3 className="text-2xl font-bold mb-2 text-white">
-                                            No Packages Found
-                                        </h3>
-                                        <p className="text-base mb-6 text-gray-400">
-                                            Add new packages to expand your
-                                            services.
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ) : (
-                                activeTab === "bookings" &&
-                                renderCards(filteredBookings, "booking")
-                            )}
+                                renderCards(filteredBookings, "booking")}
                             {activeTab === "destinations" &&
                                 renderCards(
                                     filteredDestinations,
@@ -1362,7 +1383,7 @@ export default function Dashboard() {
                             </motion.button>
                         </div>
                         <form onSubmit={(e) => handleAdd(e, showAddModal)}>
-                            {renderFormFields(showAddModal, true)}
+                            {renderFormFields(showAddModal)}
                             <div className="flex justify-end mt-6 space-x-4">
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
@@ -1427,7 +1448,7 @@ export default function Dashboard() {
                                     whileTap={{ scale: 0.95 }}
                                     type="submit"
                                     disabled={processing}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
                                 >
                                     {processing && (
                                         <span className="animate-spin">⟳</span>
@@ -1451,7 +1472,7 @@ export default function Dashboard() {
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => setShowDeleteModal(null)}
+                                onClick={() => setShowDeleteModal(false)}
                                 className="text-gray-400 hover:text-white"
                             >
                                 <X className="w-6 h-6" />
@@ -1465,7 +1486,8 @@ export default function Dashboard() {
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => setShowDeleteModal(null)}
+                                type="button"
+                                onClick={() => setShowDeleteModal(false)}
                                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500"
                             >
                                 Cancel
@@ -1483,7 +1505,6 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
-
             <Footer />
         </div>
     );

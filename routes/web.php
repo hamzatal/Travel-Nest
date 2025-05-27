@@ -61,7 +61,20 @@ Route::get('/', function () {
 })->name('welcome');
 
 // ===================================================
-//! Protected Routes - Home page accessible to both users and companies
+//! Company Authentication Routes (Public)
+// ===================================================
+
+Route::post('/company/login', [CompanyController::class, 'login'])->name('company.login');
+
+// ===================================================
+//! Admin Authentication Routes (Public)
+// ===================================================
+
+Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
+Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.submit');
+
+// ===================================================
+//! Protected Routes - Shared between Users and Companies
 // ===================================================
 
 Route::middleware(['auth:web,company', 'verified'])->group(function () {
@@ -75,23 +88,30 @@ Route::middleware(['auth:web,company', 'verified'])->group(function () {
     Route::get('/packages/{package}', [PackagesController::class, 'show'])->name('packages.show');
     Route::get('/offers', [OfferController::class, 'index'])->name('offers');
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
-});
 
-// ===================================================
-//! Protected Routes - User Only
-// ===================================================
-
-Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
-    // Routes only for regular users
-    Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
-    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
-    Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
-    Route::get('/book', [BookingController::class, 'create'])->name('book.create');
-    Route::post('/book', [BookingController::class, 'store'])->name('book.store');
-    Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
+    // Search routes - accessible to both users and companies
     Route::get('/search', [SearchController::class, 'index'])->name('search');
     Route::get('/search/live', [SearchController::class, 'live'])->name('search.live');
 
+    // Booking page view - accessible to both users and companies (read-only for companies)
+    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+});
+
+// ===================================================
+//! Protected Routes - Regular Users Only
+// ===================================================
+
+Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
+    // User-specific booking routes
+    Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
+    Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
+    Route::get('/book', [BookingController::class, 'create'])->name('book.create');
+    Route::post('/book', [BookingController::class, 'store'])->name('book.store');
+
+    // User profile page
+    Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
+
+    // Profile management routes
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('edit');
         Route::patch('/', [ProfileController::class, 'update'])->name('update');
@@ -102,35 +122,54 @@ Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
 });
 
 // ===================================================
-//! ChatBot API (Authenticated Users Only)
+//! ChatBot API Routes (Regular Users Only)
 // ===================================================
 
-Route::middleware(['auth:web'])->prefix('chatbot')->name('chatbot.')->group(function () {
+Route::middleware(['auth:web', 'verified'])->prefix('chatbot')->name('chatbot.')->group(function () {
     Route::post('/message', [ChatBotController::class, 'processMessage'])->name('message');
     Route::get('/history', [ChatBotController::class, 'getHistory'])->name('history');
 });
 
 // ===================================================
-//! Admin Routes
+//! API Routes (Regular Users Only)
 // ===================================================
 
-Route::get('/admin/login', [LoginController::class, 'create'])->name('admin.login');
-Route::post('/admin/login', [LoginController::class, 'store'])->name('admin.login.submit');
+Route::middleware(['auth:web', 'verified'])->prefix('api')->name('api.')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
+    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
+    Route::post('/update', [UserController::class, 'updateUser'])->name('user.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+    Route::put('/profile/deactivate', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
+});
+
+// ===================================================
+//! Admin Protected Routes
+// ===================================================
 
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
+    // Admin authentication
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
+    // Admin dashboard and profile
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [AdminController::class, 'getAdminProfile'])->name('profile');
     Route::put('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
     Route::post('/profile', [AdminController::class, 'updateAdminProfile'])->name('profile.update');
     Route::post('/profile/password', [AdminController::class, 'updateAdminPassword'])->name('profile.password');
+
+    // User management
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::post('/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('toggle-status');
     });
+
+    // Messages and contacts
     Route::get('/messages', [AdminController::class, 'showContacts'])->name('messages');
     Route::get('/contacts', [AdminController::class, 'showContacts'])->name('contacts');
     Route::patch('/messages/{id}/read', [AdminController::class, 'markAsRead'])->name('messages.read');
+
+    // Destinations management
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [DestinationController::class, 'index'])->name('index');
         Route::post('/', [DestinationController::class, 'store'])->name('store');
@@ -138,6 +177,8 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{destination}', [DestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [DestinationController::class, 'toggleFeatured'])->name('toggle-featured');
     });
+
+    // Offers management
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [AdminOfferController::class, 'index'])->name('index');
         Route::post('/', [AdminOfferController::class, 'store'])->name('store');
@@ -145,6 +186,8 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::delete('/{id}', [AdminOfferController::class, 'destroy'])->name('destroy');
         Route::patch('/{id}/toggle', [AdminOfferController::class, 'toggleActive'])->name('toggle');
     });
+
+    // Hero section management
     Route::prefix('hero')->name('hero.')->group(function () {
         Route::get('/', [HeroSectionController::class, 'index'])->name('index');
         Route::post('/', [HeroSectionController::class, 'store'])->name('store');
@@ -152,6 +195,8 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
         Route::patch('/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('toggle');
         Route::delete('/{id}', [HeroSectionController::class, 'destroy'])->name('delete');
     });
+
+    // Packages management
     Route::prefix('packages')->name('packages.')->group(function () {
         Route::get('/', [PackagesController::class, 'index'])->name('index');
         Route::post('/', [PackagesController::class, 'store'])->name('store');
@@ -162,49 +207,52 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
 });
 
 // ===================================================
-//! Company Routes
+//! Company Protected Routes
 // ===================================================
 
-Route::middleware(['auth:company'])->prefix('company')->name('company.')->group(function () {
+Route::middleware(['auth:company', 'verified'])->prefix('company')->name('company.')->group(function () {
+    // Company authentication
+    Route::post('/logout', [CompanyController::class, 'logout'])->name('logout');
+
+    // Company dashboard and profile
     Route::get('/dashboard', [CompanyDashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [CompanyController::class, 'profile'])->name('profile');
     Route::put('/profile', [CompanyController::class, 'updateProfile'])->name('profile');
     Route::put('/profile/password', [CompanyController::class, 'updatePassword'])->name('profile.password');
+
+    // Company destinations management
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [CompanyDestinationController::class, 'index'])->name('index');
         Route::post('/', [CompanyDestinationController::class, 'store'])->name('store');
         Route::put('/{destination}', [CompanyDestinationController::class, 'update'])->name('update');
         Route::delete('/{destination}', [CompanyDestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [CompanyDestinationController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::patch('/{destination}/toggle-active', [CompanyDestinationController::class, 'toggleActive'])->name('toggle-active');
     });
+
+    // Company packages management
+    Route::prefix('packages')->name('packages.')->group(function () {
+        Route::get('/', [CompanyPackageController::class, 'index'])->name('index');
+        Route::post('/', [CompanyPackageController::class, 'store'])->name('store');
+        Route::put('/{package}', [CompanyPackageController::class, 'update'])->name('update');
+        Route::patch('/{package}/toggle-featured', [CompanyPackageController::class, 'toggleFeatured'])->name('toggle-featured');
+        Route::patch('/{package}/toggle-active', [CompanyPackageController::class, 'toggleActive'])->name('toggle-active'); // إضافة الرابط
+        Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
+    });
+
+    // Company offers management
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [CompanyOfferController::class, 'index'])->name('index');
         Route::post('/', [CompanyOfferController::class, 'store'])->name('store');
         Route::put('/{id}', [CompanyOfferController::class, 'update'])->name('update');
         Route::delete('/{id}', [CompanyOfferController::class, 'destroy'])->name('destroy');
-        Route::patch('/{id}/toggle', [CompanyOfferController::class, 'toggleActive'])->name('toggle');
+        Route::patch('/{id}/toggle', [CompanyOfferController::class, 'toggleActive'])->name('toggle-active'); // تصحيح الرابط
     });
 });
 
-Route::post('/company/login', [CompanyController::class, 'login'])->name('company.login');
-Route::post('/company/logout', [CompanyController::class, 'logout'])->name('company.logout');
-
 // ===================================================
-//! API Routes (Users Only)
+//! Fallback Routes
 // ===================================================
 
-Route::middleware(['auth:web', 'web'])->prefix('api')->name('api.')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'getProfile'])->name('profile.get');
-    Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::get('/user', [UserController::class, 'getUser'])->name('user.get');
-    Route::post('/update', [UserController::class, 'updateUser'])->name('user.update');
-    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
-    Route::put('/profile/deactivate', [ProfileController::class, 'deactivate'])->name('profile.deactivate');
-});
-
-// ===================================================
-//! Fallback Route
-// ===================================================
-
-Route::fallback(fn() => Inertia::render('Errors/404'));
 Route::get('/404', fn() => Inertia::render('Errors/404'))->name('404');
+Route::fallback(fn() => Inertia::render('Errors/404'));

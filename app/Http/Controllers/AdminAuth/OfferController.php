@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\AdminAuth;
-
+/* X */
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Destination;
