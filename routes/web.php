@@ -224,11 +224,8 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [CompanyDestinationController::class, 'index'])->name('index');
         Route::post('/', [CompanyDestinationController::class, 'store'])->name('store');
-
-        // Add both PUT and POST for updates to handle different scenarios
         Route::put('/{destination}', [CompanyDestinationController::class, 'update'])->name('update');
         Route::post('/{destination}/update', [CompanyDestinationController::class, 'update'])->name('update.post');
-
         Route::delete('/{destination}', [CompanyDestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [CompanyDestinationController::class, 'toggleFeatured'])->name('toggle-featured');
         Route::patch('/{destination}/toggle-active', [CompanyDestinationController::class, 'toggleActive'])->name('toggle-active');
