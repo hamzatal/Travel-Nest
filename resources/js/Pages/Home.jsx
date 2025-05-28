@@ -828,7 +828,6 @@ const HomePage = ({ auth }) => {
                                     "Beach",
                                     "Adventure",
                                     "Cultural",
-                                    "Urban",
                                 ].map((category) => (
                                     <motion.button
                                         key={category}
@@ -865,9 +864,7 @@ const HomePage = ({ auth }) => {
                                         {category === "Cultural" && (
                                             <Globe2 size={16} />
                                         )}
-                                        {category === "Urban" && (
-                                            <Building size={16} />
-                                        )}
+                                        
                                         {category}
                                     </motion.button>
                                 ))}

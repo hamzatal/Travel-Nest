@@ -20,6 +20,7 @@ class Destination extends Model
         'image',
         'rating',
         'is_featured',
+        'is_active', 
     ];
 
     protected $casts = [
@@ -27,6 +28,7 @@ class Destination extends Model
         'discount_price' => 'decimal:2',
         'rating' => 'float',
         'is_featured' => 'boolean',
+        'is_active' => 'boolean', 
     ];
 
     public function company()

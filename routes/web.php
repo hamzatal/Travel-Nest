@@ -224,11 +224,16 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [CompanyDestinationController::class, 'index'])->name('index');
         Route::post('/', [CompanyDestinationController::class, 'store'])->name('store');
+
+        // Add both PUT and POST for updates to handle different scenarios
         Route::put('/{destination}', [CompanyDestinationController::class, 'update'])->name('update');
+        Route::post('/{destination}/update', [CompanyDestinationController::class, 'update'])->name('update.post');
+
         Route::delete('/{destination}', [CompanyDestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [CompanyDestinationController::class, 'toggleFeatured'])->name('toggle-featured');
         Route::patch('/{destination}/toggle-active', [CompanyDestinationController::class, 'toggleActive'])->name('toggle-active');
     });
+
 
     // Company packages management
     Route::prefix('packages')->name('packages.')->group(function () {
@@ -236,17 +241,17 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
         Route::post('/', [CompanyPackageController::class, 'store'])->name('store');
         Route::put('/{package}', [CompanyPackageController::class, 'update'])->name('update');
         Route::patch('/{package}/toggle-featured', [CompanyPackageController::class, 'toggleFeatured'])->name('toggle-featured');
-        Route::patch('/{package}/toggle-active', [CompanyPackageController::class, 'toggleActive'])->name('toggle-active'); // إضافة الرابط
+        Route::patch('/{package}/toggle-active', [CompanyPackageController::class, 'toggleActive'])->name('toggle-active');
         Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
     });
 
-    // Company offers management
+    // Company offers management - FIXED
     Route::prefix('offers')->name('offers.')->group(function () {
         Route::get('/', [CompanyOfferController::class, 'index'])->name('index');
         Route::post('/', [CompanyOfferController::class, 'store'])->name('store');
-        Route::put('/{id}', [CompanyOfferController::class, 'update'])->name('update');
-        Route::delete('/{id}', [CompanyOfferController::class, 'destroy'])->name('destroy');
-        Route::patch('/{id}/toggle', [CompanyOfferController::class, 'toggleActive'])->name('toggle-active'); // تصحيح الرابط
+        Route::put('/{offer}', [CompanyOfferController::class, 'update'])->name('update'); // FIXED: {offer} instead of {id}
+        Route::delete('/{offer}', [CompanyOfferController::class, 'destroy'])->name('destroy'); // FIXED: {offer} instead of {id}
+        Route::patch('/{offer}/toggle-active', [CompanyOfferController::class, 'toggleActive'])->name('toggle-active'); // FIXED: {offer} and toggle-active
     });
 });
 

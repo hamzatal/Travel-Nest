@@ -6,7 +6,7 @@ import {
     Trash2,
     Plus,
     Edit2,
-    Image as ImageIcon, // Renamed to avoid conflict with Image component
+    Image as ImageIcon,
     X,
     ToggleLeft,
     ToggleRight,
@@ -23,7 +23,7 @@ import toast, { Toaster } from "react-hot-toast";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 
-// Placeholder image URL - ensure this path is correct relative to your public directory
+// Placeholder image URL
 const defaultImage = "/images/placeholder.jpg";
 
 // Custom Scrollbar Styles
@@ -85,7 +85,6 @@ const formatDate = (dateString) => {
 const formatISOToDateInput = (isoString) => {
     if (!isoString) return "";
     try {
-        // Handle both 'YYYY-MM-DD HH:MM:SS' and 'YYYY-MM-DDTHH:MM:SS.sssZ' formats
         const datePart = isoString.split("T")[0].split(" ")[0];
         return datePart;
     } catch {
@@ -147,9 +146,9 @@ export default function Dashboard() {
     // State management
     const [activeTab, setActiveTab] = useState("bookings");
     const [searchQuery, setSearchQuery] = useState("");
-    const [showAddModal, setShowAddModal] = useState(null); // 'destination', 'offer', 'package'
-    const [showEditModal, setShowEditModal] = useState(null); // 'destination', 'offer', 'package'
-    const [showDeleteModal, setShowDeleteModal] = useState(false); // true/false
+    const [showAddModal, setShowAddModal] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -165,29 +164,26 @@ export default function Dashboard() {
         patch,
         processing,
         reset,
-        errors, // Inertia.js errors
+        errors,
     } = useForm({
         // Common fields
+        title: "",
         description: "",
         price: "",
         discount_price: "",
         image: null,
         is_featured: false,
         is_active: true,
-
-        // Destination specific fields
-        name: "", // maps to 'title' in DB for destinations
         location: "",
-        tag: "", // maps to 'category' in DB for destinations
+        category: "",
+        rating: "",
 
         // Offer/Package specific fields
-        title: "",
-        subtitle: "", // for packages
+        subtitle: "",
         discount_type: "percentage",
         start_date: "",
         end_date: "",
-        rating: "",
-        destination_id: "", // for offers and packages
+        destination_id: "",
     });
 
     // Inject custom scrollbar styles
@@ -211,31 +207,10 @@ export default function Dashboard() {
         setCharCount(data.description ? data.description.length : 0);
     }, [data.description]);
 
-    // Update form errors whenever Inertia.js errors object changes
-    // This allows backend validation errors to be displayed
+    // Handle form errors
     useEffect(() => {
         if (Object.keys(errors).length > 0) {
-            // Toast error only if there are actual validation errors that haven't been shown
-            const validationKeys = [
-                "name",
-                "title",
-                "description",
-                "price",
-                "discount_price",
-                "start_date",
-                "end_date",
-                "image",
-                "location",
-                "rating",
-                "tag",
-                "destination_id",
-            ];
-            const hasValidationErrors = validationKeys.some(
-                (key) => errors[key]
-            );
-            if (hasValidationErrors) {
-                toast.error("Please fix the form errors.");
-            }
+            toast.error("Please fix the form errors.");
         }
     }, [errors]);
 
@@ -278,26 +253,88 @@ export default function Dashboard() {
     const handleAdd = (e, type) => {
         e.preventDefault();
 
+        const formData = new FormData();
+        const commonFields = {
+            title: data.title,
+            description: data.description,
+            location: data.location,
+            category: data.category,
+            price: data.price,
+            discount_price: data.discount_price || null,
+            image: data.image,
+            rating: data.rating || null,
+        };
+
+        if (type === "destination") {
+            Object.entries(commonFields).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    formData.append(key, value);
+                }
+            });
+            formData.append("is_featured", data.is_featured ? "1" : "0");
+            formData.append("is_active", data.is_active ? "1" : "0");
+        } else if (type === "offer" || type === "package") {
+            Object.entries(commonFields).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    formData.append(key, value);
+                }
+            });
+            formData.append("destination_id", data.destination_id);
+            formData.append("discount_type", data.discount_type);
+            formData.append("start_date", data.start_date);
+            formData.append("end_date", data.end_date);
+            formData.append("is_active", data.is_active ? "1" : "0");
+            if (type === "package") {
+                formData.append("subtitle", data.subtitle || "");
+                formData.append("is_featured", data.is_featured ? "1" : "0");
+            }
+        }
+
         // Client-side validation
-        if (type === "destination" && !data.name) {
-            toast.error("Destination name is required");
+        if (!commonFields.title) {
+            toast.error(
+                `${
+                    type.charAt(0).toUpperCase() + type.slice(1)
+                } title is required`
+            );
             return;
         }
-        if (type !== "destination" && !data.title) {
-            toast.error("Title is required");
-            return;
-        }
-        if (!data.description) {
+        if (!commonFields.description) {
             toast.error("Description is required");
             return;
         }
-        if (!data.price || data.price <= 0) {
+        if (!commonFields.location) {
+            toast.error("Location is required");
+            return;
+        }
+        if (!commonFields.category) {
+            toast.error("Category is required");
+            return;
+        }
+        if (!commonFields.price || commonFields.price <= 0) {
             toast.error("Valid price is required");
+            return;
+        }
+        if (type !== "destination" && !data.destination_id) {
+            toast.error("Destination is required");
+            return;
+        }
+        if (
+            (type === "offer" || type === "package") &&
+            (!data.start_date || !data.end_date)
+        ) {
+            toast.error("Start and end dates are required");
+            return;
+        }
+        if (type === "destination" && !data.image) {
+            toast.error("Image is required");
             return;
         }
 
         const routeName = `company.${type}s.store`;
+
         post(route(routeName), {
+            data: formData,
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
@@ -311,6 +348,7 @@ export default function Dashboard() {
                 );
             },
             onError: (inertiaErrors) => {
+                console.log("Validation errors:", inertiaErrors);
                 toast.error(
                     "Failed to create. Please check the form for errors."
                 );
@@ -318,45 +356,129 @@ export default function Dashboard() {
         });
     };
 
-    // Handle edit
+    // Updated JavaScript handler - using POST with _method instead of PUT
     const handleEdit = (e, type) => {
         e.preventDefault();
         if (!selectedItem) return;
 
-        // Filter out empty or unchanged fields
-        const updatedData = {};
-        Object.keys(data).forEach((key) => {
-            if (
-                data[key] !== "" &&
-                data[key] !== null &&
-                data[key] !== undefined
-            ) {
-                updatedData[key] = data[key];
-            }
-        });
+        // Create a regular object instead of FormData for better debugging
+        const updateData = {
+            title: data.title || selectedItem.title,
+            description: data.description || selectedItem.description,
+            location: data.location || selectedItem.location,
+            category: data.category || selectedItem.category,
+            price: data.price || selectedItem.price,
+            discount_price:
+                data.discount_price !== undefined
+                    ? data.discount_price
+                    : selectedItem.discount_price,
+            rating:
+                data.rating !== undefined ? data.rating : selectedItem.rating,
+            _method: "PUT",
+        };
 
-        const routeName = `company.${type}s.update`;
-        put(route(routeName, selectedItem.id), {
-            data: updatedData, // Send only updated fields
-            preserveScroll: true,
-            forceFormData: true, // Important for file uploads
-            onSuccess: () => {
-                setShowEditModal(null);
-                setSelectedItem(null);
-                reset();
-                setImagePreview(null);
-                toast.success(
-                    `${
-                        type.charAt(0).toUpperCase() + type.slice(1)
-                    } updated successfully!`
-                );
-            },
-            onError: (inertiaErrors) => {
-                toast.error(
-                    "Failed to update. Please check the form for errors."
-                );
-            },
-        });
+        if (type === "destination") {
+            updateData.is_featured =
+                data.is_featured !== undefined
+                    ? data.is_featured
+                    : selectedItem.is_featured;
+            updateData.is_active =
+                data.is_active !== undefined
+                    ? data.is_active
+                    : selectedItem.is_active;
+        } else if (type === "offer" || type === "package") {
+            updateData.destination_id =
+                data.destination_id || selectedItem.destination_id;
+            updateData.discount_type =
+                data.discount_type || selectedItem.discount_type;
+            updateData.start_date = data.start_date || selectedItem.start_date;
+            updateData.end_date = data.end_date || selectedItem.end_date;
+            updateData.is_active =
+                data.is_active !== undefined
+                    ? data.is_active
+                    : selectedItem.is_active;
+
+            if (type === "package") {
+                updateData.subtitle =
+                    data.subtitle || selectedItem.subtitle || "";
+                updateData.is_featured =
+                    data.is_featured !== undefined
+                        ? data.is_featured
+                        : selectedItem.is_featured;
+            }
+        }
+
+        // Handle image separately if it exists
+        if (data.image && data.image instanceof File) {
+            const formData = new FormData();
+
+            // Add all other data to FormData
+            Object.entries(updateData).forEach(([key, value]) => {
+                if (value !== null && value !== undefined) {
+                    formData.append(key, value);
+                }
+            });
+
+            // Add image
+            formData.append("image", data.image);
+
+            console.log("Sending FormData with image:");
+            for (let [key, value] of formData.entries()) {
+                console.log(key, value);
+            }
+
+            // Use post method with FormData for file uploads
+            post(route(`company.${type}s.update`, selectedItem.id), formData, {
+                preserveScroll: true,
+                forceFormData: true,
+                onSuccess: handleSuccess,
+                onError: handleError,
+                onBefore: () =>
+                    console.log(
+                        "Starting update with image for:",
+                        type,
+                        selectedItem.id
+                    ),
+            });
+        } else {
+            // Use put method for regular data (no file upload)
+            console.log("Sending regular data:", updateData);
+
+            put(route(`company.${type}s.update`, selectedItem.id), updateData, {
+                preserveScroll: true,
+                onSuccess: handleSuccess,
+                onError: handleError,
+                onBefore: () =>
+                    console.log(
+                        "Starting update without image for:",
+                        type,
+                        selectedItem.id
+                    ),
+            });
+        }
+
+        function handleSuccess(page) {
+            console.log("Update successful:", page);
+            setShowEditModal(null);
+            setSelectedItem(null);
+            reset();
+            setImagePreview(null);
+            toast.success(
+                `${
+                    type.charAt(0).toUpperCase() + type.slice(1)
+                } updated successfully!`
+            );
+        }
+
+        function handleError(inertiaErrors) {
+            console.log("Update failed - Validation errors:", inertiaErrors);
+            console.log("Data that was sent:", updateData);
+            toast.error("Failed to update. Please check the form for errors.");
+
+            Object.keys(inertiaErrors).forEach((field) => {
+                console.log(`Error in ${field}:`, inertiaErrors[field]);
+            });
+        }
     };
 
     // Handle delete
@@ -387,7 +509,6 @@ export default function Dashboard() {
         const routeName = `company.${type}s.${
             field === "is_featured" ? "toggle-featured" : "toggle-active"
         }`;
-        // Use patch for partial updates (toggling a single field)
         patch(route(routeName, item.id), {
             preserveScroll: true,
             onSuccess: () => {
@@ -405,44 +526,40 @@ export default function Dashboard() {
 
     // Open add modal
     const openAddModal = (type) => {
-        reset(); // Clear form data
-        setImagePreview(null); // Clear image preview
+        reset();
+        setImagePreview(null);
         setShowAddModal(type);
     };
 
     // Open edit modal
     const openEditModal = (item, type) => {
         setSelectedItem(item);
-        // Map backend data to frontend form data structure
-        const commonData = {
+
+        const formData = {
+            title: item.title || item.name || "",
             description: item.description || "",
+            location: item.location || "",
+            category: item.category || "",
             price: item.price || "",
             discount_price: item.discount_price || "",
-            image: null, // Image input needs to be null for security, user re-uploads
-            is_featured: item.is_featured || false,
-            is_active: item.is_active !== undefined ? item.is_active : true, // Ensure boolean for offers/packages
+            image: null,
             rating: item.rating || "",
+            is_featured: item.is_featured || false,
+            is_active: item.is_active !== undefined ? item.is_active : true,
         };
 
-        let specificData = {};
-        if (type === "destination") {
-            specificData = {
-                name: item.name || "", // DB 'title' is 'name' in frontend
-                location: item.location || "",
-                tag: item.category || "", // DB 'category' is 'tag' in frontend
-            };
-        } else if (type === "offer" || type === "package") {
-            specificData = {
-                title: item.title || "",
-                subtitle: item.subtitle || "", // Only for package
-                discount_type: item.discount_type || "percentage",
-                start_date: formatISOToDateInput(item.start_date) || "",
-                end_date: formatISOToDateInput(item.end_date) || "",
-                destination_id: item.destination_id || "",
-            };
+        if (type === "offer" || type === "package") {
+            formData.destination_id = item.destination_id || "";
+            formData.discount_type = item.discount_type || "percentage";
+            formData.start_date = formatISOToDateInput(item.start_date) || "";
+            formData.end_date = formatISOToDateInput(item.end_date) || "";
+            if (type === "package") {
+                formData.subtitle = item.subtitle || "";
+            }
         }
-        setData({ ...commonData, ...specificData });
-        setImagePreview(item.image ? item.image : null); // Show current image if exists
+
+        setData(formData);
+        setImagePreview(item.image || null);
         setShowEditModal(type);
     };
 
@@ -466,7 +583,7 @@ export default function Dashboard() {
             } else if (type === "offer" || type === "package") {
                 return (
                     item.title?.toLowerCase().includes(query) ||
-                    item.subtitle?.toLowerCase().includes(query) || // for packages
+                    item.subtitle?.toLowerCase().includes(query) ||
                     item.description?.toLowerCase().includes(query) ||
                     item.location?.toLowerCase().includes(query) ||
                     item.category?.toLowerCase().includes(query)
@@ -495,126 +612,86 @@ export default function Dashboard() {
         const isOffer = type === "offer";
         const isPackage = type === "package";
 
-        // Get available destinations for offers/packages dropdown
         const availableDestinations = destinations.data.map((d) => ({
             id: d.id,
-            name: d.name, // Use the 'name' property as returned by the controller for display
+            name: d.name,
         }));
 
         return (
             <div className="space-y-6">
-                {isDestination ? (
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Title
+                    </label>
+                    <div className="relative">
+                        <Building2 className="absolute left-3 top-3 text-gray-400" />
+                        <input
+                            type="text"
+                            value={data.title}
+                            onChange={(e) => setData("title", e.target.value)}
+                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                                errors.title ? "border-red-500" : ""
+                            }`}
+                            placeholder="Enter title"
+                        />
+                    </div>
+                    {errors.title && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.title}
+                        </p>
+                    )}
+                </div>
+                {isPackage && (
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Destination Name
+                            Subtitle
                         </label>
                         <div className="relative">
-                            <Building2 className="absolute left-3 top-3 text-gray-400" />
+                            <Tag className="absolute left-3 top-3 text-gray-400" />
                             <input
                                 type="text"
-                                value={data.name}
+                                value={data.subtitle}
                                 onChange={(e) =>
-                                    setData("name", e.target.value)
+                                    setData("subtitle", e.target.value)
                                 }
-                                className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    errors.name ? "border-red-500" : ""
-                                }`}
-                                placeholder="Enter destination name"
+                                className="pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                placeholder="Enter subtitle"
                             />
                         </div>
-                        {errors.name && (
+                    </div>
+                )}
+                {(isOffer || isPackage) && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Associated Destination
+                        </label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-3 text-gray-400" />
+                            <select
+                                value={data.destination_id}
+                                onChange={(e) =>
+                                    setData("destination_id", e.target.value)
+                                }
+                                className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                                    errors.destination_id
+                                        ? "border-red-500"
+                                        : ""
+                                }`}
+                            >
+                                <option value="">Select a destination</option>
+                                {availableDestinations.map((dest) => (
+                                    <option key={dest.id} value={dest.id}>
+                                        {dest.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {errors.destination_id && (
                             <p className="text-red-500 text-sm mt-1">
-                                {errors.name}
+                                {errors.destination_id}
                             </p>
                         )}
                     </div>
-                ) : (
-                    <>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Title
-                            </label>
-                            <div className="relative">
-                                <Tag className="absolute left-3 top-3 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={data.title}
-                                    onChange={(e) =>
-                                        setData("title", e.target.value)
-                                    }
-                                    className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                        errors.title ? "border-red-500" : ""
-                                    }`}
-                                    placeholder="Enter title"
-                                />
-                            </div>
-                            {errors.title && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {errors.title}
-                                </p>
-                            )}
-                        </div>
-                        {isPackage && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Subtitle
-                                </label>
-                                <div className="relative">
-                                    <Tag className="absolute left-3 top-3 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        value={data.subtitle}
-                                        onChange={(e) =>
-                                            setData("subtitle", e.target.value)
-                                        }
-                                        className="pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                        placeholder="Enter subtitle"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        {(isOffer || isPackage) && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Associated Destination
-                                </label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-3 top-3 text-gray-400" />
-                                    <select
-                                        value={data.destination_id}
-                                        onChange={(e) =>
-                                            setData(
-                                                "destination_id",
-                                                e.target.value
-                                            )
-                                        }
-                                        className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                            errors.destination_id
-                                                ? "border-red-500"
-                                                : ""
-                                        }`}
-                                    >
-                                        <option value="">
-                                            Select a destination
-                                        </option>
-                                        {availableDestinations.map((dest) => (
-                                            <option
-                                                key={dest.id}
-                                                value={dest.id}
-                                            >
-                                                {dest.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                {errors.destination_id && (
-                                    <p className="text-red-500 text-sm mt-1">
-                                        {errors.destination_id}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                    </>
                 )}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -635,6 +712,67 @@ export default function Dashboard() {
                             <p className="text-red-500">{errors.description}</p>
                         )}
                     </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Location
+                    </label>
+                    <div className="relative">
+                        <MapPin className="absolute left-3 top-3 text-gray-400" />
+                        <input
+                            type="text"
+                            value={data.location}
+                            onChange={(e) =>
+                                setData("location", e.target.value)
+                            }
+                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                                errors.location ? "border-red-500" : ""
+                            }`}
+                            placeholder="Enter location"
+                        />
+                    </div>
+                    {errors.location && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.location}
+                        </p>
+                    )}
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Category
+                    </label>
+                    <div className="relative">
+                        <Tag className="absolute left-3 top-3 text-gray-400" />
+                        <select
+                            value={data.category}
+                            onChange={(e) =>
+                                setData("category", e.target.value)
+                            }
+                            className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                                errors.category ? "border-red-500" : ""
+                            }`}
+                        >
+                            <option value="">Select a category</option>
+                            {[
+                                "Beach",
+                                "Mountain",
+                                "City",
+                                "Cultural",
+                                "Adventure",
+                                "Historical",
+                                "Wildlife",
+                            ].map((category) => (
+                                <option key={category} value={category}>
+                                    {category}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    {errors.category && (
+                        <p className="text-red-500 text-sm mt-1">
+                            {errors.category}
+                        </p>
+                    )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -692,7 +830,7 @@ export default function Dashboard() {
                         )}
                     </div>
                 </div>
-                {type !== "destination" && (
+                {(isOffer || isPackage) && (
                     <>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -766,85 +904,6 @@ export default function Dashboard() {
                         </div>
                     </>
                 )}
-                {isDestination && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Category (Tag)
-                        </label>
-                        <div className="relative">
-                            <Tag className="absolute left-3 top-3 text-gray-400" />
-                            <select
-                                value={data.tag}
-                                onChange={(e) => setData("tag", e.target.value)}
-                                className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    errors.tag ? "border-red-500" : ""
-                                }`}
-                            >
-                                <option value="">Select a category</option>
-                                {[
-                                    "Beach",
-                                    "Mountain",
-                                    "City",
-                                    "Cultural",
-                                    "Adventure",
-                                    "Historical",
-                                    "Wildlife",
-                                ].map((category) => (
-                                    <option key={category} value={category}>
-                                        {category}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        {errors.tag && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.tag}
-                            </p>
-                        )}
-                    </div>
-                )}
-                {type !== "offer" && ( // Offers don't have direct rating/tag in card, but rating can be used
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            {isDestination ? "Category (Tag)" : "Rating"}
-                        </label>
-                        <div className="relative">
-                            {isDestination ? (
-                                <Tag className="absolute left-3 top-3 text-gray-400" />
-                            ) : (
-                                <Star className="absolute left-3 top-3 text-gray-400" />
-                            )}
-                            <input
-                                type={isDestination ? "text" : "number"}
-                                value={isDestination ? data.tag : data.rating}
-                                onChange={(e) =>
-                                    setData(
-                                        isDestination ? "tag" : "rating",
-                                        e.target.value
-                                    )
-                                }
-                                className={`pl-10 w-full py-3 rounded-lg border bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-                                    errors[isDestination ? "tag" : "rating"]
-                                        ? "border-red-500"
-                                        : ""
-                                }`}
-                                placeholder={
-                                    isDestination
-                                        ? "Enter category (e.g., Beach, City)"
-                                        : "Enter rating (0-5)"
-                                }
-                                step={isDestination ? undefined : "0.1"}
-                                min={isDestination ? undefined : "0"}
-                                max={isDestination ? undefined : "5"}
-                            />
-                        </div>
-                        {errors[isDestination ? "tag" : "rating"] && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors[isDestination ? "tag" : "rating"]}
-                            </p>
-                        )}
-                    </div>
-                )}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         Image
@@ -893,19 +952,17 @@ export default function Dashboard() {
                             Featured
                         </label>
                     )}
-                    {(isOffer || isPackage) && (
-                        <label className="flex items-center text-sm text-gray-300">
-                            <input
-                                type="checkbox"
-                                checked={data.is_active}
-                                onChange={(e) =>
-                                    setData("is_active", e.target.checked)
-                                }
-                                className="mr-2 rounded border-gray-600 text-blue-500 focus:ring-blue-500"
-                            />
-                            Active
-                        </label>
-                    )}
+                    <label className="flex items-center text-sm text-gray-300">
+                        <input
+                            type="checkbox"
+                            checked={data.is_active}
+                            onChange={(e) =>
+                                setData("is_active", e.target.checked)
+                            }
+                            className="mr-2 rounded border-gray-600 text-blue-500 focus:ring-blue-500"
+                        />
+                        Active
+                    </label>
                 </div>
             </div>
         );
@@ -949,7 +1006,7 @@ export default function Dashboard() {
             const itemPrice = parseFloat(item.price);
             const itemDiscountPrice = parseFloat(item.discount_price);
             const itemRating = item.rating || 0;
-            const itemImage = entity?.image || defaultImage; // Use entity image for bookings, item image for others
+            const itemImage = entity?.image || defaultImage;
             const displayTag = isDestination
                 ? item.category
                 : item.discount_type;
@@ -1023,7 +1080,7 @@ export default function Dashboard() {
                             <div className="flex items-center gap-2 mb-3">
                                 <MapPin
                                     size={16}
-                                    className="text-blue-500 flex-shrink-0"
+                                    className="text-blue-500 flex-shrink"
                                 />
                                 <span className="text-sm text-gray-300">
                                     {item.location}
@@ -1193,10 +1250,10 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
             <Head>
-                <title>Company Dashboard - Travel Nest</title>
+                <title>Company Dashboard - TravelNest</title>
                 <meta
                     name="description"
-                    content="Manage your bookings, destinations, offers, and packages with Travel Nest."
+                    content="Manage your bookings, destinations, offers, and packages with TravelNest."
                 />
             </Head>
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
@@ -1208,7 +1265,7 @@ export default function Dashboard() {
             />
 
             {/* Hero Section */}
-            <section className="relative h-80 md:h-88 w-full overflow-hidden">
+            <section className="relative h-80 md:h-80 w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-gray-900/60 to-gray-800/80"></div>
                 <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-50"></div>
                 <div className="absolute inset-0 flex items-center justify-center px-6">

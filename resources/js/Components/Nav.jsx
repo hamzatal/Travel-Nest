@@ -34,10 +34,7 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
     const searchRef = useRef(null);
     const profileRef = useRef(null);
 
-    // Debug auth value
-    useEffect(() => {
-        console.log("Nav.jsx auth:", auth);
-    }, [auth]);
+
 
     // Handle scroll effect
     useEffect(() => {
@@ -97,15 +94,12 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
 
         setIsSearching(true);
         const delayDebounceFn = setTimeout(() => {
-            console.log("Sending search request for:", searchQuery);
             axios
                 .get(`/search/live?q=${encodeURIComponent(searchQuery)}`)
                 .then((response) => {
-                    console.log("Search response:", response.data);
                     setSearchResults(response.data.results || []);
                 })
                 .catch((error) => {
-                    console.error("Search failed:", error);
                     setSearchResults([]);
                 })
                 .finally(() => {
@@ -216,7 +210,6 @@ const Nav = ({ isDarkMode = true, wishlist = [] }) => {
     const toggleDropdown = (e) => {
         e.stopPropagation();
         e.preventDefault();
-        console.log("Profile button clicked, isDropdownOpen:", !isDropdownOpen);
         setIsDropdownOpen(!isDropdownOpen);
     };
 

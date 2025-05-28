@@ -3,14 +3,11 @@
 namespace App\Http\Controllers\CompanyAuth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Offer;
-use App\Models\Destination;
+use App\Models\{Destination, Offer};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\{Auth, Storage, Log};
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class CompanyOfferController extends Controller
 {
@@ -20,46 +17,44 @@ class CompanyOfferController extends Controller
             $company = Auth::guard('company')->user();
             $offers = Offer::where('company_id', $company->id)
                 ->with('destination')
-                ->paginate(10)
+                ->paginate(8)
                 ->through(function ($offer) {
                     return [
                         'id' => $offer->id,
-                        'destination_id' => $offer->destination_id,
                         'title' => $offer->title,
                         'description' => $offer->description,
                         'location' => $offer->location,
                         'category' => $offer->category,
                         'price' => (float)$offer->price,
-                        'discount_price' => (float)$offer->discount_price,
+                        'discount_price' => $offer->discount_price ? (float)$offer->discount_price : null,
                         'discount_type' => $offer->discount_type,
                         'start_date' => $offer->start_date ? $offer->start_date->format('Y-m-d') : null,
                         'end_date' => $offer->end_date ? $offer->end_date->format('Y-m-d') : null,
                         'image' => $offer->image ? Storage::url($offer->image) : null,
-                        'rating' => (float)$offer->rating,
                         'is_active' => (bool)$offer->is_active,
-                        'created_at' => $offer->created_at->format('Y-m-d H:i:s'),
-                        'updated_at' => $offer->updated_at->format('Y-m-d H:i:s'),
+                        'rating' => $offer->rating ? (float)$offer->rating : null,
+                        'destination_id' => $offer->destination_id,
                         'destination' => $offer->destination ? [
                             'id' => $offer->destination->id,
-                            'name' => $offer->destination->title, // Use title for consistency
+                            'name' => $offer->destination->title,
                         ] : null,
                     ];
                 });
 
-            // No need for a separate offers index page, render the dashboard
             return Inertia::render('Company/Dashboard', [
                 'offers' => $offers,
+                'company' => [
+                    'id' => $company->id,
+                    'company_name' => $company->company_name,
+                    'email' => $company->email,
+                ],
                 'flash' => [
                     'success' => session('success'),
                     'error' => session('error'),
                 ],
-                // Pass other data needed by dashboard
-                'destinations' => request()->session()->get('destinations') ?? ['data' => []],
-                'packages' => request()->session()->get('packages') ?? ['data' => []],
-                'bookings' => request()->session()->get('bookings') ?? ['data' => []],
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to fetch company offers: ' . $e->getMessage());
+            Log::error('Failed to fetch offers: ', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to load offers.');
         }
     }
@@ -68,24 +63,26 @@ class CompanyOfferController extends Controller
     {
         try {
             $company = Auth::guard('company')->user();
+            if (!$company->is_active) {
+                return back()->with('error', 'Your company account is not active.');
+            }
 
             $validated = $request->validate([
-                'destination_id' => 'required|exists:destinations,id', // Should be 'id,company_id,' . $company->id for security
-                'title' => 'required|string|max:255',
-                'description' => 'required|string|min:10',
-                'location' => 'nullable|string|max:255',
-                'category' => 'nullable|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
+                'destination_id' => 'required|exists:destinations,id',
+                'title' => 'required|string|max:255|min:3',
+                'description' => 'required|string|min:10|max:5000',
+                'location' => 'required|string|max:255',
+                'category' => 'required|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
                 'price' => 'required|numeric|min:0.01',
                 'discount_price' => 'nullable|numeric|min:0|lt:price',
-                'discount_type' => 'nullable|string|in:percentage,fixed',
-                'start_date' => 'required|date', // Changed to required as per frontend logic
-                'end_date' => 'required|date|after_or_equal:start_date', // Changed to required
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048', // Added webp
+                'discount_type' => 'required|in:percentage,fixed',
+                'start_date' => 'required|date|after_or_equal:today',
+                'end_date' => 'required|date|after_or_equal:start_date',
+                'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                 'rating' => 'nullable|numeric|min:0|max:5',
                 'is_active' => 'boolean',
             ]);
 
-            // Ensure the destination belongs to the company
             $destination = Destination::where('id', $validated['destination_id'])
                 ->where('company_id', $company->id)
                 ->firstOrFail();
@@ -97,20 +94,20 @@ class CompanyOfferController extends Controller
             }
 
             $validated['company_id'] = $company->id;
-            $validated['is_active'] = $validated['is_active'] ?? true;
+            $validated['is_active'] = $request->boolean('is_active', true);
 
             Offer::create($validated);
 
-            return redirect()->route('company.dashboard')->with('success', 'Offer created successfully.');
+            return redirect()->back()->with('success', 'Offer created successfully!');
         } catch (ValidationException $e) {
-            return back()->withErrors($e->errors())->withInput();
+            return back()->withErrors($e->errors())->withInput()->with('error', 'Failed to create offer. Please check the form.');
         } catch (\Exception $e) {
-            Log::error('Failed to create company offer: ' . $e->getMessage());
+            Log::error('Failed to create offer: ', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to create offer.');
         }
     }
 
-    public function update(Request $request, Offer $offer) // Changed $id to Offer $offer for route model binding
+    public function update(Request $request, Offer $offer)
     {
         try {
             $company = Auth::guard('company')->user();
@@ -119,49 +116,47 @@ class CompanyOfferController extends Controller
             }
 
             $validated = $request->validate([
-                'destination_id' => 'required|exists:destinations,id', // Changed to required for consistency
-                'title' => 'required|string|max:255', // Changed to required
-                'description' => 'required|string|min:10', // Changed to required
-                'location' => 'nullable|string|max:255',
-                'category' => 'nullable|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
-                'price' => 'required|numeric|min:0.01', // Changed to required
+                'destination_id' => 'sometimes|exists:destinations,id',
+                'title' => 'sometimes|string|max:255|min:3',
+                'description' => 'sometimes|string|min:10|max:5000',
+                'location' => 'sometimes|string|max:255',
+                'category' => 'sometimes|in:Beach,Mountain,City,Cultural,Adventure,Historical,Wildlife',
+                'price' => 'sometimes|numeric|min:0.01',
                 'discount_price' => 'nullable|numeric|min:0|lt:price',
-                'discount_type' => 'nullable|string|in:percentage,fixed',
-                'start_date' => 'required|date', // Changed to required
-                'end_date' => 'required|date|after_or_equal:start_date', // Changed to required
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048', // Added webp
+                'discount_type' => 'sometimes|in:percentage,fixed',
+                'start_date' => 'sometimes|date|after_or_equal:today',
+                'end_date' => 'sometimes|date|after_or_equal:start_date',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                 'rating' => 'nullable|numeric|min:0|max:5',
-                'is_active' => 'boolean',
+                'is_active' => 'sometimes|boolean',
             ]);
 
-            // Ensure the destination belongs to the company during update
-            $destination = Destination::where('id', $validated['destination_id'])
-                ->where('company_id', $company->id)
-                ->firstOrFail();
-
-            $dataToUpdate = $validated;
-            unset($dataToUpdate['image']); // Remove image from validated data to handle separately
+            if (isset($validated['destination_id'])) {
+                $destination = Destination::where('id', $validated['destination_id'])
+                    ->where('company_id', $company->id)
+                    ->firstOrFail();
+            }
 
             if ($request->hasFile('image') && $request->file('image')->isValid()) {
                 if ($offer->image) {
                     Storage::disk('public')->delete($offer->image);
                 }
-                $dataToUpdate['image'] = $request->file('image')->store('offers', 'public');
+                $validated['image'] = $request->file('image')->store('offers', 'public');
+            } else {
+                unset($validated['image']);
             }
 
+            $offer->update($validated);
 
-            $offer->update($dataToUpdate);
-
-            return redirect()->route('company.dashboard')->with('success', 'Offer updated successfully.');
+            return redirect()->back()->with('success', 'Offer updated successfully!');
         } catch (ValidationException $e) {
-            return back()->withErrors($e->errors())->withInput();
+            return back()->withErrors($e->errors())->withInput()->with('error', 'Failed to update offer. Please check the form.');
         } catch (\Exception $e) {
-            Log::error('Failed to update offer: ' . $e->getMessage(), ['id' => $offer->id]);
+            Log::error('Failed to update offer ID ' . $offer->id . ': ', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to update offer.');
         }
     }
-
-    public function destroy(Offer $offer) // Changed $id to Offer $offer for route model binding
+    public function destroy(Offer $offer)
     {
         try {
             $company = Auth::guard('company')->user();
@@ -174,9 +169,9 @@ class CompanyOfferController extends Controller
             }
             $offer->delete();
 
-            return redirect()->route('company.dashboard')->with('success', 'Offer deleted successfully.');
+            return redirect()->back()->with('success', 'Offer deleted successfully!');
         } catch (\Exception $e) {
-            Log::error('Failed to delete offer: ' . $e->getMessage(), ['id' => $offer->id]);
+            Log::error('Failed to delete offer ID ' . $offer->id . ': ', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to delete offer.');
         }
     }
@@ -184,13 +179,18 @@ class CompanyOfferController extends Controller
     public function toggleActive(Offer $offer)
     {
         try {
+            $company = Auth::guard('company')->user();
+            if ($offer->company_id !== $company->id) {
+                return back()->with('error', 'Unauthorized action.');
+            }
+
             $offer->is_active = !$offer->is_active;
             $offer->save();
 
             $message = $offer->is_active ? 'Offer activated.' : 'Offer deactivated.';
             return redirect()->back()->with('success', $message);
         } catch (\Exception $e) {
-            Log::error('Failed to toggle active status for offer ID ' . $offer->id . ': ' . $e->getMessage());
+            Log::error('Failed to toggle active status for offer ID ' . $offer->id . ': ', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to toggle active status.');
         }
     }
