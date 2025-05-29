@@ -16,7 +16,7 @@ import {
     Tag,
     Award,
     Compass,
-    Sun,
+     Sun,
     ArrowLeft,
     ArrowRight as ChevronRight,
     Calendar,
