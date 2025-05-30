@@ -18,6 +18,12 @@ class OfferController extends Controller
             ->with(['destination', 'company'])
             ->get()
             ->map(function ($offer) use ($user) {
+                $favorite = $user
+                    ? Favorite::where('user_id', $user->id)
+                    ->where('offer_id', $offer->id)
+                    ->first()
+                    : null;
+
                 return [
                     'id' => $offer->id,
                     'title' => $offer->title ?? 'Unknown Offer',
@@ -44,11 +50,8 @@ class OfferController extends Controller
                         'title' => $offer->destination->title,
                         'location' => $offer->destination->location,
                     ] : null,
-                    'is_favorite' => $user
-                        ? Favorite::where('user_id', $user->id)
-                        ->where('offer_id', $offer->id)
-                        ->exists()
-                        : false,
+                    'is_favorite' => $favorite ? true : false,
+                    'favorite_id' => $favorite ? $favorite->id : null,
                 ];
             });
 
@@ -68,6 +71,12 @@ class OfferController extends Controller
             abort(404, 'Offer not found');
         }
 
+        $favorite = $user
+            ? Favorite::where('user_id', $user->id)
+            ->where('offer_id', $offer->id)
+            ->first()
+            : null;
+
         $offerData = [
             'id' => $offer->id,
             'title' => $offer->title ?? 'Unknown Offer',
@@ -84,6 +93,7 @@ class OfferController extends Controller
             'is_active' => $offer->is_active ?? false,
             'duration' => $offer->duration,
             'group_size' => $offer->group_size,
+            'max_guests' => $offer->group_size,
             'company' => $offer->company ? [
                 'id' => $offer->company->id,
                 'company_name' => $offer->company->company_name,
@@ -93,21 +103,14 @@ class OfferController extends Controller
                 'title' => $offer->destination->title,
                 'location' => $offer->destination->location,
             ] : null,
-            
-        
-            'is_favorite' => $user
-                ? Favorite::where('user_id', $user->id)
-                ->where('offer_id', $offer->id)
-                ->exists()
-                : false,
+            'is_favorite' => $favorite ? true : false,
+            'favorite_id' => $favorite ? $favorite->id : null,
         ];
 
         return Inertia::render('Offers/Show', [
             'offer' => $offerData,
             'auth' => Auth::check() ? ['user' => Auth::user()] : null,
             'flash' => session()->only(['success', 'error']),
-            'isFavorite' => $offerData['is_favorite'],
-            'message' => session('message'),
         ]);
     }
 
@@ -118,57 +121,16 @@ class OfferController extends Controller
             return redirect()->route('login')->with('error', 'Please log in to add to favorites');
         }
 
-        $offer = Offer::findOrFail($id);
-        $favorite = Favorite::where('user_id', $user->id)
-            ->where('offer_id', $offer->id)
-            ->first();
-
-        if ($favorite) {
-            $favorite->delete();
-            $message = 'Offer removed from favorites';
-            $isFavorite = false;
-        } else {
-            Favorite::create([
-                'user_id' => $user->id,
+        try {
+            $offer = Offer::findOrFail($id);
+            $response = app(FavoriteController::class)->store(new Request([
                 'offer_id' => $offer->id,
-            ]);
-            $message = 'Offer added to favorites';
-            $isFavorite = true;
-        }
+            ]));
 
-        return Inertia::render('Offers/Show', [
-            'offer' => [
-                'id' => $offer->id,
-                'title' => $offer->title ?? 'Unknown Offer',
-                'location' => $offer->location ?? 'Unknown Location',
-                'category' => $offer->category ?? '',
-                'price' => $offer->price ?? 0,
-                'discount_price' => $offer->discount_price ?? null,
-                'discount_type' => $offer->discount_type ?? '',
-                'start_date' => $offer->start_date ? $offer->start_date->format('Y-m-d') : null,
-                'end_date' => $offer->end_date ? $offer->end_date->format('Y-m-d') : null,
-                'image' => $offer->image ? Storage::url($offer->image) : null,
-                'description' => $offer->description ?? '',
-                'rating' => $offer->rating ?? 0.0,
-                'is_active' => $offer->is_active ?? false,
-                'duration' => $offer->duration,
-                'group_size' => $offer->group_size,
-                'company' => $offer->company ? [
-                    'id' => $offer->company->id,
-                    'company_name' => $offer->company->company_name,
-                ] : null,
-                'destination' => $offer->destination ? [
-                    'id' => $offer->destination->id,
-                    'title' => $offer->destination->title,
-                    'location' => $offer->destination->location,
-                ] : null,
-               
-                'is_favorite' => $isFavorite,
-            ],
-            'auth' => ['user' => $user],
-            'flash' => ['success' => $message],
-            'isFavorite' => $isFavorite,
-            'message' => $message,
-        ])->with('message', $message);
+            $data = $response->getData(true);
+            return redirect()->route('offers.index')->with('success', $data['message']);
+        } catch (\Exception $e) {
+            return redirect()->route('offers.index')->with('error', 'Failed to toggle favorite.');
+        }
     }
 }

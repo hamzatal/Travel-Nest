@@ -1,30 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Head, Link } from "@inertiajs/react";
+import axios from "axios";
 import { motion } from "framer-motion";
 import {
     MapPin,
-    Calendar,
-    Tag,
     ChevronLeft,
     Star,
     Heart,
+    Calendar,
+    Tag,
     Users,
 } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
 
-export default function OfferDetails({ offer = {}, auth, flash = {} }) {
+export default function Show({ offer = {}, auth }) {
     const [isDarkMode, setIsDarkMode] = useState(true);
-    const [isFavorite, setIsFavorite] = useState(false);
+    const [favoriteState, setFavoriteState] = useState({
+        is_favorite: offer.is_favorite || false,
+        favorite_id: offer.favorite_id || null,
+    });
 
     const serviceFee = 9.99;
     const bookingFee = 4.99;
-
-    useEffect(() => {
-        if (flash.success) toast.success(flash.success);
-        if (flash.error) toast.error(flash.error);
-    }, [flash]);
 
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
@@ -77,6 +76,33 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
         const end = new Date(endDate);
         const diffDays = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
         return diffDays > 0 ? diffDays : 0;
+    };
+
+    const toggleFavorite = async () => {
+        if (!auth?.user) {
+            toast.error("Please log in to add to favorites.");
+            return;
+        }
+
+        try {
+            const response = await axios.post("/favorites", {
+                offer_id: offer.id,
+            });
+
+            const { success, message, is_favorite, favorite_id } =
+                response.data;
+
+            if (success) {
+                setFavoriteState({ is_favorite, favorite_id });
+                toast.success(message);
+            } else {
+                toast.error(message);
+            }
+        } catch (error) {
+            const errorMessage =
+                error.response?.data?.message || "Failed to toggle favorite.";
+            toast.error(errorMessage);
+        }
     };
 
     const basePrice = parseFloat(offer.discount_price || offer.price || 0);
@@ -139,7 +165,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                         >
                             {offer.discount_type && (
                                 <span className="flex items-center gap-1">
-                                    <Tag size={16} className="text-blue-400" />
+                                    <Tag size={16} className="text-amber-300" />
                                     Type: {offer.discount_type}
                                 </span>
                             )}
@@ -147,7 +173,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 <span className="flex items-center gap-1">
                                     <Users
                                         size={16}
-                                        className="text-blue-400"
+                                        className="text-amber-300"
                                     />
                                     Max Guests: {offer.max_guests}
                                 </span>
@@ -156,7 +182,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 <span className="flex items-center gap-1">
                                     <Calendar
                                         size={16}
-                                        className="text-blue-400"
+                                        className="text-amber-300"
                                     />
                                     Start: {formatDate(offer.start_date)}
                                 </span>
@@ -165,7 +191,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 <span className="flex items-center gap-1">
                                     <Calendar
                                         size={16}
-                                        className="text-blue-400"
+                                        className="text-amber-300"
                                     />
                                     End: {formatDate(offer.end_date)}
                                 </span>
@@ -184,7 +210,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                 >
                     <Link
                         href="/offers"
-                        className="flex items-center text-sm text-gray-400 hover:text-blue-400 transition-colors duration-300"
+                        className="flex items-center text-sm text-gray-400 hover:text-amber-300 transition-colors duration-300"
                     >
                         <ChevronLeft size={16} className="mr-1" />
                         Back to Offers
@@ -228,39 +254,42 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                         </span>
                                     )}
                                 </div>
-                                {calculateDiscount(
-                                    offer.price,
-                                    offer.discount_price
-                                ) && (
-                                    <div className="absolute top-4 right-12 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                        {calculateDiscount(
-                                            offer.price,
-                                            offer.discount_price
-                                        )}
-                                        % OFF
-                                    </div>
-                                )}
-                                <button
-                                    onClick={() => setIsFavorite(!isFavorite)}
-                                    className={`absolute top-3 ${
-                                        calculateDiscount(
-                                            offer.price,
-                                            offer.discount_price
-                                        )
-                                            ? "right-2"
-                                            : "right-4"
-                                    } bg-white bg-opacity-30 p-2 rounded-full hover:bg-opacity-50 transition-all duration-300`}
-                                    aria-label="Add to favorites"
-                                >
-                                    <Heart
-                                        size={20}
-                                        className={
-                                            isFavorite
-                                                ? "text-red-500 fill-red-500"
-                                                : "text-white"
+                                <div className="absolute top-4 right-1 flex flex-col gap-2">
+                                    {calculateDiscount(
+                                        offer.price,
+                                        offer.discount_price
+                                    ) && (
+                                        <div className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                            {calculateDiscount(
+                                                offer.price,
+                                                offer.discount_price
+                                            )}
+                                            % OFF
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={toggleFavorite}
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm ${
+                                            favoriteState.is_favorite
+                                                ? "bg-red-500 hover:bg-red-600"
+                                                : "bg-gray-900 bg-opacity-50 hover:bg-gray-700"
+                                        }`}
+                                        aria-label={
+                                            favoriteState.is_favorite
+                                                ? "Remove from favorites"
+                                                : "Add to favorites"
                                         }
-                                    />
-                                </button>
+                                    >
+                                        <Heart
+                                            size={18}
+                                            className={
+                                                favoriteState.is_favorite
+                                                    ? "text-white fill-white"
+                                                    : "text-gray-300"
+                                            }
+                                        />
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="p-6 md:p-8">
@@ -272,7 +301,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                         </span>
                                     </div>
                                     {offer.discount_type && (
-                                        <span className="px-3 py-1 bg-blue-600 bg-opacity-20 text-blue-400 rounded-full text-xs">
+                                        <span className="px-3 py-1 bg-amber-600 bg-opacity-20 text-amber-300 rounded-full text-xs">
                                             {offer.discount_type}
                                         </span>
                                     )}
@@ -294,7 +323,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 </div>
 
                                 <div className="mt-8">
-                                    <h3 className="text-xl font-semibold mb-4 text-blue-400">
+                                    <h3 className="text-xl font-semibold mb-4 text-amber-300">
                                         Pricing Details
                                     </h3>
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
@@ -305,7 +334,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                             <div className="flex items-baseline gap-2">
                                                 {offer.discount_price ? (
                                                     <>
-                                                        <span className="text-2xl font-bold text-blue-400">
+                                                        <span className="text-2xl font-bold text-amber-300">
                                                             $
                                                             {formatPrice(
                                                                 offer.discount_price
@@ -319,7 +348,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                         </span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-2xl font-bold text-blue-400">
+                                                    <span className="text-2xl font-bold text-amber-300">
                                                         $
                                                         {formatPrice(
                                                             offer.price
@@ -340,7 +369,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                     You Save
                                                 </div>
                                                 <div className="flex items-baseline gap-2">
-                                                    <span className="text-2xl font-bold text-blue-400">
+                                                    <span className="text-2xl font-bold text-amber-300">
                                                         $
                                                         {formatPrice(
                                                             parseFloat(
@@ -399,7 +428,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                     offer.start_date ||
                                     offer.end_date) && (
                                     <div className="mt-8">
-                                        <h3 className="text-xl font-semibold mb-4 text-blue-400">
+                                        <h3 className="text-xl font-semibold mb-4 text-amber-300">
                                             Additional Details
                                         </h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -407,7 +436,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                 <div className="flex items-center gap-2">
                                                     <Tag
                                                         size={18}
-                                                        className="text-blue-400"
+                                                        className="text-amber-300"
                                                     />
                                                     <span className="text-gray-300">
                                                         Type:{" "}
@@ -419,7 +448,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                 <div className="flex items-center gap-2">
                                                     <Users
                                                         size={18}
-                                                        className="text-blue-400"
+                                                        className="text-amber-300"
                                                     />
                                                     <span className="text-gray-300">
                                                         Max Guests:{" "}
@@ -431,7 +460,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                 <div className="flex items-center gap-2">
                                                     <Calendar
                                                         size={18}
-                                                        className="text-blue-400"
+                                                        className="text-amber-300"
                                                     />
                                                     <span className="text-gray-300">
                                                         Start Date:{" "}
@@ -445,7 +474,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                 <div className="flex items-center gap-2">
                                                     <Calendar
                                                         size={18}
-                                                        className="text-blue-400"
+                                                        className="text-amber-300"
                                                     />
                                                     <span className="text-gray-300">
                                                         End Date:{" "}
@@ -470,7 +499,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                 variants={fadeIn}
                                 className="mt-8 bg-gray-800 bg-opacity-70 rounded-xl p-6 md:p-8 shadow-xl border border-gray-700"
                             >
-                                <h3 className="text-xl font-semibold mb-4 text-blue-400">
+                                <h3 className="text-xl font-semibold mb-4 text-amber-300">
                                     Location Information
                                 </h3>
                                 <p className="text-gray-300 mb-4">
@@ -498,7 +527,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             variants={fadeIn}
                             className="mt-8 bg-gray-800 bg-opacity-70 rounded-xl p-6 md:p-8 shadow-xl border border-gray-700"
                         >
-                            <h3 className="text-xl font-semibold mb-4 text-blue-400">
+                            <h3 className="text-xl font-semibold mb-4 text-amber-300">
                                 Offer Availability
                             </h3>
                             <p className="text-gray-300 mb-4">
@@ -553,7 +582,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                     <div className="flex items-baseline gap-2">
                                         {offer.discount_price ? (
                                             <>
-                                                <span className="text-lg font-bold text-blue-400">
+                                                <span className="text-lg font-bold text-amber-300">
                                                     $
                                                     {formatPrice(
                                                         offer.discount_price
@@ -564,7 +593,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                                                 </span>
                                             </>
                                         ) : (
-                                            <span className="text-lg font-bold text-blue-400">
+                                            <span className="text-lg font-bold text-amber-300">
                                                 ${formatPrice(offer.price)}
                                             </span>
                                         )}
@@ -596,15 +625,19 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                             <div className="space-y-3">
                                 <Link
                                     href={`/book?offer_id=${offer.id}`}
-                                    className="block w-full bg-blue-600 hover:bg-blue-500 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+                                    className="block w-full bg-amber-600 hover:bg-amber-500 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
                                 >
                                     Book Now
                                 </Link>
                                 <button
-                                    className="block w-full bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
-                                    onClick={() => setIsFavorite(!isFavorite)}
+                                    onClick={toggleFavorite}
+                                    className={`block w-full py-3 rounded-lg text-center transition-all duration-300 ${
+                                        favoriteState.is_favorite
+                                            ? "bg-red-500 hover:bg-red-600 text-white"
+                                            : "bg-transparent border border-amber-500 text-amber-300 hover:bg-amber-900 hover:bg-opacity-20"
+                                    }`}
                                 >
-                                    {isFavorite
+                                    {favoriteState.is_favorite
                                         ? "Saved to Favorites"
                                         : "Save to Favorites"}
                                 </button>
@@ -621,11 +654,11 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                     whileInView="visible"
                     viewport={{ once: true }}
                     variants={fadeIn}
-                    className="text-center bg-blue-900 bg-opacity-40 rounded-xl p-8 shadow-xl max-w-4xl mx-auto mt-16 border border-blue-800"
+                    className="text-center bg-amber-900 bg-opacity-40 rounded-xl p-8 shadow-xl max-w-4xl mx-auto mt-16 border border-amber-800"
                 >
                     <h2 className="text-2xl font-bold mb-4">
                         Ready to Grab This{" "}
-                        <span className="text-blue-400">Special Offer</span>?
+                        <span className="text-amber-300">Special Offer</span>?
                     </h2>
                     <p className="text-gray-300 mb-6">
                         Book now to secure this limited-time deal and enjoy
@@ -635,7 +668,7 @@ export default function OfferDetails({ offer = {}, auth, flash = {} }) {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         href={`/book?offer_id=${offer.id}`}
-                        className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg transition-all duration-300"
+                        className="inline-block bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-lg transition-all duration-300"
                     >
                         Book Now
                     </motion.a>
