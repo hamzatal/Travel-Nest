@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Head, usePage, Link, router } from "@inertiajs/react";
+import React, { useState } from "react";
+import { Head, Link } from "@inertiajs/react";
+import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
@@ -10,31 +11,32 @@ import {
     Tags,
     Heart,
     Star,
+    Check,
 } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
 
-const PackagesPage = ({ auth }) => {
-    const { props } = usePage();
-    const { packages = [], flash = {} } = props;
+const PackagesPage = ({ auth, packages = [] }) => {
     const user = auth?.user || null;
-
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [sortBy, setSortBy] = useState("newest");
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
-    const [isDarkMode, setIsDarkMode] = useState(true);
     const [favorites, setFavorites] = useState(
         packages.reduce(
             (acc, pkg) => ({
                 ...acc,
-                [pkg.id]: pkg.is_favorite || false,
+                [pkg.id]: {
+                    is_favorite: pkg.is_favorite || false,
+                    favorite_id: pkg.favorite_id || null,
+                },
             }),
             {}
         )
     );
+    const [loadingFavorites, setLoadingFavorites] = useState({});
 
     const itemsPerPage = 8;
     const categories = [
@@ -46,22 +48,21 @@ const PackagesPage = ({ auth }) => {
         "Historical",
         "Wildlife",
     ];
+    const sortOptions = [
+        { value: "newest", label: "Newest First" },
+        { value: "priceAsc", label: "Price: Low to High" },
+        { value: "priceDesc", label: "Price: High to Low" },
+        { value: "discount", label: "Biggest Discount" },
+    ];
 
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
     };
-
     const staggerContainer = {
         hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-            },
-        },
+        visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
     };
-
     const cardVariants = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
@@ -77,38 +78,59 @@ const PackagesPage = ({ auth }) => {
         setCurrentPage(1);
     };
 
-    const toggleFavorite = (packageId) => {
+    const toggleFavorite = async (packageId) => {
         if (!user) {
             toast.error("Please log in to add to favorites");
             return;
         }
 
-        router.post(
-            route("packages.favorite", packageId),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    const { isFavorite, message } = page.props;
-                    setFavorites((prev) => ({
-                        ...prev,
-                        [packageId]: isFavorite,
-                    }));
-                    toast.success(message);
-                },
-                onError: () => {
-                    toast.error("Failed to toggle favorite");
-                },
+        try {
+            const response = await axios.post("/favorites", {
+                package_id: packageId,
+            });
+
+            const { success, message, is_favorite, favorite_id } =
+                response.data;
+
+            if (success) {
+                setFavorites((prev) => ({
+                    ...prev,
+                    [packageId]: { is_favorite, favorite_id },
+                }));
+                toast.success(message);
+            } else {
+                toast.error(message);
             }
-        );
+        } catch (error) {
+            toast.error("Failed to toggle favorite");
+        }
     };
 
-    const sortOptions = [
-        { value: "newest", label: "Newest First" },
-        { value: "priceAsc", label: "Price: Low to High" },
-        { value: "priceDesc", label: "Price: High to Low" },
-        { value: "discount", label: "Biggest Discount" },
-    ];
+    const calculateDiscount = (original, discounted) => {
+        const orig = parseFloat(original);
+        const disc = parseFloat(discounted);
+        if (!orig || !disc || orig <= disc) return 0;
+        return Math.round(((orig - disc) / orig) * 100);
+    };
+
+    const renderStars = (rating = 0) => {
+        const stars = [];
+        const roundedRating = Math.round(rating * 2) / 2;
+        for (let i = 1; i <= 5; i++) {
+            stars.push(
+                <Star
+                    key={i}
+                    size={14}
+                    className={
+                        i <= roundedRating
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-500"
+                    }
+                />
+            );
+        }
+        return stars;
+    };
 
     const filteredPackages = packages
         .filter(
@@ -133,16 +155,17 @@ const PackagesPage = ({ auth }) => {
                         (a.discount_price || a.price)
                     );
                 case "discount":
-                    const discountA = a.discount_price
-                        ? (a.price - a.discount_price) / a.price
-                        : 0;
-                    const discountB = b.discount_price
-                        ? (b.price - b.discount_price) / b.price
-                        : 0;
-                    return discountB - discountA;
+                    return (
+                        (b.discount_price
+                            ? (b.price - b.discount_price) / b.price
+                            : 0) -
+                        (a.discount_price
+                            ? (a.price - a.discount_price) / a.price
+                            : 0)
+                    );
                 case "newest":
                 default:
-                    return b.id - a.id;
+                    return new Date(b.created_at) - new Date(a.created_at);
             }
         });
 
@@ -152,50 +175,22 @@ const PackagesPage = ({ auth }) => {
         currentPage * itemsPerPage
     );
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery]);
+    const resetPage = () => setCurrentPage(1);
 
-    useEffect(() => {
-        if (flash.success) {
-            toast.success(flash.success);
-        }
-        if (flash.error) {
-            toast.error(flash.error);
-        }
-    }, [flash]);
-
-    const calculateDiscount = (original, discounted) => {
-        if (!discounted) return null;
-        const percentage = Math.round(
-            ((original - discounted) / original) * 100
-        );
-        return percentage;
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        resetPage();
     };
 
-    const renderStars = (rating) => {
-        const stars = [];
-        const roundedRating = Math.round(rating * 2) / 2;
-        for (let i = 1; i <= 5; i++) {
-            stars.push(
-                <Star
-                    key={i}
-                    size={14}
-                    className={
-                        i <= roundedRating
-                            ? "text-yellow-400 fill-yellow-400"
-                            : "text-gray-500"
-                    }
-                />
-            );
-        }
-        return stars;
+    const handleCategoryToggle = (category) => {
+        toggleCategory(category);
+        resetPage();
     };
 
     const baseUrl = "/storage/";
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
             <Head>
                 <title>Packages - Travel Nest</title>
                 <meta
@@ -204,16 +199,11 @@ const PackagesPage = ({ auth }) => {
                 />
             </Head>
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-
-            <Navbar
-                user={user}
-                isDarkMode={isDarkMode}
-                toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-            />
+            <Navbar user={user} />
 
             <div className="relative h-72 md:h-80 overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
-                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-fill"></div>
+                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-contain"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center px-4">
                         <motion.h1
@@ -247,10 +237,10 @@ const PackagesPage = ({ auth }) => {
 
             <div className="max-w-7xl mx-auto px-6 md:px-16 py-12">
                 <motion.div
+                    variants={fadeIn}
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true }}
-                    variants={fadeIn}
                     className="mb-12"
                 >
                     <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
@@ -259,18 +249,17 @@ const PackagesPage = ({ auth }) => {
                                 type="text"
                                 placeholder="Search packages or locations..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
+                                onChange={handleSearchChange}
+                                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
                             <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                         </div>
-
                         <div className="flex items-center gap-3 w-full md:w-auto">
                             <div className="relative w-full md:w-48">
                                 <select
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none transition-all duration-300"
+                                    className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
                                 >
                                     {sortOptions.map((option) => (
                                         <option
@@ -281,14 +270,10 @@ const PackagesPage = ({ auth }) => {
                                         </option>
                                     ))}
                                 </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                                </div>
                             </div>
-
                             <button
                                 onClick={() => setFilterOpen(!filterOpen)}
-                                className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 hover:bg-gray-700 transition-all duration-300"
+                                className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 hover:bg-gray-700"
                             >
                                 <Filter className="w-4 h-4" />
                                 <span className="hidden sm:inline">
@@ -320,9 +305,11 @@ const PackagesPage = ({ auth }) => {
                                                 <button
                                                     key={category}
                                                     onClick={() =>
-                                                        toggleCategory(category)
+                                                        handleCategoryToggle(
+                                                            category
+                                                        )
                                                     }
-                                                    className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 ${
+                                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
                                                         selectedCategories.includes(
                                                             category
                                                         )
@@ -344,7 +331,10 @@ const PackagesPage = ({ auth }) => {
                         <p className="text-gray-400">
                             Showing{" "}
                             {filteredPackages.length > 0
-                                ? (currentPage - 1) * itemsPerPage + 1
+                                ? Math.min(
+                                      (currentPage - 1) * itemsPerPage + 1,
+                                      filteredPackages.length
+                                  )
                                 : 0}
                             -
                             {Math.min(
@@ -368,7 +358,7 @@ const PackagesPage = ({ auth }) => {
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer}
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16" // Changed to 4 columns
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16"
                 >
                     <AnimatePresence mode="popLayout">
                         {paginatedPackages.length === 0 ? (
@@ -391,7 +381,7 @@ const PackagesPage = ({ auth }) => {
                                             setSearchQuery("");
                                             setSelectedCategories([]);
                                         }}
-                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
+                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                                     >
                                         Clear All Filters
                                     </button>
@@ -414,24 +404,27 @@ const PackagesPage = ({ auth }) => {
                                             src={
                                                 pkg.image
                                                     ? `${baseUrl}${pkg.image}`
-                                                    : "https://via.placeholder.com/640x480?text=No+Image"
+                                                    : "https://via.placeholder.com/640x480?text=Package+Image"
                                             }
                                             alt={pkg.title}
                                             className="w-full h-56 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
+                                            onError={(e) => {
+                                                e.target.src =
+                                                    "https://via.placeholder.com/640x480?text=Package+Image";
+                                            }}
                                         />
                                         {pkg.category && (
                                             <span className="absolute top-3 left-3 px-2 py-1 bg-green-600 rounded-full text-xs font-medium text-white">
                                                 {pkg.category}
                                             </span>
                                         )}
-
-                                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+                                        <div className="absolute top-3 right-3 flex items-center gap-2">
                                             {calculateDiscount(
                                                 pkg.price,
                                                 pkg.discount_price
-                                            ) && (
-                                                <div className="bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold text-center">
+                                            ) > 0 && (
+                                                <div className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold">
                                                     {calculateDiscount(
                                                         pkg.price,
                                                         pkg.discount_price
@@ -443,25 +436,43 @@ const PackagesPage = ({ auth }) => {
                                                 onClick={() =>
                                                     toggleFavorite(pkg.id)
                                                 }
-                                                className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm"
+                                                disabled={
+                                                    loadingFavorites[pkg.id]
+                                                }
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm z-20 ${
+                                                    favorites[pkg.id]
+                                                        ?.is_favorite
+                                                        ? "bg-red-500 hover:bg-red-600"
+                                                        : "bg-gray-900 bg-opacity-50 hover:bg-gray-700"
+                                                }
+                                                    } ${
+                                                        loadingFavorites[pkg.id]
+                                                            ? "opacity-50 cursor-not-allowed"
+                                                            : ""
+                                                    }`}
                                                 aria-label={
                                                     favorites[pkg.id]
+                                                        ?.is_favorite
                                                         ? "Remove from favorites"
                                                         : "Add to favorites"
+                                                }
+                                                aria-busy={
+                                                    loadingFavorites[pkg.id]
                                                 }
                                             >
                                                 <Heart
                                                     size={18}
                                                     className={
                                                         favorites[pkg.id]
-                                                            ? "text-green-400 fill-green-400"
+                                                            ?.is_favorite
+                                                            ? "text-white fill-white"
                                                             : "text-gray-300"
                                                     }
                                                 />
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="p-5 flex flex-col flex-grow space-y-3">
+                                    <div className="p-5 flex flex-col flex-grow">
                                         <div className="flex items-center justify-between">
                                             <h3 className="text-xl font-bold text-white line-clamp-1">
                                                 {pkg.title}
@@ -499,17 +510,27 @@ const PackagesPage = ({ auth }) => {
                                                             <>
                                                                 <span className="text-lg font-bold text-green-400">
                                                                     $
-                                                                    {
+                                                                    {parseFloat(
                                                                         pkg.discount_price
-                                                                    }
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}
                                                                 </span>
                                                                 <span className="text-sm line-through text-gray-500">
-                                                                    ${pkg.price}
+                                                                    $
+                                                                    {parseFloat(
+                                                                        pkg.price
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}
                                                                 </span>
                                                             </>
                                                         ) : (
                                                             <span className="text-lg font-bold text-green-400">
-                                                                ${pkg.price}
+                                                                $
+                                                                {parseFloat(
+                                                                    pkg.price
+                                                                ).toFixed(2)}
                                                             </span>
                                                         )}
                                                         <span className="text-xs text-gray-400">
@@ -520,7 +541,7 @@ const PackagesPage = ({ auth }) => {
                                             </div>
                                             <Link
                                                 href={`/packages/${pkg.id}`}
-                                                className="w-full inline-block text-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
+                                                className="w-full inline-block text-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
                                             >
                                                 View Details
                                             </Link>
@@ -549,11 +570,10 @@ const PackagesPage = ({ auth }) => {
                                 currentPage === 1
                                     ? "bg-gray-800 text-gray-600 cursor-not-allowed"
                                     : "bg-gray-800 text-white hover:bg-gray-700"
-                            } transition-all duration-300`}
+                            }`}
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
-
                         <div className="flex items-center gap-1">
                             {Array.from(
                                 { length: totalPages },
@@ -569,11 +589,7 @@ const PackagesPage = ({ auth }) => {
                                     currentPage + pageRange
                                 );
 
-                                if (
-                                    (page >= startPage && page <= endPage) ||
-                                    page === 1 ||
-                                    page === totalPages
-                                ) {
+                                if (page >= startPage && page <= endPage) {
                                     return (
                                         <button
                                             key={page}
@@ -582,39 +598,15 @@ const PackagesPage = ({ auth }) => {
                                                 currentPage === page
                                                     ? "bg-green-600 text-white"
                                                     : "bg-gray-800 text-white hover:bg-gray-700"
-                                            } transition-all duration-300`}
+                                            }`}
                                         >
                                             {page}
                                         </button>
                                     );
                                 }
-
-                                if (page === startPage - 1 && page > 1) {
-                                    return (
-                                        <span
-                                            key={`ellipsis-start`}
-                                            className="text-gray-500"
-                                        >
-                                            ...
-                                        </span>
-                                    );
-                                }
-
-                                if (page === endPage + 1 && page < totalPages) {
-                                    return (
-                                        <span
-                                            key={`ellipsis-end`}
-                                            className="text-gray-500"
-                                        >
-                                            ...
-                                        </span>
-                                    );
-                                }
-
                                 return null;
                             })}
                         </div>
-
                         <button
                             onClick={() =>
                                 setCurrentPage((prev) =>
@@ -626,7 +618,7 @@ const PackagesPage = ({ auth }) => {
                                 currentPage === totalPages
                                     ? "bg-gray-800 text-gray-600 cursor-not-allowed"
                                     : "bg-gray-800 text-white hover:bg-gray-700"
-                            } transition-all duration-300`}
+                            }`}
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
@@ -637,20 +629,5 @@ const PackagesPage = ({ auth }) => {
         </div>
     );
 };
-
-const ChevronDown = ({ className }) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={className}
-    >
-        <path d="m6 9 6 6 6-6" />
-    </svg>
-);
 
 export default PackagesPage;

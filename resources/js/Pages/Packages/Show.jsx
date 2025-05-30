@@ -1,37 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { Head, Link, router } from "@inertiajs/react";
+import React, { useState } from "react";
+import { Head, Link } from "@inertiajs/react";
+import axios from "axios";
 import { motion } from "framer-motion";
-import {
-    MapPin,
-    Calendar,
-    DollarSign,
-    Tag,
-    ChevronLeft,
-    Star,
-    Heart,
-} from "lucide-react";
+import { MapPin, ChevronLeft, Star, Heart, Check } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
 
 export default function PackageDetails({ package: pkg, auth }) {
-    const [isDarkMode, setIsDarkMode] = useState(true);
-    const [isFavorite, setIsFavorite] = useState(pkg.is_favorite || false);
+    const [favoriteState, setFavoriteState] = useState({
+        is_favorite: pkg.is_favorite || false,
+        favorite_id: pkg.favorite_id || null,
+    });
+    const [loadingFavorite, setLoadingFavorite] = useState(false);
+    const user = auth?.user || null;
 
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
     };
 
     const calculateDiscount = (original, discounted) => {
-        if (!discounted) return null;
-        const percentage = Math.round(
-            ((original - discounted) / original) * 100
-        );
-        return percentage;
+        const orig = parseFloat(original);
+        const disc = parseFloat(discounted);
+        if (!orig || !disc || orig <= disc) return 0;
+        return Math.round(((orig - disc) / orig) * 100);
     };
 
-    const renderStars = (rating) => {
+    const renderStars = (rating = 0) => {
         const stars = [];
         const roundedRating = Math.round(rating * 2) / 2;
         for (let i = 1; i <= 5; i++) {
@@ -50,27 +46,56 @@ export default function PackageDetails({ package: pkg, auth }) {
         return stars;
     };
 
-    const toggleFavorite = () => {
-        if (!auth?.user) {
-            toast.error("Please log in to add to favorites");
+    const formatPrice = (price) => {
+        const parsed = parseFloat(price);
+        return isNaN(parsed) ? "0.00" : parsed.toFixed(2);
+    };
+
+    const toggleFavorite = async () => {
+        if (!user) {
+            toast.error("Please log in to add to favorites.", {
+                icon: <X size={16} className="text-red-500" />,
+            });
             return;
         }
 
-        router.post(
-            route("packages.favorite", pkg.id),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    const { isFavorite, message } = page.props;
-                    setIsFavorite(isFavorite);
-                    toast.success(message);
-                },
-                onError: () => {
-                    toast.error("Failed to toggle favorite");
-                },
+        // Optimistic update
+        const prevState = { ...favoriteState };
+        setFavoriteState({
+            is_favorite: !favoriteState.is_favorite,
+            favorite_id: favoriteState.is_favorite ? null : "temp",
+        });
+        setLoadingFavorite(true);
+
+        try {
+            const response = await axios.post("/favorites", {
+                package_id: pkg.id,
+            });
+
+            const { success, message, is_favorite, favorite_id } =
+                response.data;
+
+            if (success) {
+                setFavoriteState({ is_favorite, favorite_id });
+                toast(message, {
+                    icon: <Check size={16} className="text-green-500" />,
+                });
+            } else {
+                toast.error(message, {
+                    icon: <X size={16} className="text-red-500" />,
+                });
+                setFavoriteState(prevState);
             }
-        );
+        } catch (error) {
+            const errorMessage =
+                error.response?.data?.message || "Failed to toggle favorite.";
+            toast.error(errorMessage, {
+                icon: <X size={16} className="text-red-500" />,
+            });
+            setFavoriteState(prevState);
+        } finally {
+            setLoadingFavorite(false);
+        }
     };
 
     const serviceFee = 9.99;
@@ -78,25 +103,27 @@ export default function PackageDetails({ package: pkg, auth }) {
     const basePrice = parseFloat(pkg.discount_price || pkg.price || 0);
     const totalPrice = basePrice + serviceFee + bookingFee;
 
-    const baseUrl = "/storage/";
     const imageSrc = pkg.image
-        ? `${baseUrl}${pkg.image}`
-        : "https://via.placeholder.com/1200x800?text=No+Image";
+        ? `/storage/${pkg.image}`
+        : "https://via.placeholder.com/1200x800?text=Package+Image";
+
+    if (!pkg || Object.keys(pkg).length === 0) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center">
+                <p className="text-xl">No package details available.</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white transition-all duration-300 relative">
-            <Head title={`${pkg.title} - Travel Nest`} />
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
+            <Head title={`${pkg.title || "Package"} - Travel Nest`} />
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
-
-            <Navbar
-                user={auth?.user}
-                isDarkMode={isDarkMode}
-                toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-            />
+            <Navbar user={user} />
 
             <div className="relative h-64 md:h-72 overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
-                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-fill"></div>
+                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-contain"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center px-4">
                         <motion.h1
@@ -132,15 +159,15 @@ export default function PackageDetails({ package: pkg, auth }) {
 
             <div className="max-w-7xl mx-auto px-6 md:px-16 py-12">
                 <motion.div
+                    variants={fadeIn}
                     initial="hidden"
                     animate="visible"
-                    variants={fadeIn}
                     className="mb-8"
                 >
                     <div className="flex items-center text-sm text-gray-400">
                         <Link
                             href="/packages"
-                            className="hover:text-green-400 transition-colors duration-300 flex items-center"
+                            className="hover:text-green-600 flex items-center"
                         >
                             <ChevronLeft size={16} className="mr-1" />
                             Back to Packages
@@ -150,11 +177,11 @@ export default function PackageDetails({ package: pkg, auth }) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <motion.div
+                        variants={fadeIn}
                         initial="hidden"
                         whileInView="visible"
                         viewport={{ once: true }}
                         transition={{ duration: 0.5 }}
-                        variants={fadeIn}
                         className="lg:col-span-2"
                     >
                         <div className="bg-gray-800 bg-opacity-90 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm border border-gray-700">
@@ -163,51 +190,60 @@ export default function PackageDetails({ package: pkg, auth }) {
                                     src={imageSrc}
                                     alt={pkg.title}
                                     className="w-full h-96 object-cover"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                        e.target.src =
+                                            "https://via.placeholder.com/1200x800?text=Package+Image";
+                                    }}
                                 />
                                 {pkg.category && (
                                     <span className="absolute top-4 left-4 px-3 py-1 bg-green-600 rounded-full text-sm font-medium text-white">
                                         {pkg.category}
                                     </span>
                                 )}
-                                {calculateDiscount(
-                                    pkg.price,
-                                    pkg.discount_price
-                                ) && (
-                                    <div className="absolute top-4 right-12 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                        {calculateDiscount(
-                                            pkg.price,
-                                            pkg.discount_price
-                                        )}
-                                        % OFF
-                                    </div>
-                                )}
-                                <button
-                                    onClick={toggleFavorite}
-                                    className={`absolute top-3 ${
-                                        calculateDiscount(
-                                            pkg.price,
-                                            pkg.discount_price
-                                        )
-                                            ? "right-2"
-                                            : "right-4"
-                                    } bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm`}
-                                    aria-label={
-                                        isFavorite
-                                            ? "Remove from favorites"
-                                            : "Add to favorites"
-                                    }
-                                >
-                                    <Heart
-                                        size={20}
-                                        className={
-                                            isFavorite
-                                                ? "text-green-400 fill-green-400"
-                                                : "text-gray-300"
+                                <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                                    {calculateDiscount(
+                                        pkg.price,
+                                        pkg.discount_price
+                                    ) > 0 && (
+                                        <div className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                            {calculateDiscount(
+                                                pkg.price,
+                                                pkg.discount_price
+                                            )}
+                                            % OFF
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={toggleFavorite}
+                                        disabled={loadingFavorite}
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm z-20 ${
+                                            favoriteState.is_favorite
+                                                ? "bg-red-600 hover:bg-red-700"
+                                                : "bg-gray-900 bg-opacity-50 hover:bg-gray-700"
+                                        } ${
+                                            loadingFavorite
+                                                ? "opacity-50 cursor-not-allowed"
+                                                : ""
+                                        }`}
+                                        aria-label={
+                                            favoriteState.is_favorite
+                                                ? "Remove from favorites"
+                                                : "Add to favorites"
                                         }
-                                    />
-                                </button>
+                                        aria-busy={loadingFavorite}
+                                    >
+                                        <Heart
+                                            size={20}
+                                            className={
+                                                favoriteState.is_favorite
+                                                    ? "text-white fill-white"
+                                                    : "text-gray-300"
+                                            }
+                                        />
+                                    </button>
+                                </div>
                             </div>
-
                             <div className="p-6 md:p-8">
                                 <div className="flex flex-wrap gap-2 items-center mb-4">
                                     <div className="flex items-center">
@@ -227,11 +263,9 @@ export default function PackageDetails({ package: pkg, auth }) {
                                         </span>
                                     )}
                                 </div>
-
                                 <h2 className="text-2xl font-bold text-white mb-4">
                                     About this package
                                 </h2>
-
                                 <div className="prose prose-lg prose-invert">
                                     <p className="text-gray-300 leading-relaxed whitespace-pre-line mb-6">
                                         {pkg.description ||
@@ -256,7 +290,6 @@ export default function PackageDetails({ package: pkg, auth }) {
                                         </p>
                                     )}
                                 </div>
-
                                 <div className="mt-8">
                                     <h3 className="text-xl font-semibold mb-4 text-green-400">
                                         Price Details
@@ -271,15 +304,21 @@ export default function PackageDetails({ package: pkg, auth }) {
                                                     <>
                                                         <span className="text-2xl font-bold text-green-400">
                                                             $
-                                                            {pkg.discount_price}
+                                                            {formatPrice(
+                                                                pkg.discount_price
+                                                            )}
                                                         </span>
                                                         <span className="text-sm line-through text-gray-500">
-                                                            ${pkg.price}
+                                                            $
+                                                            {formatPrice(
+                                                                pkg.price
+                                                            )}
                                                         </span>
                                                     </>
                                                 ) : (
                                                     <span className="text-2xl font-bold text-green-400">
-                                                        ${pkg.price}
+                                                        $
+                                                        {formatPrice(pkg.price)}
                                                     </span>
                                                 )}
                                                 <span className="text-sm text-gray-400">
@@ -287,11 +326,10 @@ export default function PackageDetails({ package: pkg, auth }) {
                                                 </span>
                                             </div>
                                         </div>
-
                                         {calculateDiscount(
                                             pkg.price,
                                             pkg.discount_price
-                                        ) && (
+                                        ) > 0 && (
                                             <div className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex-1">
                                                 <div className="text-gray-400 text-sm mb-1">
                                                     You save
@@ -299,10 +337,10 @@ export default function PackageDetails({ package: pkg, auth }) {
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="text-2xl font-bold text-green-400">
                                                         $
-                                                        {(
+                                                        {formatPrice(
                                                             pkg.price -
-                                                            pkg.discount_price
-                                                        ).toFixed(2)}
+                                                                pkg.discount_price
+                                                        )}
                                                     </span>
                                                     <span className="text-sm text-gray-400">
                                                         (
@@ -319,13 +357,12 @@ export default function PackageDetails({ package: pkg, auth }) {
                                 </div>
                             </div>
                         </div>
-
                         <motion.div
+                            variants={fadeIn}
                             initial="hidden"
                             whileInView="visible"
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: 0.2 }}
-                            variants={fadeIn}
                             className="mt-8 bg-gray-800 bg-opacity-90 rounded-xl p-6 md:p-8 shadow-xl backdrop-blur-sm border border-gray-700"
                         >
                             <h3 className="text-xl font-semibold mb-4 text-green-400">
@@ -350,18 +387,17 @@ export default function PackageDetails({ package: pkg, auth }) {
                     </motion.div>
 
                     <motion.div
+                        variants={fadeIn}
                         initial="hidden"
                         whileInView="visible"
                         viewport={{ once: true }}
                         transition={{ duration: 0.5, delay: 0.3 }}
-                        variants={fadeIn}
                         className="space-y-6"
                     >
                         <div className="bg-gray-800 bg-opacity-90 rounded-xl p-6 shadow-xl backdrop-blur-sm border border-gray-700 sticky top-24 z-10">
                             <h3 className="text-xl font-semibold mb-4">
                                 Book this package
                             </h3>
-
                             <div className="mb-6">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-gray-400">
@@ -371,67 +407,76 @@ export default function PackageDetails({ package: pkg, auth }) {
                                         {pkg.discount_price ? (
                                             <>
                                                 <span className="text-lg font-bold text-green-400">
-                                                    ${pkg.discount_price}
+                                                    $
+                                                    {formatPrice(
+                                                        pkg.discount_price
+                                                    )}
                                                 </span>
                                                 <span className="text-sm line-through text-gray-500">
-                                                    ${pkg.price}
+                                                    ${formatPrice(pkg.price)}
                                                 </span>
                                             </>
                                         ) : (
                                             <span className="text-lg font-bold text-green-400">
-                                                ${pkg.price}
+                                                ${formatPrice(pkg.price)}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-
                                 <div className="flex justify-between items-center mb-1">
                                     <span className="text-gray-400">
                                         Service fee
                                     </span>
                                     <span className="text-gray-300">
-                                        ${serviceFee}
+                                        ${formatPrice(serviceFee)}
                                     </span>
                                 </div>
-
                                 <div className="flex justify-between items-center mb-4">
                                     <span className="text-gray-400">
                                         Booking fee
                                     </span>
                                     <span className="text-gray-300">
-                                        ${bookingFee}
+                                        ${formatPrice(bookingFee)}
                                     </span>
                                 </div>
-
                                 <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
                                     <span className="font-semibold">Total</span>
                                     <span className="font-bold text-lg">
-                                        $
-                                        {typeof totalPrice === "number"
-                                            ? totalPrice.toFixed(2)
-                                            : "0.00"}
+                                        ${formatPrice(totalPrice)}
                                     </span>
                                 </div>
                             </div>
-
                             <div className="space-y-3">
                                 <Link
                                     href={`/book?package_id=${pkg.id}`}
-                                    className="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+                                    className="block w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-lg transform hover:scale-105 transition-all duration-300"
                                 >
                                     Book Now
                                 </Link>
-
                                 <button
                                     onClick={toggleFavorite}
-                                    className="block w-full bg-transparent border border-green-500 text-green-400 hover:bg-green-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
+                                    disabled={loadingFavorite}
+                                    className={`block w-full text-center py-3 rounded-lg transition-all duration-300 ${
+                                        favoriteState.is_favorite
+                                            ? "bg-red-600 hover:bg-red-700 text-white"
+                                            : "bg-transparent border border-green-500 text-green-400 hover:bg-green-900 hover:bg-opacity-20"
+                                    } ${
+                                        loadingFavorite
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : ""
+                                    }`}
+                                    aria-label={
+                                        favoriteState.is_favorite
+                                            ? "Remove from favorites"
+                                            : "Save to favorites"
+                                    }
+                                    aria-busy={loadingFavorite}
                                 >
-                                    {isFavorite
+                                    {favoriteState.is_favorite
                                         ? "Saved to Favorites"
                                         : "Save to Favorites"}
                                 </button>
                             </div>
-
                             <div className="mt-4 text-center text-sm text-gray-400">
                                 No payment required to book
                             </div>
@@ -440,11 +485,11 @@ export default function PackageDetails({ package: pkg, auth }) {
                 </div>
 
                 <motion.div
+                    variants={fadeIn}
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true }}
                     transition={{ duration: 0.5 }}
-                    variants={fadeIn}
                     className="text-center bg-green-900 bg-opacity-40 rounded-xl p-8 shadow-xl max-w-4xl mx-auto mt-16 border border-green-800"
                 >
                     <h2 className="text-2xl font-bold mb-4">
