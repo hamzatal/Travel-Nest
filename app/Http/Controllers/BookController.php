@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
-class Booking extends Model
+class CheckOut extends Model
 {
     use HasFactory;
 
-    protected $table = 'bookings';
+    protected $table = 'CheckOut';
 
     protected $fillable = [
         'user_id',
@@ -67,8 +67,8 @@ class Booking extends Model
     {
         parent::boot();
 
-        static::creating(function ($booking) {
-            $validator = Validator::make($booking->toArray(), [
+        static::creating(function ($CheckOut) {
+            $validator = Validator::make($CheckOut->toArray(), [
                 'destination_id' => 'nullable|exists:destinations,id',
                 'package_id' => 'nullable|exists:packages,id',
                 'offer_id' => 'nullable|exists:offers,id',
@@ -76,8 +76,8 @@ class Booking extends Model
                 'at_least_one' => 'At least one of destination_id, package_id, or offer_id must be provided.',
             ]);
 
-            $validator->after(function ($validator) use ($booking) {
-                if (!$booking->destination_id && !$booking->package_id && !$booking->offer_id) {
+            $validator->after(function ($validator) use ($CheckOut) {
+                if (!$CheckOut->destination_id && !$CheckOut->package_id && !$CheckOut->offer_id) {
                     $validator->errors()->add('at_least_one', 'At least one of destination_id, package_id, or offer_id must be provided.');
                 }
             });
@@ -87,8 +87,8 @@ class Booking extends Model
             }
         });
 
-        static::updating(function ($booking) {
-            $validator = Validator::make($booking->toArray(), [
+        static::updating(function ($CheckOut) {
+            $validator = Validator::make($CheckOut->toArray(), [
                 'destination_id' => 'nullable|exists:destinations,id',
                 'package_id' => 'nullable|exists:packages,id',
                 'offer_id' => 'nullable|exists:offers,id',
@@ -96,8 +96,8 @@ class Booking extends Model
                 'at_least_one' => 'At least one of destination_id, package_id, or offer_id must be provided.',
             ]);
 
-            $validator->after(function ($validator) use ($booking) {
-                if (!$booking->destination_id && !$booking->package_id && !$booking->offer_id) {
+            $validator->after(function ($validator) use ($CheckOut) {
+                if (!$CheckOut->destination_id && !$CheckOut->package_id && !$CheckOut->offer_id) {
                     $validator->errors()->add('at_least_one', 'At least one of destination_id, package_id, or offer_id must be provided.');
                 }
             });

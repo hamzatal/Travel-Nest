@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\CompanyAuth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
+use App\Models\Checkout;
 use App\Models\Destination;
 use App\Models\Offer;
 use App\Models\Package;
@@ -19,16 +19,20 @@ class CompanyDashboardController extends Controller
         try {
             $company = Auth::guard('company')->user();
 
+            if (!$company) {
+                return redirect()->route('company.login')->with('error', 'Please log in to access the dashboard.');
+            }
+
             $stats = [
                 'destinations' => Destination::where('company_id', $company->id)->count(),
                 'offers' => Offer::where('company_id', $company->id)->count(),
                 'packages' => Package::where('company_id', $company->id)->count(),
-                'bookings' => Booking::where(function ($query) use ($company) {
+                'checkouts' => Checkout::where(function ($query) use ($company) {
                     $query->whereHas('destination', fn($q) => $q->where('company_id', $company->id))
                         ->orWhereHas('offer', fn($q) => $q->where('company_id', $company->id))
                         ->orWhereHas('package', fn($q) => $q->where('company_id', $company->id));
                 })->count(),
-                'total_revenue' => Booking::where('status', 'confirmed')
+                'total_revenue' => Checkout::where('status', 'confirmed')
                     ->where(function ($query) use ($company) {
                         $query->whereHas('destination', fn($q) => $q->where('company_id', $company->id))
                             ->orWhereHas('offer', fn($q) => $q->where('company_id', $company->id))
@@ -104,48 +108,50 @@ class CompanyDashboardController extends Controller
                         'destination_id' => $package->destination_id,
                         'destination' => $package->destination ? [
                             'id' => $package->destination->id,
-                            'name' => $package->destination->title, // Use title for consistency
+                            'name' => $package->destination->title,
                         ] : null,
                     ];
                 });
 
-            $bookings = Booking::where(function ($query) use ($company) {
+            $checkouts = Checkout::where(function ($query) use ($company) {
                 $query->whereHas('destination', fn($q) => $q->where('company_id', $company->id))
                     ->orWhereHas('offer', fn($q) => $q->where('company_id', $company->id))
                     ->orWhereHas('package', fn($q) => $q->where('company_id', $company->id));
             })
                 ->with(['user', 'destination', 'offer', 'package'])
+
                 ->orderBy('created_at', 'desc')
                 ->paginate(10)
-                ->through(function ($booking) {
+                ->through(function ($checkout) {
                     return [
-                        'id' => $booking->id,
-                        'user' => $booking->user ? [
-                            'id' => $booking->user->id,
-                            'name' => $booking->user->name,
-                            'email' => $booking->user->email,
+                        'id' => $checkout->id,
+                        'user' => $checkout->user ? [
+                            'id' => $checkout->user->id,
+                            'name' => $checkout->user->name,
+                            'phone' => $checkout->user->phone,
+                            'email' => $checkout->user->email,
                         ] : null,
-                        'destination' => $booking->destination ? [
-                            'id' => $booking->destination->id,
-                            'name' => $booking->destination->title,
-                            'image' => $booking->destination->image ? Storage::url($booking->destination->image) : null,
+                        'destination' => $checkout->destination ? [
+                            'id' => $checkout->destination->id,
+                            'name' => $checkout->destination->title,
+                            'image' => $checkout->destination->image ? Storage::url($checkout->destination->image) : null,
                         ] : null,
-                        'offer' => $booking->offer ? [
-                            'id' => $booking->offer->id,
-                            'title' => $booking->offer->title,
-                            'image' => $booking->offer->image ? Storage::url($booking->offer->image) : null,
+                        'offer' => $checkout->offer ? [
+                            'id' => $checkout->offer->id,
+                            'title' => $checkout->offer->title,
+                            'image' => $checkout->offer->image ? Storage::url($checkout->offer->image) : null,
                         ] : null,
-                        'package' => $booking->package ? [
-                            'id' => $booking->package->id,
-                            'title' => $booking->package->title,
-                            'image' => $booking->package->image ? Storage::url($booking->package->image) : null,
+                        'package' => $checkout->package ? [
+                            'id' => $checkout->package->id,
+                            'title' => $checkout->package->title,
+                            'image' => $checkout->package->image ? Storage::url($checkout->package->image) : null,
                         ] : null,
-                        'status' => $booking->status,
-                        'total_price' => (float)$booking->total_price,
-                        'check_in' => $booking->check_in ? $booking->check_in->format('Y-m-d') : null,
-                        'check_out' => $booking->check_out ? $booking->check_out->format('Y-m-d') : null,
-                        'guests' => $booking->guests,
-                        'created_at' => $booking->created_at->format('Y-m-d H:i:s'),
+                        'status' => $checkout->status,
+                        'total_price' => (float)$checkout->total_price,
+                        'check_in' => $checkout->check_in ? $checkout->check_in->format('Y-m-d') : null,
+                        'check_out' => $checkout->check_out ? $checkout->check_out->format('Y-m-d') : null,
+                        'guests' => $checkout->guests,
+                        'created_at' => $checkout->created_at->format('Y-m-d H:i:s'),
                     ];
                 });
 
@@ -160,7 +166,7 @@ class CompanyDashboardController extends Controller
                 'destinations' => $destinations,
                 'offers' => $offers,
                 'packages' => $packages,
-                'bookings' => $bookings,
+                'bookings' => $checkouts,
                 'flash' => [
                     'success' => session('success'),
                     'error' => session('error'),
@@ -168,7 +174,6 @@ class CompanyDashboardController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to load company dashboard:', ['error' => $e->getMessage()]);
-            // Return back with error if there's an issue loading dashboard data
             return back()->with('error', 'Failed to load dashboard data. Please try again.');
         }
     }

@@ -12,6 +12,10 @@ import {
     Star,
     Bookmark,
     BookOpen,
+    Users,
+    DollarSign,
+    CheckCircle,
+    CreditCard,
 } from "lucide-react";
 import Navbar from "../Components/Nav";
 import Footer from "../Components/Footer";
@@ -30,17 +34,16 @@ const UserBookings = ({ auth }) => {
     const [selectedFilters, setSelectedFilters] = useState([]);
     const [isDarkMode, setIsDarkMode] = useState(true);
 
-    const itemsPerPage = 8;
+    const itemsPerPage = 6;
 
-    const bookingStatuses = ["confirmed", "pending", "cancelled"];
+    const bookingStatuses = ["pending", "confirmed", "cancelled", "completed"];
     const favoriteCategories = [
-        "Hotel",
-        "Flight",
-        "Cruise",
-        "Package",
-        "Adventure",
-        "City Break",
-        "Luxury",
+        "hotel",
+        "flight",
+        "package",
+        "adventure",
+        "city_break",
+        "luxury",
     ];
 
     const fadeIn = {
@@ -52,9 +55,7 @@ const UserBookings = ({ auth }) => {
         hidden: { opacity: 0 },
         visible: {
             opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-            },
+            transition: { staggerChildren: 0.1 },
         },
     };
 
@@ -65,11 +66,11 @@ const UserBookings = ({ auth }) => {
     };
 
     const toggleFilter = (filter) => {
-        if (selectedFilters.includes(filter)) {
-            setSelectedFilters(selectedFilters.filter((f) => f !== filter));
-        } else {
-            setSelectedFilters([...selectedFilters, filter]);
-        }
+        setSelectedFilters(
+            selectedFilters.includes(filter)
+                ? selectedFilters.filter((f) => f !== filter)
+                : [...selectedFilters, filter]
+        );
         setCurrentPage(1);
     };
 
@@ -84,23 +85,24 @@ const UserBookings = ({ auth }) => {
             .filter((item) => {
                 const entity = item.destination || item.offer || item.package;
                 if (!entity) return false;
+                const title = entity.title || "";
+                const location = entity.location || "";
+                const description = entity.description || "";
                 const matchesSearch =
-                    (entity.name || entity.title)
-                        ?.toLowerCase()
+                    title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    location
+                        .toLowerCase()
                         .includes(searchQuery.toLowerCase()) ||
-                    entity.location
-                        ?.toLowerCase()
-                        .includes(searchQuery.toLowerCase()) ||
-                    entity.description
-                        ?.toLowerCase()
+                    description
+                        .toLowerCase()
                         .includes(searchQuery.toLowerCase());
                 const matchesFilter =
                     selectedFilters.length === 0 ||
-                    (activeTab === "bookings"
-                        ? selectedFilters.includes(item.status)
-                        : entity.tag && selectedFilters.includes(entity.tag)) ||
-                    (entity.discount_type &&
-                        selectedFilters.includes(entity.discount_type));
+                    (activeTab === "bookings" &&
+                        selectedFilters.includes(item.status)) ||
+                    (activeTab !== "bookings" &&
+                        entity.category &&
+                        selectedFilters.includes(entity.category));
                 return matchesSearch && matchesFilter;
             })
             .sort((a, b) => {
@@ -110,17 +112,24 @@ const UserBookings = ({ auth }) => {
                 switch (sortBy) {
                     case "priceAsc":
                         return (
-                            (entityA.discount_price || entityA.price) -
-                            (entityB.discount_price || entityB.price)
+                            (parseFloat(entityA.discount_price) ||
+                                parseFloat(entityA.price)) -
+                            (parseFloat(entityB.discount_price) ||
+                                parseFloat(entityB.price))
                         );
                     case "priceDesc":
                         return (
-                            (entityB.discount_price || entityB.price) -
-                            (entityA.discount_price || entityA.price)
+                            (parseFloat(entityB.discount_price) ||
+                                parseFloat(entityB.price)) -
+                            (parseFloat(entityA.discount_price) ||
+                                parseFloat(entityA.price))
                         );
                     case "newest":
                     default:
-                        return new Date(b.created_at) - new Date(a.created_at);
+                        return (
+                            new Date(b.created_at).getTime() -
+                            new Date(a.created_at).getTime()
+                        );
                 }
             });
     };
@@ -165,7 +174,7 @@ const UserBookings = ({ auth }) => {
             stars.push(
                 <Star
                     key={i}
-                    size={14}
+                    size={16}
                     className={
                         i <= roundedRating
                             ? "text-yellow-400 fill-yellow-400"
@@ -181,9 +190,29 @@ const UserBookings = ({ auth }) => {
         if (!dateString) return "N/A";
         try {
             const date = new Date(dateString);
-            return date.toLocaleDateString();
+            if (isNaN(date.getTime())) return "N/A";
+            return date.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+            });
         } catch {
             return "N/A";
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case "confirmed":
+                return "bg-green-600";
+            case "pending":
+                return "bg-yellow-600";
+            case "cancelled":
+                return "bg-red-600";
+            case "completed":
+                return "bg-blue-600";
+            default:
+                return "bg-gray-600";
         }
     };
 
@@ -191,15 +220,15 @@ const UserBookings = ({ auth }) => {
         <div
             className={`min-h-screen transition-all duration-300 ${
                 isDarkMode
-                    ? "bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white"
-                    : "bg-gradient-to-br from-blue-50 via-white to-gray-100 text-gray-900"
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-50 text-gray-900"
             }`}
         >
             <Head>
-                <title>My Bookings & Favorites - Travel Nest</title>
+                <title>My Bookings & Favorites - TravelNest</title>
                 <meta
                     name="description"
-                    content="View your booked trips and favorited destinations with Travel Nest."
+                    content="View your booked trips and favorited destinations with TravelNest."
                 />
             </Head>
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
@@ -211,18 +240,18 @@ const UserBookings = ({ auth }) => {
             />
 
             {/* Hero Section */}
-            <section className="relative h-80 md:h-90 w-full overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-gray-900/60 to-gray-800/80"></div>
-                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-50"></div>
+            <section className="relative h-64 w-full overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 to-gray-800/70"></div>
+                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30"></div>
                 <div className="absolute inset-0 flex items-center justify-center px-6">
                     <motion.div
-                        initial={{ opacity: 0, y: 30 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                         className="text-center"
                     >
                         <h1
-                            className={`text-4xl md:text-5xl font-extrabold mb-4 ${
+                            className={`text-3xl md:text-4xl font-extrabold mb-4 ${
                                 isDarkMode ? "text-white" : "text-gray-900"
                             }`}
                         >
@@ -232,12 +261,11 @@ const UserBookings = ({ auth }) => {
                             </span>
                         </h1>
                         <p
-                            className={`text-lg md:text-xl ${
+                            className={`text-lg ${
                                 isDarkMode ? "text-gray-300" : "text-gray-600"
-                            } max-w-2xl mx-auto`}
+                            } max-w-xl mx-auto`}
                         >
                             Manage your upcoming trips and favorite destinations
-                            with ease
                         </p>
                     </motion.div>
                 </div>
@@ -245,42 +273,42 @@ const UserBookings = ({ auth }) => {
 
             {/* Main Content */}
             <section
-                className={`py-16 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
+                className={`py-12 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
             >
-                <div className="max-w-7xl mx-auto px-6 md:px-16">
+                <div className="max-w-7xl mx-auto px-6 md:px-12">
                     {/* Tabs */}
                     <motion.div
                         initial="hidden"
                         whileInView="visible"
                         viewport={{ once: true }}
                         variants={fadeIn}
-                        className="mb-8"
+                        className="mb-6"
                     >
-                        <div className="flex justify-center border-b border-gray-700/50">
+                        <div className="flex justify-center border-b border-gray-700/30">
                             <button
                                 onClick={() => setActiveTab("bookings")}
-                                className={`flex-1 sm:flex-none py-3 px-6 text-center font-semibold text-lg transition-all duration-300 rounded-t-lg ${
+                                className={`flex-1 sm:flex-none py-2 px-4 text-center font-semibold text-base transition-all duration-300 rounded-t-md ${
                                     activeTab === "bookings"
                                         ? "bg-blue-600 text-white shadow-md"
                                         : isDarkMode
-                                        ? "text-gray-400 hover:text-gray-300"
+                                        ? "text-gray-400 hover:text-gray-200"
                                         : "text-gray-600 hover:text-gray-900"
                                 }`}
                             >
-                                <BookOpen className="inline-block w-5 h-5 mr-2" />
+                                <BookOpen className="inline-block w-4 h-4 mr-1" />
                                 Bookings
                             </button>
                             <button
                                 onClick={() => setActiveTab("favorites")}
-                                className={`flex-1 sm:flex-none py-3 px-6 text-center font-semibold text-lg transition-all duration-300 rounded-t-lg ${
+                                className={`flex-1 sm:flex-none py-2 px-4 text-center font-semibold text-base transition-all duration-300 rounded-t-md ${
                                     activeTab === "favorites"
                                         ? "bg-blue-600 text-white shadow-md"
                                         : isDarkMode
-                                        ? "text-gray-400 hover:text-gray-300"
+                                        ? "text-gray-400 hover:text-gray-200"
                                         : "text-gray-600 hover:text-gray-900"
                                 }`}
                             >
-                                <Bookmark className="inline-block w-5 h-5 mr-2" />
+                                <Bookmark className="inline-block w-4 h-4 mr-1" />
                                 Favorites
                             </button>
                         </div>
@@ -292,10 +320,10 @@ const UserBookings = ({ auth }) => {
                         whileInView="visible"
                         viewport={{ once: true }}
                         variants={fadeIn}
-                        className="mb-12"
+                        className="mb-8"
                     >
-                        <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
-                            <div className="relative w-full md:w-96">
+                        <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-4">
+                            <div className="relative w-full sm:w-80">
                                 <input
                                     type="text"
                                     placeholder="Search trips or locations..."
@@ -303,33 +331,33 @@ const UserBookings = ({ auth }) => {
                                     onChange={(e) =>
                                         setSearchQuery(e.target.value)
                                     }
-                                    className={`w-full pl-12 pr-4 py-3 rounded-full text-lg ${
+                                    className={`w-full pl-10 pr-4 py-2 rounded-full text-sm ${
                                         isDarkMode
                                             ? "bg-gray-800 text-gray-300 border-gray-700"
                                             : "bg-gray-100 text-gray-800 border-gray-200"
                                     } border focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300`}
                                 />
                                 <Search
-                                    className={`absolute left-4 top-1/2 transform -translate-y-1/2 ${
+                                    className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${
                                         isDarkMode
                                             ? "text-gray-400"
                                             : "text-gray-600"
-                                    } w-5 h-5`}
+                                    } w-4 h-4`}
                                 />
                             </div>
 
-                            <div className="flex items-center gap-3 w-full md:w-auto">
-                                <div className="relative w-full md:w-48">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <div className="relative w-full sm:w-36">
                                     <select
                                         value={sortBy}
                                         onChange={(e) =>
                                             setSortBy(e.target.value)
                                         }
-                                        className={`w-full px-4 py-3 rounded-full text-lg ${
+                                        className={`w-full px-3 py-2 rounded-full text-sm ${
                                             isDarkMode
                                                 ? "bg-gray-800 text-gray-300 border-gray-700"
                                                 : "bg-gray-100 text-gray-800 border-gray-200"
-                                        } border focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-all duration-300`}
+                                        } border focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none`}
                                     >
                                         {sortOptions.map((option) => (
                                             <option
@@ -353,16 +381,14 @@ const UserBookings = ({ auth }) => {
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => setFilterOpen(!filterOpen)}
-                                    className={`flex items-center gap-2 px-4 py-3 rounded-full text-lg ${
+                                    className={`flex items-center gap-1 px-3 py-2 rounded-full text-sm ${
                                         isDarkMode
                                             ? "bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700"
                                             : "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200"
                                     } border transition-all duration-300`}
                                 >
                                     <Filter className="w-4 h-4" />
-                                    <span className="hidden sm:inline">
-                                        Filters
-                                    </span>
+                                    Filters
                                 </motion.button>
                             </div>
                         </div>
@@ -377,17 +403,17 @@ const UserBookings = ({ auth }) => {
                                     className="overflow-hidden"
                                 >
                                     <div
-                                        className={`p-6 rounded-2xl shadow-lg ${
+                                        className={`p-4 rounded-xl shadow-lg ${
                                             isDarkMode
                                                 ? "bg-gray-800 border-gray-700"
                                                 : "bg-white border-gray-200"
-                                        } border mb-6`}
+                                        } border mb-4`}
                                     >
-                                        <div className="mb-4">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <Tags className="w-5 h-5 text-blue-500" />
+                                        <div className="mb-3">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Tags className="w-4 h-4 text-blue-500" />
                                                 <h3
-                                                    className={`text-lg font-semibold ${
+                                                    className={`text-sm font-semibold ${
                                                         isDarkMode
                                                             ? "text-white"
                                                             : "text-gray-900"
@@ -414,7 +440,7 @@ const UserBookings = ({ auth }) => {
                                                         onClick={() =>
                                                             toggleFilter(filter)
                                                         }
-                                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                                                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 ${
                                                             selectedFilters.includes(
                                                                 filter
                                                             )
@@ -424,7 +450,9 @@ const UserBookings = ({ auth }) => {
                                                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                                         }`}
                                                     >
-                                                        {filter}
+                                                        {filter
+                                                            .replace("_", " ")
+                                                            .toUpperCase()}
                                                     </motion.button>
                                                 ))}
                                             </div>
@@ -434,9 +462,9 @@ const UserBookings = ({ auth }) => {
                             )}
                         </AnimatePresence>
 
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex justify-between items-center mb-4">
                             <p
-                                className={`text-sm ${
+                                className={`text-xs ${
                                     isDarkMode
                                         ? "text-gray-400"
                                         : "text-gray-600"
@@ -461,7 +489,7 @@ const UserBookings = ({ auth }) => {
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => setSelectedFilters([])}
-                                    className="text-blue-500 hover:text-blue-400 text-sm font-medium"
+                                    className="text-blue-500 text-xs hover:text-blue-400 font-medium"
                                 >
                                     Clear Filters
                                 </motion.button>
@@ -474,24 +502,24 @@ const UserBookings = ({ auth }) => {
                         initial="hidden"
                         animate="visible"
                         variants={staggerContainer}
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16"
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12"
                     >
                         <AnimatePresence mode="popLayout">
                             {paginatedItems.length === 0 ? (
                                 <motion.div
                                     variants={fadeIn}
-                                    className="col-span-full text-center py-16"
+                                    className="col-span-full text-center py-12"
                                 >
-                                    <div className="max-w-md mx-auto">
+                                    <div className="max-w-sm mx-auto">
                                         <Search
-                                            className={`w-16 h-16 mx-auto mb-4 ${
+                                            className={`w-12 h-12 mx-auto mb-4 ${
                                                 isDarkMode
-                                                    ? "text-gray-600"
+                                                    ? "text-gray-500"
                                                     : "text-gray-400"
                                             }`}
                                         />
                                         <h3
-                                            className={`text-2xl font-bold mb-2 ${
+                                            className={`text-xl font-bold mb-2 ${
                                                 isDarkMode
                                                     ? "text-white"
                                                     : "text-gray-900"
@@ -504,19 +532,19 @@ const UserBookings = ({ auth }) => {
                                             Found
                                         </h3>
                                         <p
-                                            className={`text-base mb-6 ${
+                                            className={`text-sm mb-4 ${
                                                 isDarkMode
                                                     ? "text-gray-400"
                                                     : "text-gray-600"
                                             }`}
                                         >
                                             {activeTab === "bookings"
-                                                ? "You haven't booked any trips yet. Explore our destinations to start planning!"
-                                                : "You haven't favorited any destinations yet. Find your favorite trips!"}
+                                                ? "You haven't booked any trips yet. Start exploring now!"
+                                                : "You haven't favorited any destinations yet."}
                                         </p>
                                         <Link
                                             href="/destinations"
-                                            className={`inline-flex items-center gap-2 px-6 py-3 rounded-full text-base font-medium ${
+                                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
                                                 isDarkMode
                                                     ? "bg-blue-600 text-white hover:bg-blue-700"
                                                     : "bg-blue-600 text-white hover:bg-blue-700"
@@ -540,18 +568,14 @@ const UserBookings = ({ auth }) => {
                                             variants={cardVariants}
                                             layout
                                             whileHover={{
-                                                y: -8,
+                                                y: -4,
                                                 transition: { duration: 0.3 },
                                             }}
-                                            className={`rounded-2xl overflow-hidden shadow-lg ${
+                                            className={`rounded-xl overflow-hidden shadow-lg ${
                                                 isDarkMode
-                                                    ? "bg-gray-800 hover:bg-gray-750"
-                                                    : "bg-white hover:shadow-xl"
-                                            } border ${
-                                                isDarkMode
-                                                    ? "border-gray-700"
-                                                    : "border-gray-200"
-                                            } flex flex-col group transition-all duration-300`}
+                                                    ? "bg-gray-800 border-gray-700"
+                                                    : "bg-white border-gray-200"
+                                            } border flex flex-col group transition-all duration-300`}
                                         >
                                             <div className="relative overflow-hidden">
                                                 <img
@@ -559,29 +583,33 @@ const UserBookings = ({ auth }) => {
                                                         entity.image ||
                                                         "https://via.placeholder.com/640x480?text=No+Image"
                                                     }
-                                                    alt={
-                                                        entity.name ||
-                                                        entity.title
-                                                    }
-                                                    className="w-full h-56 object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                                    alt={entity.title}
+                                                    className="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-500"
                                                     loading="lazy"
                                                     onError={(e) => {
                                                         e.target.src =
                                                             "https://via.placeholder.com/640x480?text=No+Image";
                                                     }}
                                                 />
-                                                {(entity.tag ||
-                                                    entity.discount_type) && (
-                                                    <span className="absolute top-3 left-3 px-3 py-1 bg-blue-600 rounded-full text-xs font-medium text-white">
-                                                        {entity.tag ||
-                                                            entity.discount_type}
+                                                {entity.category && (
+                                                    <span className="absolute top-2 left-2 px-2 py-1 bg-blue-600 rounded-full text-xs font-medium text-white capitalize">
+                                                        {entity.category}
+                                                    </span>
+                                                )}
+                                                {isBooking && item.status && (
+                                                    <span
+                                                        className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium text-white capitalize ${getStatusColor(
+                                                            item.status
+                                                        )}`}
+                                                    >
+                                                        {item.status}
                                                     </span>
                                                 )}
                                                 {calculateDiscount(
                                                     entity.price,
                                                     entity.discount_price
                                                 ) && (
-                                                    <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                                    <div className="absolute bottom-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">
                                                         {calculateDiscount(
                                                             entity.price,
                                                             entity.discount_price
@@ -589,34 +617,25 @@ const UserBookings = ({ auth }) => {
                                                         % OFF
                                                     </div>
                                                 )}
-                                                {isBooking && (
-                                                    <span className="absolute top-3 right-3 px-3 py-1 bg-green-600 rounded-full text-xs font-medium text-white">
-                                                        {item.status}
-                                                    </span>
-                                                )}
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
                                             </div>
-                                            <div className="p-6 flex flex-col flex-grow">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <h3
-                                                        className={`text-lg font-bold line-clamp-1 ${
-                                                            isDarkMode
-                                                                ? "text-white"
-                                                                : "text-gray-900"
-                                                        }`}
-                                                    >
-                                                        {entity.name ||
-                                                            entity.title}
-                                                    </h3>
-                                                </div>
+                                            <div className="p-4 flex flex-col flex-grow">
+                                                <h3
+                                                    className={`text-base font-semibold mb-2 line-clamp-1 ${
+                                                        isDarkMode
+                                                            ? "text-white"
+                                                            : "text-gray-900"
+                                                    }`}
+                                                >
+                                                    {entity.title}
+                                                </h3>
                                                 {entity.location && (
-                                                    <div className="flex items-center gap-2 mb-3">
+                                                    <div className="flex items-center gap-1 mb-2">
                                                         <MapPin
-                                                            size={16}
-                                                            className="text-blue-500 flex-shrink-0"
+                                                            size={14}
+                                                            className="text-blue-500"
                                                         />
                                                         <span
-                                                            className={`text-sm ${
+                                                            className={`text-xs ${
                                                                 isDarkMode
                                                                     ? "text-gray-300"
                                                                     : "text-gray-600"
@@ -626,12 +645,12 @@ const UserBookings = ({ auth }) => {
                                                         </span>
                                                     </div>
                                                 )}
-                                                <div className="flex items-center gap-1 mb-4">
+                                                <div className="flex items-center gap-1 mb-2">
                                                     {renderStars(
                                                         entity.rating || 0
                                                     )}
                                                     <span
-                                                        className={`text-sm ml-2 ${
+                                                        className={`text-xs ml-1 ${
                                                             isDarkMode
                                                                 ? "text-gray-400"
                                                                 : "text-gray-500"
@@ -641,9 +660,9 @@ const UserBookings = ({ auth }) => {
                                                     </span>
                                                 </div>
                                                 <p
-                                                    className={`text-sm mb-4 line-clamp-2 ${
+                                                    className={`text-xs mb-3 line-clamp-2 ${
                                                         isDarkMode
-                                                            ? "text-gray-300"
+                                                            ? "text-gray-400"
                                                             : "text-gray-600"
                                                     }`}
                                                 >
@@ -652,13 +671,13 @@ const UserBookings = ({ auth }) => {
                                                 </p>
                                                 {isBooking ? (
                                                     <>
-                                                        <div className="flex items-center gap-2 mb-3">
+                                                        <div className="flex items-center gap-1 mb-2">
                                                             <Calendar
-                                                                size={16}
+                                                                size={14}
                                                                 className="text-blue-500"
                                                             />
                                                             <span
-                                                                className={`text-sm ${
+                                                                className={`text-xs ${
                                                                     isDarkMode
                                                                         ? "text-gray-300"
                                                                         : "text-gray-600"
@@ -673,28 +692,78 @@ const UserBookings = ({ auth }) => {
                                                                 )}
                                                             </span>
                                                         </div>
-                                                        <div className="flex items-center gap-2 mb-4">
+                                                        <div className="flex items-center gap-1 mb-2">
+                                                            <Users
+                                                                size={14}
+                                                                className="text-blue-500"
+                                                            />
                                                             <span
-                                                                className={`text-sm ${
+                                                                className={`text-xs ${
                                                                     isDarkMode
                                                                         ? "text-gray-300"
                                                                         : "text-gray-600"
                                                                 }`}
                                                             >
-                                                                Guests:{" "}
-                                                                {item.guests}
+                                                                {item.guests}{" "}
+                                                                Guests
                                                             </span>
                                                         </div>
-                                                    </>
-                                                ) : (
-                                                    entity.end_date && (
-                                                        <div className="flex items-center gap-2 mb-4">
-                                                            <Calendar
-                                                                size={16}
+                                                        <div className="flex items-center gap-1 mb-2">
+                                                            <CreditCard
+                                                                size={14}
                                                                 className="text-blue-500"
                                                             />
                                                             <span
-                                                                className={`text-sm ${
+                                                                className={`text-xs ${
+                                                                    isDarkMode
+                                                                        ? "text-gray-300"
+                                                                        : "text-gray-600"
+                                                                }`}
+                                                            >
+                                                                Payment:{" "}
+                                                                {item.payment_method ||
+                                                                    "Cash"}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 mb-2">
+                                                            <CheckCircle
+                                                                size={14}
+                                                                className="text-blue-500"
+                                                            />
+                                                            <span
+                                                                className={`text-xs ${
+                                                                    isDarkMode
+                                                                        ? "text-gray-300"
+                                                                        : "text-gray-600"
+                                                                }`}
+                                                            >
+                                                                Code:{" "}
+                                                                {item.confirmation_code ||
+                                                                    "N/A"}
+                                                            </span>
+                                                        </div>
+                                                        {item.notes && (
+                                                            <p
+                                                                className={`text-xs italic ${
+                                                                    isDarkMode
+                                                                        ? "text-gray-400"
+                                                                        : "text-gray-500"
+                                                                } mb-2`}
+                                                            >
+                                                                Notes:{" "}
+                                                                {item.notes}
+                                                            </p>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    entity.end_date && (
+                                                        <div className="flex items-center gap-1 mb-3">
+                                                            <Calendar
+                                                                size={14}
+                                                                className="text-blue-500"
+                                                            />
+                                                            <span
+                                                                className={`text-xs ${
                                                                     isDarkMode
                                                                         ? "text-gray-300"
                                                                         : "text-gray-600"
@@ -709,24 +778,22 @@ const UserBookings = ({ auth }) => {
                                                     )
                                                 )}
                                                 <div className="mt-auto">
-                                                    <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center justify-between mb-3">
                                                         <div>
                                                             <span
-                                                                className={`block text-xs font-medium ${
+                                                                className={`text-xs font-medium ${
                                                                     isDarkMode
                                                                         ? "text-gray-400"
-                                                                        : "text-gray-500"
+                                                                        : "text-gray-600"
                                                                 }`}
                                                             >
                                                                 {isBooking
                                                                     ? "Total Price"
                                                                     : "Starting from"}
                                                             </span>
-                                                            <div className="flex items-baseline gap-2">
+                                                            <div className="flex items-baseline gap-1">
                                                                 {isBooking ? (
-                                                                    <span
-                                                                        className={`text-lg font-bold text-blue-500`}
-                                                                    >
+                                                                    <span className="text-base font-semibold text-blue-500">
                                                                         $
                                                                         {parseFloat(
                                                                             item.total_price
@@ -736,9 +803,7 @@ const UserBookings = ({ auth }) => {
                                                                     </span>
                                                                 ) : entity.discount_price ? (
                                                                     <>
-                                                                        <span
-                                                                            className={`text-lg font-bold text-blue-500`}
-                                                                        >
+                                                                        <span className="text-base font-semibold text-blue-500">
                                                                             $
                                                                             {parseFloat(
                                                                                 entity.discount_price
@@ -747,7 +812,7 @@ const UserBookings = ({ auth }) => {
                                                                             )}
                                                                         </span>
                                                                         <span
-                                                                            className={`text-sm line-through ${
+                                                                            className={`text-xs line-through ${
                                                                                 isDarkMode
                                                                                     ? "text-gray-400"
                                                                                     : "text-gray-500"
@@ -762,9 +827,7 @@ const UserBookings = ({ auth }) => {
                                                                         </span>
                                                                     </>
                                                                 ) : (
-                                                                    <span
-                                                                        className={`text-lg font-bold text-blue-500`}
-                                                                    >
+                                                                    <span className="text-base font-semibold text-blue-500">
                                                                         $
                                                                         {parseFloat(
                                                                             entity.price
@@ -781,26 +844,13 @@ const UserBookings = ({ auth }) => {
                                                                                 : "text-gray-500"
                                                                         }`}
                                                                     >
-                                                                        / person
+                                                                        /person
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <Link
-                                                        href={
-                                                            isBooking
-                                                                ? `/bookings/${item.id}`
-                                                                : `/destinations/${entity.id}`
-                                                        }
-                                                        className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium ${
-                                                            isDarkMode
-                                                                ? "bg-blue-600 text-white hover:bg-blue-700"
-                                                                : "bg-blue-600 text-white hover:bg-blue-700"
-                                                        } transition-all duration-300 transform group-hover:shadow-lg`}
-                                                    >
-                                                        View Details
-                                                    </Link>
+                                                   
                                                 </div>
                                             </div>
                                         </motion.div>
@@ -817,7 +867,7 @@ const UserBookings = ({ auth }) => {
                             whileInView="visible"
                             viewport={{ once: true }}
                             variants={fadeIn}
-                            className="flex justify-center items-center gap-2 mb-16"
+                            className="flex justify-center items-center gap-2 mb-12"
                         >
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
@@ -828,7 +878,7 @@ const UserBookings = ({ auth }) => {
                                     )
                                 }
                                 disabled={currentPage === 1}
-                                className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                                className={`flex items-center justify-center w-10 h-8 rounded-full ${
                                     currentPage === 1
                                         ? isDarkMode
                                             ? "bg-gray-800 text-gray-600 cursor-not-allowed"
@@ -845,7 +895,7 @@ const UserBookings = ({ auth }) => {
                                 {Array.from(
                                     { length: totalPages },
                                     (_, i) => i + 1
-                                ).map((page) => {
+                                ).map((page, idx, arr) => {
                                     const pageRange = 2;
                                     const startPage = Math.max(
                                         1,
@@ -856,6 +906,7 @@ const UserBookings = ({ auth }) => {
                                         currentPage + pageRange
                                     );
 
+                                    // Show page button if in range, first, or last
                                     if (
                                         (page >= startPage &&
                                             page <= endPage) ||
@@ -883,10 +934,11 @@ const UserBookings = ({ auth }) => {
                                         );
                                     }
 
+                                    // Ellipsis before startPage
                                     if (page === startPage - 1 && page > 1) {
                                         return (
                                             <span
-                                                key={`ellipsis-start`}
+                                                key="ellipsis-start"
                                                 className={`text-sm ${
                                                     isDarkMode
                                                         ? "text-gray-500"
@@ -898,13 +950,14 @@ const UserBookings = ({ auth }) => {
                                         );
                                     }
 
+                                    // Ellipsis after endPage
                                     if (
                                         page === endPage + 1 &&
                                         page < totalPages
                                     ) {
                                         return (
                                             <span
-                                                key={`ellipsis-end`}
+                                                key="ellipsis-end"
                                                 className={`text-sm ${
                                                     isDarkMode
                                                         ? "text-gray-500"

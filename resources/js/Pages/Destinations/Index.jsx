@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Head, usePage, Link, router } from "@inertiajs/react";
+import { Head, usePage, Link } from "@inertiajs/react";
+import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
@@ -17,7 +18,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 const DestinationsPage = ({ auth }) => {
     const { props } = usePage();
-    const { destinations = [], flash = {} } = props;
+    const { destinations = [], favorites = [] } = props;
     const user = auth?.user || null;
 
     const [searchQuery, setSearchQuery] = useState("");
@@ -26,11 +27,14 @@ const DestinationsPage = ({ auth }) => {
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [isDarkMode, setIsDarkMode] = useState(true);
-    const [favorites, setFavorites] = useState(
-        destinations.reduce(
-            (acc, dest) => ({
+    const [favoriteStates, setFavoriteStates] = useState(
+        favorites.reduce(
+            (acc, fav) => ({
                 ...acc,
-                [dest.id]: dest.is_favorite || false,
+                [fav.destination_id]: {
+                    is_favorite: true,
+                    favorite_id: fav.id,
+                },
             }),
             {}
         )
@@ -78,30 +82,38 @@ const DestinationsPage = ({ auth }) => {
         setCurrentPage(1);
     };
 
-    const toggleFavorite = (destinationId) => {
+    const isFavorite = (destinationId) => {
+        return favoriteStates[destinationId]?.is_favorite || false;
+    };
+
+    const toggleFavorite = async (destinationId) => {
         if (!user) {
-            toast.error("Please log in to add to favorites");
+            toast.error("Please log in to add to favorites.");
             return;
         }
 
-        router.post(
-            route("destinations.favorite", destinationId),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    const { isFavorite, message } = page.props;
-                    setFavorites((prev) => ({
-                        ...prev,
-                        [destinationId]: isFavorite,
-                    }));
-                    toast.success(message);
-                },
-                onError: () => {
-                    toast.error("Failed to toggle favorite");
-                },
+        try {
+            const response = await axios.post("/favorites", {
+                destination_id: destinationId,
+            });
+
+            const { success, message, is_favorite, favorite_id } =
+                response.data;
+
+            if (success) {
+                setFavoriteStates((prev) => ({
+                    ...prev,
+                    [destinationId]: { is_favorite, favorite_id },
+                }));
+                toast.success(message);
+            } else {
+                toast.error(message);
             }
-        );
+        } catch (error) {
+            const errorMessage =
+                error.response?.data?.message || "Failed to toggle favorite.";
+            toast.error(errorMessage);
+        }
     };
 
     const sortOptions = [
@@ -161,15 +173,6 @@ const DestinationsPage = ({ auth }) => {
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery, selectedCategories]);
-
-    useEffect(() => {
-        if (flash.success) {
-            toast.success(flash.success);
-        }
-        if (flash.error) {
-            toast.error(flash.error);
-        }
-    }, [flash]);
 
     const calculateDiscount = (original, discounted) => {
         if (!discounted) return null;
@@ -448,9 +451,13 @@ const DestinationsPage = ({ auth }) => {
                                                         destination.id
                                                     )
                                                 }
-                                                className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm"
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm ${
+                                                    isFavorite(destination.id)
+                                                        ? "bg-red-500 hover:bg-red-600"
+                                                        : "bg-gray-900 bg-opacity-50 hover:bg-gray-700"
+                                                }`}
                                                 aria-label={
-                                                    favorites[destination.id]
+                                                    isFavorite(destination.id)
                                                         ? "Remove from favorites"
                                                         : "Add to favorites"
                                                 }
@@ -458,10 +465,10 @@ const DestinationsPage = ({ auth }) => {
                                                 <Heart
                                                     size={18}
                                                     className={
-                                                        favorites[
+                                                        isFavorite(
                                                             destination.id
-                                                        ]
-                                                            ? "text-green-400 fill-green-400"
+                                                        )
+                                                            ? "text-white fill-white"
                                                             : "text-gray-300"
                                                     }
                                                 />

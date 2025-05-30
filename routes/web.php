@@ -24,6 +24,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\UserBookingsController;
+use App\Http\Controllers\FavoriteController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -104,7 +105,6 @@ Route::middleware(['auth:web,company', 'verified'])->group(function () {
 Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
     // User-specific booking routes
     Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
-    Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
     Route::get('/book', [BookingController::class, 'create'])->name('book.create');
     Route::post('/book', [BookingController::class, 'store'])->name('book.store');
 
@@ -119,6 +119,9 @@ Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
         Route::delete('/', [ProfileController::class, 'deactivate'])->name('deactivate');
         Route::post('/reactivate', [ProfileController::class, 'reactivate'])->name('reactivate');
     });
+    // Favorite destinations, packages, and offers
+    Route::post('/favorites', [FavoriteController::class, 'store'])->name('favorites.store');
+    Route::delete('/favorites/{id}', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
 });
 
 // ===================================================

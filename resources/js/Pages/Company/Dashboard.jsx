@@ -23,7 +23,7 @@ import toast, { Toaster } from "react-hot-toast";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 
-// --- Utility Functions (بدون تغيير) ---
+
 
 // Placeholder image URL
 const defaultImage = "/images/placeholder.jpg";

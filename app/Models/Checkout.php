@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
-class Booking extends Model
+class CheckOut extends Model
 {
     use HasFactory;
 
-    protected $table = 'bookings';
+    protected $table = 'checkout';
 
     protected $fillable = [
         'user_id',
@@ -25,6 +26,8 @@ class Booking extends Model
         'total_price',
         'status',
         'notes',
+        'payment_method',
+        'confirmation_code',
     ];
 
     protected $casts = [
@@ -60,24 +63,26 @@ class Booking extends Model
         return $this->belongsTo(Offer::class);
     }
 
-    /**
-     * Validate that at least one of destination_id, package_id, or offer_id is present.
-     */
     public static function boot()
     {
         parent::boot();
 
-        static::creating(function ($booking) {
-            $validator = Validator::make($booking->toArray(), [
+        static::creating(function ($checkout) {
+            $checkout->confirmation_code = Str::random(12);
+            $checkout->payment_method = 'cash';
+
+            $validator = Validator::make($checkout->toArray(), [
                 'destination_id' => 'nullable|exists:destinations,id',
                 'package_id' => 'nullable|exists:packages,id',
                 'offer_id' => 'nullable|exists:offers,id',
+                'payment_method' => 'required|in:cash',
             ], [
                 'at_least_one' => 'At least one of destination_id, package_id, or offer_id must be provided.',
+                'payment_method.in' => 'Only cash payment is supported.',
             ]);
 
-            $validator->after(function ($validator) use ($booking) {
-                if (!$booking->destination_id && !$booking->package_id && !$booking->offer_id) {
+            $validator->after(function ($validator) use ($checkout) {
+                if (!$checkout->destination_id && !$checkout->package_id && !$checkout->offer_id) {
                     $validator->errors()->add('at_least_one', 'At least one of destination_id, package_id, or offer_id must be provided.');
                 }
             });
@@ -87,17 +92,19 @@ class Booking extends Model
             }
         });
 
-        static::updating(function ($booking) {
-            $validator = Validator::make($booking->toArray(), [
+        static::updating(function ($checkout) {
+            $validator = Validator::make($checkout->toArray(), [
                 'destination_id' => 'nullable|exists:destinations,id',
                 'package_id' => 'nullable|exists:packages,id',
                 'offer_id' => 'nullable|exists:offers,id',
+                'payment_method' => 'required|in:cash',
             ], [
                 'at_least_one' => 'At least one of destination_id, package_id, or offer_id must be provided.',
+                'payment_method.in' => 'Only cash payment is supported.',
             ]);
 
-            $validator->after(function ($validator) use ($booking) {
-                if (!$booking->destination_id && !$booking->package_id && !$booking->offer_id) {
+            $validator->after(function ($validator) use ($checkout) {
+                if (!$checkout->destination_id && !$checkout->package_id && !$checkout->offer_id) {
                     $validator->errors()->add('at_least_one', 'At least one of destination_id, package_id, or offer_id must be provided.');
                 }
             });

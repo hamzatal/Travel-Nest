@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Destination;
 use App\Models\Company;
+use App\Models\Favorite;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class DestinationController extends Controller
@@ -127,11 +129,11 @@ class DestinationController extends Controller
 
             $destination->update($data);
 
-            return redirect()->route('admin.destinations.index')->with('success', 'Destination updated successfully.');
+            return redirect()->back()->with('success', 'Destination updated successfully.');
         } catch (ValidationException $e) {
-            return back()->withErrors($e->errors())->withInput();
+            return back()->withErrors($e->errors())->with('error', 'Failed to update destination');
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to update destination: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update destination: ' . $e->getMessage());
         }
     }
 
@@ -148,7 +150,7 @@ class DestinationController extends Controller
 
             return redirect()->route('admin.destinations.index')->with('success', 'Destination deleted successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to delete destination. Please try again.');
+            return back()->with('error', 'Failed to delete destination.');
         }
     }
 
@@ -164,7 +166,7 @@ class DestinationController extends Controller
 
             return redirect()->route('admin.destinations.index')->with('success', $message);
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to toggle featured status. Please try again.');
+            return back()->with('error', 'Failed to toggle featured status.');
         }
     }
 
@@ -235,8 +237,21 @@ class DestinationController extends Controller
             ];
         });
 
+        $favorites = Auth::guard('web')->check()
+            ? Favorite::where('user_id', Auth::guard('web')->id())
+            ->select(['id', 'user_id', 'destination_id', 'package_id', 'offer_id'])
+            ->get()
+            ->toArray()
+            : [];
+
         return Inertia::render('Destinations/Index', [
             'destinations' => $destinations,
+            'favorites' => $favorites,
+            'auth' => Auth::guard('web')->user() ? ['user' => Auth::guard('web')->user()] : null,
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
+            ],
         ]);
     }
 
@@ -244,6 +259,12 @@ class DestinationController extends Controller
     {
         try {
             $destination = Destination::with('company')->findOrFail($id);
+
+            $favorite = Auth::guard('web')->check()
+                ? Favorite::where('user_id', Auth::guard('web')->id())
+                ->where('destination_id', $id)
+                ->first()
+                : null;
 
             return Inertia::render('Destinations/Show', [
                 'destination' => [
@@ -257,14 +278,15 @@ class DestinationController extends Controller
                     'discount_price' => $destination->discount_price,
                     'rating' => $destination->rating,
                     'is_featured' => $destination->is_featured,
+                    'is_favorite' => $favorite ? true : false,
+                    'favorite_id' => $favorite ? $favorite->id : null,
                     'company' => $destination->company ? [
                         'id' => $destination->company->id,
                         'company_name' => $destination->company->company_name,
                     ] : null,
                 ],
-                'flash' => [
-                    'success' => session('success'),
-                    'error' => session('error'),
+                'auth' => [
+                    'user' => Auth::guard('web')->user(),
                 ],
             ]);
         } catch (\Exception $e) {

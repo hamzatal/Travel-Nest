@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { Head, Link, router } from "@inertiajs/react";
+import React, { useState } from "react";
+import { Head, Link } from "@inertiajs/react";
+import axios from "axios";
 import { motion } from "framer-motion";
 import { MapPin, ChevronLeft, Star, Heart } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
 
-export default function DestinationDetails({ destination, auth, flash }) {
+export default function Show({ destination, auth }) {
     const [isDarkMode, setIsDarkMode] = useState(true);
-    const [isFavorite, setIsFavorite] = useState(
-        destination.is_favorite || false
-    );
+    const [favoriteState, setFavoriteState] = useState({
+        is_favorite: destination.is_favorite || false,
+        favorite_id: destination.favorite_id || null,
+    });
 
     // Animation variants
     const fadeIn = {
@@ -45,27 +47,31 @@ export default function DestinationDetails({ destination, auth, flash }) {
         return stars;
     };
 
-    const toggleFavorite = () => {
+    const toggleFavorite = async () => {
         if (!auth?.user) {
-            toast.error("Please log in to add to favorites");
+            toast.error("Please log in to add to favorites.");
             return;
         }
 
-        router.post(
-            route("destinations.favorite", destination.id),
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    const { isFavorite, message } = page.props;
-                    setIsFavorite(isFavorite);
-                    toast.success(message);
-                },
-                onError: () => {
-                    toast.error("Failed to toggle favorite");
-                },
+        try {
+            const response = await axios.post("/favorites", {
+                destination_id: destination.id,
+            });
+
+            const { success, message, is_favorite, favorite_id } =
+                response.data;
+
+            if (success) {
+                setFavoriteState({ is_favorite, favorite_id });
+                toast.success(message);
+            } else {
+                toast.error(message);
             }
-        );
+        } catch (error) {
+            const errorMessage =
+                error.response?.data?.message || "Failed to toggle favorite.";
+            toast.error(errorMessage);
+        }
     };
 
     // Calculate total price
@@ -171,7 +177,7 @@ export default function DestinationDetails({ destination, auth, flash }) {
                                         {destination.category}
                                     </span>
                                 )}
-                                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                                <div className="absolute top-4 right-1 flex flex-col gap-2">
                                     {calculateDiscount(
                                         destination.price,
                                         destination.discount_price
@@ -186,9 +192,13 @@ export default function DestinationDetails({ destination, auth, flash }) {
                                     )}
                                     <button
                                         onClick={toggleFavorite}
-                                        className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-300 backdrop-blur-sm"
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm ${
+                                            favoriteState.is_favorite
+                                                ? "bg-red-500 hover:bg-red-600"
+                                                : "bg-gray-900 bg-opacity-50 hover:bg-gray-700"
+                                        }`}
                                         aria-label={
-                                            isFavorite
+                                            favoriteState.is_favorite
                                                 ? "Remove from favorites"
                                                 : "Add to favorites"
                                         }
@@ -196,8 +206,8 @@ export default function DestinationDetails({ destination, auth, flash }) {
                                         <Heart
                                             size={18}
                                             className={
-                                                isFavorite
-                                                    ? "text-green-400 fill-green-400"
+                                                favoriteState.is_favorite
+                                                    ? "text-white fill-white"
                                                     : "text-gray-300"
                                             }
                                         />
@@ -415,9 +425,13 @@ export default function DestinationDetails({ destination, auth, flash }) {
 
                                 <button
                                     onClick={toggleFavorite}
-                                    className="block w-full bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-900 hover:bg-opacity-20 text-center py-3 rounded-lg transition-all duration-300"
+                                    className={`block w-full py-3 rounded-lg text-center transition-all duration-300 ${
+                                        favoriteState.is_favorite
+                                            ? "bg-red-500 hover:bg-red-600 text-white"
+                                            : "bg-transparent border border-blue-500 text-blue-400 hover:bg-blue-900 hover:bg-opacity-20"
+                                    }`}
                                 >
-                                    {isFavorite
+                                    {favoriteState.is_favorite
                                         ? "Saved to Favorites"
                                         : "Save to Favorites"}
                                 </button>

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Booking;
+use App\Models\CheckOut;
 use App\Models\Favorite;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +18,7 @@ class UserBookingsController extends Controller
             return redirect()->route('login')->with('error', 'Please log in to view your bookings and favorites.');
         }
 
-        $bookings = Booking::where('user_id', $user->id)
+        $bookings = CheckOut::where('user_id', $user->id)
             ->with([
                 'destination' => function ($query) {
                     $query->select([
@@ -71,6 +71,9 @@ class UserBookingsController extends Controller
                 'guests',
                 'total_price',
                 'status',
+                'notes',
+                'payment_method',
+                'confirmation_code',
                 'created_at',
             ])
             ->orderBy('created_at', 'desc')
