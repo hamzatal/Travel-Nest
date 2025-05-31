@@ -16,7 +16,7 @@ import {
     Tag,
     Award,
     Compass,
-     Sun,
+    Sun,
     ArrowLeft,
     ArrowRight as ChevronRight,
     Calendar,
@@ -26,129 +26,145 @@ import {
     CircleX,
     Globe2,
     Building,
+    Star,
+    Clock,
+    Map,
+    Mountain,
+    Umbrella,
 } from "lucide-react";
 import { Head, usePage, Link } from "@inertiajs/react";
+import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
 import Navbar from "../Components/Nav";
 import Footer from "../Components/Footer";
 import ChatBot from "../Components/ChatBot";
 
 // Offer Card Component
 const OfferCard = React.memo(
-    ({ offer, translations, isDarkMode, calculateDiscount }) => (
-        <motion.div
-            whileHover={{ y: -8, transition: { duration: 0.3 } }}
-            className={`rounded-2xl overflow-hidden shadow-lg ${
-                isDarkMode
-                    ? "bg-gray-800 border-gray-700"
-                    : "bg-white border-gray-200"
-            } border hover:shadow-xl transition-all duration-300 group`}
-        >
-            <div className="relative overflow-hidden">
-                <img
-                    src={offer.image || "https://via.placeholder.com/640x480"}
-                    alt={offer.title}
-                    className="w-full h-64 object-cover transform group-hover:scale-110 transition-transform duration-500"
-                    loading="lazy"
-                    onError={(e) =>
-                        (e.target.src = "https://via.placeholder.com/640x480")
-                    }
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
-                    {offer.category && (
-                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            {offer.category}
+    ({
+        offer,
+        translations,
+        isDarkMode,
+        calculateDiscount,
+        toggleFavorite,
+        favorites,
+        loadingFavorite,
+    }) => {
+        return (
+            <motion.div
+                whileHover={{ y: -8, transition: { duration: 0.3 } }}
+                className={`rounded-2xl overflow-hidden shadow-lg ${
+                    isDarkMode
+                        ? "bg-gray-800 border-gray-700"
+                        : "bg-white border-gray-200"
+                } border hover:shadow-xl transition-all duration-300 group flex flex-col h-full`}
+            >
+                <div className="relative overflow-hidden h-56">
+                    <img
+                        src={offer.image || "/images/placeholder-offer.jpg"}
+                        alt={offer.title}
+                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                        onError={(e) =>
+                            (e.target.src = "/images/placeholder-offer.jpg")
+                        }
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                    <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                        {offer.category && (
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-md">
+                                {offer.category}
+                            </div>
+                        )}
+                        <button
+                            onClick={() => toggleFavorite(offer.id, "offer_id")}
+                            disabled={loadingFavorite[`offer_${offer.id}`]}
+                            className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
+                                favorites[`offer_${offer.id}`]?.is_favorite
+                                    ? "bg-red-500 hover:bg-red-600 shadow-lg"
+                                    : "bg-white/20 hover:bg-white/40"
+                            } ${
+                                loadingFavorite[`offer_${offer.id}`]
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                            }`}
+                            aria-label={
+                                favorites[`offer_${offer.id}`]?.is_favorite
+                                    ? "Remove from favorites"
+                                    : "Add to favorites"
+                            }
+                        >
+                            <Heart
+                                size={18}
+                                className={
+                                    favorites[`offer_${offer.id}`]?.is_favorite
+                                        ? "text-white fill-white"
+                                        : "text-white"
+                                }
+                            />
+                        </button>
+                    </div>
+                    {calculateDiscount(offer.price, offer.discount_price) && (
+                        <div className="absolute top-16 right-0 bg-gradient-to-r from-red-600 to-pink-600 text-white px-3 py-1 rounded-l-full text-xs font-bold shadow-lg">
+                            {calculateDiscount(
+                                offer.price,
+                                offer.discount_price
+                            )}
+                            % OFF
                         </div>
                     )}
-                    <button
-                        className="bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-40 backdrop-blur-sm transition-all duration-300 transform hover:scale-110"
-                        aria-label="Add to favorites"
-                    >
-                        <Heart size={18} className="text-white" />
-                    </button>
                 </div>
-                {calculateDiscount(offer.price, offer.discount_price) && (
-                    <div className="absolute top-20 right-0 bg-red-600 text-white px-4 py-1 rounded-l-full text-sm font-bold shadow-lg">
-                        {calculateDiscount(offer.price, offer.discount_price)}%
-                        OFF
-                    </div>
-                )}
-            </div>
-            <div className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                    <h3
-                        className={`font-bold text-lg ${
-                            isDarkMode ? "text-white" : "text-gray-900"
-                        }`}
-                    >
-                        {offer.title}
-                    </h3>
-                </div>
-                <p
-                    className={`text-sm ${
-                        isDarkMode ? "text-gray-300" : "text-gray-600"
-                    } mb-2`}
-                >
-                    {offer.destination_location}
-                </p>
-                {offer.description && (
-                    <p
-                        className={`text-sm ${
-                            isDarkMode ? "text-gray-300" : "text-gray-600"
-                        } mb-4 line-clamp-2`}
-                    >
-                        {offer.description}
-                    </p>
-                )}
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center">
-                        <Calendar
-                            size={14}
-                            className={
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            }
-                        />
-                        <span
-                            className={`text-xs ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            } ml-1`}
+                <div className="p-4 flex flex-col flex-grow">
+                    <div className="mb-2">
+                        <h3
+                            className={`text-lg font-semibold ${
+                                isDarkMode ? "text-white" : "text-gray-900"
+                            } line-clamp-1`}
                         >
-                            {new Date(offer.start_date).toLocaleDateString() ||
-                                "N/A"}{" "}
-                            -{" "}
-                            {new Date(offer.end_date).toLocaleDateString() ||
-                                "N/A"}
-                        </span>
-                    </div>
-                </div>
-                <div
-                    className={`flex items-center justify-between pt-3 border-t ${
-                        isDarkMode ? "border-gray-700" : "border-gray-200"
-                    }`}
-                >
-                    <div>
-                        <span
-                            className={`block text-xs font-medium ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            }`}
+                            {offer.title}
+                        </h3>
+                        <p
+                            className={`text-sm ${
+                                isDarkMode ? "text-gray-300" : "text-gray-600"
+                            } line-clamp-1`}
                         >
-                            {translations.starting_from || "Starting from"}
-                        </span>
-                        <div className="flex items-baseline">
-                            <span className="text-blue-600 font-bold text-lg">
-                                ${offer.discount_price || offer.price}
+                            {offer.company_name || "Travel Nest"}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <MapPin
+                                size={14}
+                                className="text-blue-600 flex-shrink-0"
+                            />
+                            <span
+                                className={`text-sm ${
+                                    isDarkMode
+                                        ? "text-gray-300"
+                                        : "text-gray-600"
+                                } line-clamp-1`}
+                            >
+                                {offer.destination_location}
                             </span>
-                            {offer.discount_price && (
-                                <span
-                                    className={`text-sm ${
-                                        isDarkMode
-                                            ? "text-gray-500"
-                                            : "text-gray-400"
-                                    } line-through ml-2`}
-                                >
-                                    ${offer.price}
-                                </span>
-                            )}
+                        </div>
+                    </div>
+                    {offer.description && (
+                        <p
+                            className={`text-sm ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                            } mb-3 line-clamp-2`}
+                        >
+                            {offer.description}
+                        </p>
+                    )}
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center">
+                            <Calendar
+                                size={14}
+                                className={
+                                    isDarkMode
+                                        ? "text-gray-400"
+                                        : "text-gray-500"
+                                }
+                            />
                             <span
                                 className={`text-xs ${
                                     isDarkMode
@@ -156,157 +172,208 @@ const OfferCard = React.memo(
                                         : "text-gray-500"
                                 } ml-1`}
                             >
-                                {translations.per_night || "/ night"}
+                                {new Date(
+                                    offer.start_date
+                                ).toLocaleDateString() || "N/A"}{" "}
+                                -{" "}
+                                {new Date(
+                                    offer.end_date
+                                ).toLocaleDateString() || "N/A"}
                             </span>
                         </div>
                     </div>
-                    <Link
-                        href={`/offers/${offer.id}`}
-                        className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 text-sm font-medium"
-                        aria-label={`View ${offer.title} details`}
-                    >
-                        {translations.details || "Details"}{" "}
-                        <ArrowRight size={14} />
-                    </Link>
+                    <div className="mt-auto">
+                        <div
+                            className={`flex items-center justify-between pt-3 border-t ${
+                                isDarkMode
+                                    ? "border-gray-700"
+                                    : "border-gray-200"
+                            }`}
+                        >
+                            <div>
+                                <span
+                                    className={`block text-xs font-medium ${
+                                        isDarkMode
+                                            ? "text-gray-400"
+                                            : "text-gray-500"
+                                    }`}
+                                >
+                                    {translations.starting_from ||
+                                        "Starting from"}
+                                </span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-blue-600 font-bold text-base">
+                                        ${offer.discount_price || offer.price}
+                                    </span>
+                                    {offer.discount_price && (
+                                        <span
+                                            className={`text-xs ${
+                                                isDarkMode
+                                                    ? "text-gray-500"
+                                                    : "text-gray-400"
+                                            } line-through`}
+                                        >
+                                            ${offer.price}
+                                        </span>
+                                    )}
+                                    <span
+                                        className={`text-xs ${
+                                            isDarkMode
+                                                ? "text-gray-400"
+                                                : "text-gray-500"
+                                        }`}
+                                    >
+                                        {translations.per_night || "/ night"}
+                                    </span>
+                                </div>
+                            </div>
+                            <Link
+                                href={`/offers/${offer.id}`}
+                                className="flex items-center gap-1 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                                aria-label={`View ${offer.title} details`}
+                            >
+                                {translations.details || "Details"}
+                                <ArrowRight size={16} />
+                            </Link>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </motion.div>
-    )
+            </motion.div>
+        );
+    }
 );
 
 // Destination Card Component
 const DestinationCard = React.memo(
-    ({ destination, translations, isDarkMode, calculateDiscount }) => (
-        <motion.div
-            whileHover={{ y: -8, transition: { duration: 0.3 } }}
-            className={`rounded-2xl overflow-hidden shadow-lg ${
-                isDarkMode
-                    ? "bg-gray-800 border-gray-700"
-                    : "bg-white border-gray-200"
-            } border hover:shadow-xl transition-all duration-300 group`}
-        >
-            <div className="relative overflow-hidden">
-                <img
-                    src={
-                        destination.image ||
-                        "https://via.placeholder.com/640x480"
-                    }
-                    alt={destination.title}
-                    className="w-full h-64 object-cover transform group-hover:scale-110 transition-transform duration-500"
-                    loading="lazy"
-                    onError={(e) =>
-                        (e.target.src = "https://via.placeholder.com/640x480")
-                    }
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
-                    {destination.category && (
-                        <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            {destination.category}
+    ({
+        destination,
+        translations,
+        isDarkMode,
+        calculateDiscount,
+        toggleFavorite,
+        favorites,
+        loadingFavorite,
+    }) => {
+        return (
+            <motion.div
+                whileHover={{ y: -8, transition: { duration: 0.3 } }}
+                className={`rounded-2xl overflow-hidden shadow-lg ${
+                    isDarkMode
+                        ? "bg-gray-800 border-gray-700"
+                        : "bg-white border-gray-200"
+                } border hover:shadow-xl transition-all duration-300 group flex flex-col h-full`}
+            >
+                <div className="relative overflow-hidden h-56">
+                    <img
+                        src={
+                            destination.image ||
+                            "/images/placeholder-destination.jpg"
+                        }
+                        alt={destination.title}
+                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                        onError={(e) =>
+                            (e.target.src =
+                                "/images/placeholder-destination.jpg")
+                        }
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                    <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                        {destination.category && (
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-md">
+                                {destination.category}
+                            </div>
+                        )}
+                        <button
+                            onClick={() =>
+                                toggleFavorite(destination.id, "destination_id")
+                            }
+                            disabled={
+                                loadingFavorite[`destination_${destination.id}`]
+                            }
+                            className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 transform hover:scale-110 ${
+                                favorites[`destination_${destination.id}`]
+                                    ?.is_favorite
+                                    ? "bg-red-500 hover:bg-red-600 shadow-lg"
+                                    : "bg-white/20 hover:bg-white/40"
+                            } ${
+                                loadingFavorite[`destination_${destination.id}`]
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                            }`}
+                            aria-label={
+                                favorites[`destination_${destination.id}`]
+                                    ?.is_favorite
+                                    ? "Remove from favorites"
+                                    : "Add to favorites"
+                            }
+                        >
+                            <Heart
+                                size={18}
+                                className={
+                                    favorites[`destination_${destination.id}`]
+                                        ?.is_favorite
+                                        ? "text-white fill-white"
+                                        : "text-white"
+                                }
+                            />
+                        </button>
+                    </div>
+                    {calculateDiscount(
+                        destination.price,
+                        destination.discount_price
+                    ) && (
+                        <div className="absolute top-16 right-0 bg-gradient-to-r from-red-600 to-pink-600 text-white px-3 py-1 rounded-l-full text-xs font-bold shadow-lg">
+                            {calculateDiscount(
+                                destination.price,
+                                destination.discount_price
+                            )}
+                            % OFF
                         </div>
                     )}
-                    <button
-                        className="bg-white bg-opacity-20 p-2 rounded-full hover:bg-opacity-40 backdrop-blur-sm transition-all duration-300 transform hover:scale-110"
-                        aria-label="Add to favorites"
-                    >
-                        <Heart size={18} className="text-white" />
-                    </button>
                 </div>
-                {calculateDiscount(
-                    destination.price,
-                    destination.discount_price
-                ) && (
-                    <div className="absolute top-20 right-0 bg-red-600 text-white px-4 py-1 rounded-l-full text-sm font-bold shadow-lg">
-                        {calculateDiscount(
-                            destination.price,
-                            destination.discount_price
-                        )}
-                        % OFF
-                    </div>
-                )}
-            </div>
-            <div className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                    <h3
-                        className={`font-bold text-lg ${
-                            isDarkMode ? "text-white" : "text-gray-900"
-                        }`}
-                    >
-                        {destination.title}
-                    </h3>
-                </div>
-                <div className="flex items-center gap-2 mb-4">
-                    <MapPin size={16} className="text-blue-600 flex-shrink-0" />
-                    <span
-                        className={`text-sm ${
-                            isDarkMode ? "text-gray-300" : "text-gray-600"
-                        }`}
-                    >
-                        {destination.location}
-                    </span>
-                </div>
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center">
-                        <Calendar
-                            size={14}
-                            className={
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            }
-                        />
-                        <span
-                            className={`text-xs ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            } ml-1`}
+                <div className="p-4 flex flex-col flex-grow">
+                    <div className="mb-2">
+                        <h3
+                            className={`text-lg font-semibold ${
+                                isDarkMode ? "text-white" : "text-gray-900"
+                            } line-clamp-1`}
                         >
-                            {destination.duration || "3-7 days"}
-                        </span>
-                    </div>
-                    <div className="flex items-center">
-                        <Users
-                            size={14}
-                            className={
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            }
-                        />
-                        <span
-                            className={`text-xs ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            } ml-1`}
+                            {destination.title}
+                        </h3>
+                        <p
+                            className={`text-sm ${
+                                isDarkMode ? "text-gray-300" : "text-gray-600"
+                            } line-clamp-1`}
                         >
-                            {destination.group_size || "2-8 people"}
-                        </span>
-                    </div>
-                </div>
-                <div
-                    className={`flex items-center justify-between pt-3 border-t ${
-                        isDarkMode ? "border-gray-700" : "border-gray-200"
-                    }`}
-                >
-                    <div>
-                        <span
-                            className={`block text-xs font-medium ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                            }`}
-                        >
-                            {translations.starting_from || "Starting from"}
-                        </span>
-                        <div className="flex items-baseline">
-                            <span className="text-blue-600 font-bold text-lg">
-                                $
-                                {destination.discount_price ||
-                                    destination.price}
+                            {destination.company_name || "Travel Nest"}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <MapPin
+                                size={14}
+                                className="text-blue-600 flex-shrink-0"
+                            />
+                            <span
+                                className={`text-sm ${
+                                    isDarkMode
+                                        ? "text-gray-300"
+                                        : "text-gray-600"
+                                } line-clamp-1`}
+                            >
+                                {destination.location}
                             </span>
-                            {destination.discount_price && (
-                                <span
-                                    className={`text-sm ${
-                                        isDarkMode
-                                            ? "text-gray-500"
-                                            : "text-gray-400"
-                                    } line-through ml-2`}
-                                >
-                                    ${destination.price}
-                                </span>
-                            )}
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="flex items-center">
+                            <Calendar
+                                size={14}
+                                className={
+                                    isDarkMode
+                                        ? "text-gray-400"
+                                        : "text-gray-500"
+                                }
+                            />
                             <span
                                 className={`text-xs ${
                                     isDarkMode
@@ -314,27 +381,98 @@ const DestinationCard = React.memo(
                                         : "text-gray-500"
                                 } ml-1`}
                             >
-                                {translations.per_night || "/ night"}
+                                {destination.duration || "3-7 days"}
+                            </span>
+                        </div>
+                        <div className="flex items-center">
+                            <Users
+                                size={14}
+                                className={
+                                    isDarkMode
+                                        ? "text-gray-400"
+                                        : "text-gray-500"
+                                }
+                            />
+                            <span
+                                className={`text-xs ${
+                                    isDarkMode
+                                        ? "text-gray-400"
+                                        : "text-gray-500"
+                                } ml-1`}
+                            >
+                                {destination.group_size || "2-8 people"}
                             </span>
                         </div>
                     </div>
-                    <Link
-                        href={`/destinations/${destination.id}`}
-                        className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all duration-300 text-sm font-medium"
-                        aria-label={`View ${destination.title} details`}
-                    >
-                        {translations.details || "Details"}{" "}
-                        <ArrowRight size={14} />
-                    </Link>
+                    <div className="mt-auto">
+                        <div
+                            className={`flex items-center justify-between pt-3 border-t ${
+                                isDarkMode
+                                    ? "border-gray-700"
+                                    : "border-gray-200"
+                            }`}
+                        >
+                            <div>
+                                <span
+                                    className={`block text-xs font-medium ${
+                                        isDarkMode
+                                            ? "text-gray-400"
+                                            : "text-gray-500"
+                                    }`}
+                                >
+                                    {translations.starting_from ||
+                                        "Starting from"}
+                                </span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-blue-600 font-bold text-base">
+                                        $
+                                        {destination.discount_price ||
+                                            destination.price}
+                                    </span>
+                                    {destination.discount_price && (
+                                        <span
+                                            className={`text-xs ${
+                                                isDarkMode
+                                                    ? "text-gray-500"
+                                                    : "text-gray-400"
+                                            } line-through`}
+                                        >
+                                            ${destination.price}
+                                        </span>
+                                    )}
+                                    <span
+                                        className={`text-xs ${
+                                            isDarkMode
+                                                ? "text-gray-400"
+                                                : "text-gray-500"
+                                        }`}
+                                    >
+                                        {translations.per_night || "/ night"}
+                                    </span>
+                                </div>
+                            </div>
+                            <Link
+                                href={`/destinations/${destination.id}`}
+                                className="flex items-center gap-1 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                                aria-label={`View ${destination.title} details`}
+                            >
+                                {translations.details || "Details"}
+                                <ArrowRight size={16} />
+                            </Link>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </motion.div>
-    )
+            </motion.div>
+        );
+    }
 );
 
 // Pagination Component
 const Pagination = ({ currentPage, totalPages, onPageChange, isDarkMode }) => {
     const pages = [...Array(totalPages).keys()].map((i) => i + 1);
+    const pageRange = 2;
+    const startPage = Math.max(1, currentPage - pageRange);
+    const endPage = Math.min(totalPages, currentPage + pageRange);
 
     return (
         <div className="flex items-center justify-center gap-2 mt-8">
@@ -345,27 +483,29 @@ const Pagination = ({ currentPage, totalPages, onPageChange, isDarkMode }) => {
                     isDarkMode
                         ? "bg-gray-700 text-white hover:bg-blue-600"
                         : "bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white"
-                } disabled:opacity-50 transition-all duration-300`}
+                } disabled:opacity-50 transition-all duration-300 shadow-md`}
                 aria-label="Previous page"
             >
                 <ArrowLeft size={20} />
             </button>
-            {pages.map((page) => (
-                <button
-                    key={page}
-                    onClick={() => onPageChange(page)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium ${
-                        currentPage === page
-                            ? "bg-blue-600 text-white"
-                            : isDarkMode
-                            ? "bg-gray-700 text-white hover:bg-blue-600"
-                            : "bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white"
-                    } transition-all duration-300`}
-                    aria-label={`Go to page ${page}`}
-                >
-                    {page}
-                </button>
-            ))}
+            {pages
+                .filter((page) => page >= startPage && page <= endPage)
+                .map((page) => (
+                    <button
+                        key={page}
+                        onClick={() => onPageChange(page)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium ${
+                            currentPage === page
+                                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                                : isDarkMode
+                                ? "bg-gray-700 text-white hover:bg-blue-600"
+                                : "bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white"
+                        } transition-all duration-300 shadow-md`}
+                        aria-label={`Go to page ${page}`}
+                    >
+                        {page}
+                    </button>
+                ))}
             <button
                 onClick={() => onPageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -373,7 +513,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, isDarkMode }) => {
                     isDarkMode
                         ? "bg-gray-700 text-white hover:bg-blue-600"
                         : "bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white"
-                } disabled:opacity-50 transition-all duration-300`}
+                } disabled:opacity-50 transition-all duration-300 shadow-md`}
                 aria-label="Next page"
             >
                 <ChevronRight size={20} />
@@ -382,7 +522,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange, isDarkMode }) => {
     );
 };
 
-const HomePage = ({ auth }) => {
+const HomePage = ({ auth, favorites: initialFavorites = [] }) => {
     const { props } = usePage();
     const {
         heroSections = [],
@@ -412,14 +552,53 @@ const HomePage = ({ auth }) => {
     const [suggestions, setSuggestions] = useState([]);
     const [offerPage, setOfferPage] = useState(1);
     const [destinationPage, setDestinationPage] = useState(1);
+    const [favorites, setFavorites] = useState(() => {
+        const initial = {};
+        initialFavorites.forEach((fav) => {
+            const type = fav.favoritable_type.toLowerCase();
+            const id = fav.favoritable_id;
+            initial[`${type}_${id}`] = {
+                is_favorite: true,
+                favorite_id: fav.id,
+            };
+        });
+        // Merge with offers and destinations
+        offers.forEach((offer) => {
+            if (!initial[`offer_${offer.id}`]) {
+                initial[`offer_${offer.id}`] = {
+                    is_favorite: offer.is_favorite || false,
+                    favorite_id: offer.favorite_id || null,
+                };
+            }
+        });
+        destinations.forEach((destination) => {
+            if (!initial[`destination_${destination.id}`]) {
+                initial[`destination_${destination.id}`] = {
+                    is_favorite: destination.is_favorite || false,
+                    favorite_id: destination.favorite_id || null,
+                };
+            }
+        });
+        return initial;
+    });
+    const [loadingFavorite, setLoadingFavorite] = useState({});
     const itemsPerPage = 4;
 
-    // Persist dark mode to localStorage and log state changes
+    // Persist dark mode to localStorage
     useEffect(() => {
-        console.log("Dark Mode State:", isDarkMode); // Debugging
         localStorage.setItem("darkMode", isDarkMode);
         document.documentElement.classList.toggle("dark", isDarkMode);
     }, [isDarkMode]);
+
+    // Show flash messages as toasts
+    useEffect(() => {
+        if (flash.success) {
+            toast.success(flash.success);
+        }
+        if (flash.error) {
+            toast.error(flash.error);
+        }
+    }, [flash]);
 
     // Feature toggles
     const toggleChat = useCallback(() => setIsChatOpen((prev) => !prev), []);
@@ -427,13 +606,10 @@ const HomePage = ({ auth }) => {
         () => setIsTooltipVisible(false),
         []
     );
-    const toggleDarkMode = useCallback(() => {
-        setIsDarkMode((prev) => {
-            const newMode = !prev;
-            console.log("Toggling Dark Mode to:", newMode); // Debugging
-            return newMode;
-        });
-    }, []);
+    const toggleDarkMode = useCallback(
+        () => setIsDarkMode((prev) => !prev),
+        []
+    );
 
     // Scroll to search section
     const scrollToSearch = useCallback(() => {
@@ -455,6 +631,64 @@ const HomePage = ({ auth }) => {
             return () => clearInterval(timer);
         }
     }, [heroSections]);
+
+    // Toggle favorite with optimistic update
+    const toggleFavorite = useCallback(
+        async (itemId, itemType) => {
+            if (!user) {
+                toast.error("Please log in to add to favorites");
+                return { success: false };
+            }
+
+            const key = `${itemType.split("_")[0]}_${itemId}`;
+            const prevState = { ...favorites[key] } || {
+                is_favorite: false,
+                favorite_id: null,
+            };
+
+            // Optimistic update
+            setFavorites((prev) => ({
+                ...prev,
+                [key]: {
+                    is_favorite: !prevState.is_favorite,
+                    favorite_id: prevState.is_favorite ? null : "temp",
+                },
+            }));
+            setLoadingFavorite((prev) => ({ ...prev, [key]: true }));
+
+            try {
+                const response = await axios.post("/favorites", {
+                    [itemType]: itemId,
+                });
+
+                const { success, message, is_favorite, favorite_id } =
+                    response.data;
+
+                if (success) {
+                    setFavorites((prev) => ({
+                        ...prev,
+                        [key]: { is_favorite, favorite_id },
+                    }));
+                    toast.success(message);
+                    return { success: true };
+                } else {
+                    toast.error(message);
+                    setFavorites((prev) => ({ ...prev, [key]: prevState }));
+                    return { success: false };
+                }
+            } catch (error) {
+                const errorMessage =
+                    error.response?.data?.message ||
+                    "Failed to toggle favorite";
+                toast.error(errorMessage);
+                setFavorites((prev) => ({ ...prev, [key]: prevState }));
+                return { success: false };
+            } finally {
+                setLoadingFavorite((prev) => ({ ...prev, [key]: false }));
+            }
+        },
+        [user, favorites]
+    );
 
     // Debounce search query
     useEffect(() => {
@@ -569,6 +803,17 @@ const HomePage = ({ auth }) => {
     const totalOfferPages = Math.ceil(offers.length / itemsPerPage);
     const totalDestinationPages = Math.ceil(destinations.length / itemsPerPage);
 
+    // Categories with icons
+    const categories = [
+        { name: "All", icon: Compass },
+        { name: "Beach", icon: Umbrella },
+        { name: "Adventure", icon: MapPin },
+        { name: "Cultural", icon: Building },
+        { name: "Historical", icon: Clock },
+        { name: "Wildlife", icon: Globe2 },
+        { name: "Mountain", icon: Mountain },
+    ];
+
     return (
         <div
             className={`min-h-screen ${
@@ -584,7 +829,18 @@ const HomePage = ({ auth }) => {
                     name="description"
                     content="Discover unforgettable trips, explore stunning destinations, and book the best travel deals with Travel Nest."
                 />
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link
+                    rel="preconnect"
+                    href="https://fonts.gstatic.com"
+                    crossOrigin="true"
+                />
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+                    rel="stylesheet"
+                />
             </Head>
+            <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
             <Navbar
                 user={user}
                 isDarkMode={isDarkMode}
@@ -631,7 +887,7 @@ const HomePage = ({ auth }) => {
                                             src={
                                                 heroSections[currentSlide]
                                                     ?.image ||
-                                                "https://via.placeholder.com/1920x1080"
+                                                "/images/placeholder-hero.jpg"
                                             }
                                             alt={
                                                 heroSections[currentSlide]
@@ -641,7 +897,7 @@ const HomePage = ({ auth }) => {
                                             loading="lazy"
                                             onError={(e) =>
                                                 (e.target.src =
-                                                    "https://via.placeholder.com/1920x1080")
+                                                    "/images/placeholder-hero.jpg")
                                             }
                                         />
                                     </div>
@@ -656,18 +912,18 @@ const HomePage = ({ auth }) => {
                                 transition={{ delay: 0.3, duration: 0.8 }}
                                 className="max-w-5xl mx-auto text-center px-6"
                             >
-                                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white">
+                                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white drop-shadow-xl">
                                     {heroSections[currentSlide]?.title ||
                                         "Welcome to Travel Nest"}
                                 </h1>
-                                <p className="text-xl md:text-2xl text-gray-100 mb-10 max-w-3xl mx-auto font-light">
+                                <p className="text-xl md:text-2xl text-gray-100 mb-10 max-w-3xl mx-auto font-light drop-shadow-md">
                                     {heroSections[currentSlide]?.subtitle ||
                                         "Plan your next adventure with us."}
                                 </p>
                                 <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
                                     <Link
                                         href="/booking"
-                                        className="px-8 py-4 bg-white text-gray-900 rounded-full shadow-lg hover:bg-gray-100 transition-all duration-300 font-semibold text-lg min-w-48 text-center"
+                                        className="px-8 py-4 bg-white text-gray-900 rounded-full shadow-lg hover:bg-gray-100 transition-all duration-300 font-semibold text-lg min-w-48 text-center hover:scale-105 transform"
                                         aria-label="Start planning your trip"
                                     >
                                         {heroSections[currentSlide]?.cta_text ||
@@ -675,7 +931,7 @@ const HomePage = ({ auth }) => {
                                     </Link>
                                     <button
                                         onClick={scrollToSearch}
-                                        className="flex items-center gap-2 px-8 py-4 border-2 border-white/80 rounded-full hover:bg-white/10 transition-all duration-300 font-medium text-white"
+                                        className="flex items-center gap-2 px-8 py-4 border-2 border-white/80 rounded-full hover:bg-white/10 transition-all duration-300 font-medium text-white hover:scale-105 transform"
                                         aria-label="Search for destinations"
                                     >
                                         <Search size={20} />
@@ -694,7 +950,7 @@ const HomePage = ({ auth }) => {
                                             : prev - 1
                                     )
                                 }
-                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-300"
+                                className="w-12 h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-300 shadow-lg hover:scale-110 transform"
                                 aria-label="Previous slide"
                             >
                                 <ArrowLeft size={24} />
@@ -707,7 +963,7 @@ const HomePage = ({ auth }) => {
                                             : prev + 1
                                     )
                                 }
-                                className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-300"
+                                className="w-12 h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-300 shadow-lg hover:scale-110 transform"
                                 aria-label="Next slide"
                             >
                                 <ArrowRight size={24} />
@@ -734,7 +990,7 @@ const HomePage = ({ auth }) => {
 
             {/* Journey Planner Section */}
             <section
-                className={`relative py-8 ${
+                className={`relative py-16 ${
                     isDarkMode ? "bg-gray-800" : "bg-white"
                 } -mt-0 z-20`}
                 ref={searchRef}
@@ -748,7 +1004,7 @@ const HomePage = ({ auth }) => {
                             isDarkMode
                                 ? "bg-gray-900 border-gray-700"
                                 : "bg-white border-gray-200"
-                        } rounded-3xl p-6 shadow-lg border`}
+                        } rounded-3xl p-8 shadow-2xl border`}
                     >
                         <h2
                             className={`text-3xl md:text-4xl font-bold text-center ${
@@ -756,13 +1012,15 @@ const HomePage = ({ auth }) => {
                             } mb-4`}
                         >
                             {translations.journey_planner_title ||
-                                "Discover Your Next Adventure"}
-                            <span className="text-blue-600"> Adventure</span>
+                                "Discover Your Next Adventure"}{" "}
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                                Adventure
+                            </span>
                         </h2>
                         <p
                             className={`text-lg ${
                                 isDarkMode ? "text-gray-300" : "text-gray-600"
-                            } text-center mb-6 max-w-2xl mx-auto`}
+                            } text-center mb-8 max-w-2xl mx-auto`}
                         >
                             {translations.journey_planner_subtitle ||
                                 "Search for your favorite destinations or browse new offers and packages"}
@@ -772,7 +1030,7 @@ const HomePage = ({ auth }) => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5, delay: 0.2 }}
-                            className="relative flex items-center mb-6"
+                            className="relative flex items-center mb-8"
                         >
                             <div className="relative w-full max-w-3xl mx-auto">
                                 <Search
@@ -797,7 +1055,7 @@ const HomePage = ({ auth }) => {
                                         isDarkMode
                                             ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
                                             : "bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400"
-                                    } border rounded-full text-lg font-light focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all duration-300`}
+                                    } border rounded-full text-lg font-light focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all duration-300 shadow-md`}
                                     aria-label="Search destinations, offers, or packages"
                                 />
                                 {searchQuery && (
@@ -820,54 +1078,40 @@ const HomePage = ({ auth }) => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.4 }}
-                            className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6"
+                            className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8"
                         >
                             <div className="flex flex-wrap justify-center gap-3">
-                                {[
-                                    "All",
-                                    "Beach",
-                                    "Adventure",
-                                    "Cultural",
-                                ].map((category) => (
-                                    <motion.button
-                                        key={category}
-                                        whileHover={{
-                                            scale: 1.1,
-                                            boxShadow:
-                                                "0 0 10px rgba(59, 130, 246, 0.3)",
-                                        }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() =>
-                                            setSelectedCategory(
-                                                category.toLowerCase()
-                                            )
-                                        }
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                                            selectedCategory ===
-                                            category.toLowerCase()
-                                                ? "bg-blue-600 text-white shadow-md"
-                                                : isDarkMode
-                                                ? "bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
-                                                : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-                                        } border`}
-                                        aria-label={`Filter by ${category}`}
-                                    >
-                                        {category === "All" && (
-                                            <Compass size={16} />
-                                        )}
-                                        {category === "Beach" && (
-                                            <Sun size={16} />
-                                        )}
-                                        {category === "Adventure" && (
-                                            <MapPin size={16} />
-                                        )}
-                                        {category === "Cultural" && (
-                                            <Globe2 size={16} />
-                                        )}
-                                        
-                                        {category}
-                                    </motion.button>
-                                ))}
+                                {categories.map((category) => {
+                                    const Icon = category.icon;
+                                    return (
+                                        <motion.button
+                                            key={category.name}
+                                            whileHover={{
+                                                scale: 1.1,
+                                                boxShadow:
+                                                    "0 0 10px rgba(59, 130, 246, 0.3)",
+                                            }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                                setSelectedCategory(
+                                                    category.name.toLowerCase()
+                                                )
+                                            }
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                                                selectedCategory ===
+                                                category.name.toLowerCase()
+                                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                                                    : isDarkMode
+                                                    ? "bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600"
+                                                    : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
+                                            } border`}
+                                            aria-label={`Filter by ${category.name}`}
+                                        >
+                                            <Icon size={16} />
+                                            {category.name}
+                                        </motion.button>
+                                    );
+                                })}
                             </div>
                             <motion.button
                                 whileHover={{
@@ -877,7 +1121,7 @@ const HomePage = ({ auth }) => {
                                 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={handleSurpriseMe}
-                                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-semibold"
+                                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-md hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 font-semibold hover:shadow-lg"
                                 aria-label="Get random travel suggestions"
                             >
                                 <Sparkles size={20} />
@@ -908,7 +1152,7 @@ const HomePage = ({ auth }) => {
                                                 isDarkMode
                                                     ? "bg-gray-800 border-gray-700"
                                                     : "bg-white border-gray-200"
-                                            } rounded-xl p-4 hover:bg-opacity-90 transition-all duration-300 shadow-md border group`}
+                                            } rounded-xl p-4 hover:bg-opacity-90 transition-all duration-300 shadow-md border group hover:shadow-lg`}
                                             aria-label={`View ${
                                                 item.name || item.title
                                             }`}
@@ -917,7 +1161,7 @@ const HomePage = ({ auth }) => {
                                                 <img
                                                     src={
                                                         item.image ||
-                                                        "https://via.placeholder.com/64x64"
+                                                        "/images/placeholder-small.jpg"
                                                     }
                                                     alt={
                                                         item.name || item.title
@@ -926,7 +1170,7 @@ const HomePage = ({ auth }) => {
                                                     loading="lazy"
                                                     onError={(e) =>
                                                         (e.target.src =
-                                                            "https://via.placeholder.com/64x64")
+                                                            "/images/placeholder-small.jpg")
                                                     }
                                                 />
                                                 <div>
@@ -962,7 +1206,7 @@ const HomePage = ({ auth }) => {
                                                 item.price,
                                                 item.discount_price
                                             ) && (
-                                                <div className="absolute top-2 right-2 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                                <div className="absolute top-2 right-2 bg-gradient-to-r from-red-600 to-pink-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-md">
                                                     {calculateDiscount(
                                                         item.price,
                                                         item.discount_price
@@ -991,14 +1235,28 @@ const HomePage = ({ auth }) => {
                         transition={{ duration: 0.6 }}
                     >
                         <div className="flex items-center justify-between mb-10">
-                            <h2
-                                className={`text-3xl font-bold ${
-                                    isDarkMode ? "text-white" : "text-gray-900"
-                                }`}
-                            >
-                                {translations.offers_section_title ||
-                                    "Featured Offers"}
-                            </h2>
+                            <div>
+                                <h2
+                                    className={`text-3xl font-bold ${
+                                        isDarkMode
+                                            ? "text-white"
+                                            : "text-gray-900"
+                                    }`}
+                                >
+                                    {translations.offers_section_title ||
+                                        "Featured Offers"}
+                                </h2>
+                                <p
+                                    className={`mt-2 ${
+                                        isDarkMode
+                                            ? "text-gray-400"
+                                            : "text-gray-600"
+                                    }`}
+                                >
+                                    {translations.offers_section_subtitle ||
+                                        "Exclusive deals and promotions for your next trip"}
+                                </p>
+                            </div>
                             <Link
                                 href="/offers"
                                 className="flex items-center gap-1 text-blue-600 hover:underline"
@@ -1026,7 +1284,7 @@ const HomePage = ({ auth }) => {
                                 whileInView={{ opacity: 1 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.6, delay: 0.3 }}
-                                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+                                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
                             >
                                 {paginatedOffers.map((offer) => (
                                     <OfferCard
@@ -1035,6 +1293,9 @@ const HomePage = ({ auth }) => {
                                         translations={translations}
                                         isDarkMode={isDarkMode}
                                         calculateDiscount={calculateDiscount}
+                                        toggleFavorite={toggleFavorite}
+                                        favorites={favorites}
+                                        loadingFavorite={loadingFavorite}
                                     />
                                 ))}
                             </motion.div>
@@ -1053,7 +1314,11 @@ const HomePage = ({ auth }) => {
 
             {/* Trending Destinations Section */}
             <section
-                className={`py-24 ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}
+                className={`py-24 ${
+                    isDarkMode
+                        ? "bg-gray-800"
+                        : "bg-gradient-to-b from-gray-50 to-white"
+                }`}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div
@@ -1097,7 +1362,7 @@ const HomePage = ({ auth }) => {
                                     : "text-gray-500 bg-gray-200"
                             } py-16 bg-opacity-10 rounded-xl`}
                         >
-                            <Calendar
+                            <Compass
                                 size={48}
                                 className="mx-auto mb-4 opacity-50"
                             />
@@ -1116,7 +1381,7 @@ const HomePage = ({ auth }) => {
                             whileInView={{ opacity: 1 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.6, delay: 0.3 }}
-                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
                         >
                             {paginatedDestinations.map((destination) => (
                                 <DestinationCard
@@ -1125,6 +1390,9 @@ const HomePage = ({ auth }) => {
                                     translations={translations}
                                     isDarkMode={isDarkMode}
                                     calculateDiscount={calculateDiscount}
+                                    toggleFavorite={toggleFavorite}
+                                    favorites={favorites}
+                                    loadingFavorite={loadingFavorite}
                                 />
                             ))}
                         </motion.div>
@@ -1146,7 +1414,7 @@ const HomePage = ({ auth }) => {
                     >
                         <Link
                             href="/destinations"
-                            className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-lg font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                            className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-lg font-medium bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 transform"
                             aria-label="Explore all destinations"
                         >
                             {translations.explore_all_destinations ||
@@ -1167,7 +1435,11 @@ const HomePage = ({ auth }) => {
 
             {/* Benefits Section */}
             <section
-                className={`py-20 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
+                className={`py-20 ${
+                    isDarkMode
+                        ? "bg-gray-900"
+                        : "bg-gradient-to-b from-white to-gray-50"
+                }`}
             >
                 <div className="max-w-7xl mx-auto px-6 md:px-16">
                     <motion.div
@@ -1212,11 +1484,11 @@ const HomePage = ({ auth }) => {
                                 <motion.div
                                     key={index}
                                     whileHover={{ y: -5 }}
-                                    className={`p-6 text-center ${
+                                    className={`p-6 rounded-xl ${
                                         isDarkMode
-                                            ? "text-white"
-                                            : "text-gray-900"
-                                    }`}
+                                            ? "bg-gray-800 hover:bg-gray-700"
+                                            : "bg-white hover:bg-gray-50"
+                                    } shadow-md hover:shadow-lg transition-all duration-300`}
                                 >
                                     <div
                                         className={`inline-flex items-center justify-center p-4 rounded-full mb-6 ${
@@ -1248,6 +1520,8 @@ const HomePage = ({ auth }) => {
                     </motion.div>
                 </div>
             </section>
+
+
 
             <Footer isDarkMode={isDarkMode} />
 

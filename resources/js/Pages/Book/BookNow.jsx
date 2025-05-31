@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Head, usePage, Link, router } from "@inertiajs/react";
+import { Head, usePage, Link } from "@inertiajs/react";
+import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
@@ -38,7 +39,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
         initialFavorites.reduce(
             (acc, fav) => ({
                 ...acc,
-                [`${fav.favoritable_type}-${fav.favoritable_id}`]: true,
+                [`${fav.favoritable_type}-${fav.favoritable_id}`]: {
+                    is_favorite: true,
+                    favorite_id: fav.id,
+                },
             }),
             {}
         )
@@ -126,36 +130,51 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
     };
 
     // Toggle favorite
-    const toggleFavorite = (item) => {
-        if (!user) {
-            toast.error("Please log in to add to favorites");
-            return;
-        }
+    // const toggleFavorite = async (item) => {
+    //     if (!user) {
+    //         toast.error("Please log in to add to favorites");
+    //         return;
+    //     }
 
-        const type = item.type;
-        const id = item.id;
-        const key = `${type}-${id}`;
-        const isFavorite = !!favorites[key];
+    //     const type = item.type;
+    //     const id = item.id;
+    //     const key = `${type}-${id}`;
+    //     const payload = {};
 
-        router.post(
-            `/favorites/${type}/${id}`,
-            {},
-            {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    const { isFavorite, message } = page.props;
-                    setFavorites((prev) => ({
-                        ...prev,
-                        [key]: isFavorite,
-                    }));
-                    toast.success(message);
-                },
-                onError: () => {
-                    toast.error("Failed to toggle favorite");
-                },
-            }
-        );
-    };
+    //     // Set payload based on item type
+    //     switch (type) {
+    //         case "destination":
+    //             payload.destination_id = id;
+    //             break;
+    //         case "package":
+    //             payload.package_id = id;
+    //             break;
+    //         case "offer":
+    //             payload.offer_id = id;
+    //             break;
+    //         default:
+    //             toast.error("Invalid item type");
+    //             return;
+    //     }
+
+    //     try {
+    //         const response = await axios.post("/favorites", payload);
+    //         const { success, message, is_favorite, favorite_id } =
+    //             response.data;
+
+    //         if (success) {
+    //             setFavorites((prev) => ({
+    //                 ...prev,
+    //                 [key]: { is_favorite, favorite_id },
+    //             }));
+    //             toast.success(message);
+    //         } else {
+    //             toast.error(message);
+    //         }
+    //     } catch (error) {
+    //         toast.error("Failed to toggle favorite");
+    //     }
+    // };
 
     const sortOptions = [
         { value: "newest", label: "Newest First" },
@@ -363,7 +382,7 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
 
             <div className="relative h-72 md:h-80 overflow-hidden">
                 <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
-                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-fill"></div>
+                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-contain"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center px-4">
                         <motion.h1
@@ -405,8 +424,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                     {/* Type Selection */}
                     <div className="flex flex-wrap justify-center gap-4 mb-8">
                         {types.map((type) => (
-                            <button
+                            <motion.button
                                 key={type.id}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => toggleType(type.id)}
                                 className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
                                     selectedTypes.includes(type.id)
@@ -416,7 +437,7 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                             >
                                 {type.icon}
                                 <span>{type.label}</span>
-                            </button>
+                            </motion.button>
                         ))}
                     </div>
 
@@ -428,8 +449,12 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
+                                aria-label="Search destinations, packages, or offers"
                             />
-                            <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+                            <Search
+                                className="absolute left-3 top-3.5 w-5 h-5 text-gray-400"
+                                aria-hidden="true"
+                            />
                         </div>
 
                         <div className="flex items-center gap-3 w-full md:w-auto">
@@ -438,6 +463,7 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
                                     className="w-full px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none transition-all duration-300"
+                                    aria-label="Sort options"
                                 >
                                     {sortOptions.map((option) => (
                                         <option
@@ -453,15 +479,18 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                 </div>
                             </div>
 
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setFilterOpen(!filterOpen)}
                                 className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gray-800 bg-opacity-70 text-gray-300 border border-gray-700 hover:bg-gray-700 transition-all duration-300"
+                                aria-label="Toggle filters"
                             >
                                 <Filter className="w-4 h-4" />
                                 <span className="hidden sm:inline">
                                     Filters
                                 </span>
-                            </button>
+                            </motion.button>
                         </div>
                     </div>
 
@@ -479,15 +508,24 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                         {/* Categories */}
                                         <div className="w-full">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Tags className="w-4 h-4 text-green-400" />
+                                                <Tags
+                                                    className="w-4 h-4 text-green-400"
+                                                    aria-hidden="true"
+                                                />
                                                 <h3 className="text-lg font-semibold">
                                                     Categories
                                                 </h3>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
                                                 {categories.map((category) => (
-                                                    <button
+                                                    <motion.button
                                                         key={category}
+                                                        whileHover={{
+                                                            scale: 1.05,
+                                                        }}
+                                                        whileTap={{
+                                                            scale: 0.95,
+                                                        }}
                                                         onClick={() =>
                                                             toggleCategory(
                                                                 category
@@ -500,9 +538,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                                 ? "bg-green-600 text-white"
                                                                 : "bg-gray-700 text-gray-300 hover:bg-gray-600"
                                                         }`}
+                                                        aria-label={`Toggle ${category} category`}
                                                     >
                                                         {category}
-                                                    </button>
+                                                    </motion.button>
                                                 ))}
                                             </div>
                                         </div>
@@ -510,7 +549,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                         {/* Price Range */}
                                         <div className="w-full">
                                             <div className="flex items-center gap-2 mb-3">
-                                                <Tag className="w-4 h-4 text-green-400" />
+                                                <Tag
+                                                    className="w-4 h-4 text-green-400"
+                                                    aria-hidden="true"
+                                                />
                                                 <h3 className="text-lg font-semibold">
                                                     Price Range
                                                 </h3>
@@ -524,9 +566,8 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                         ${priceRange.max}
                                                     </span>
                                                 </div>
-
                                                 <div className="flex flex-col gap-4">
-                                                    {/* Min */}
+                                                    {/* Min Price */}
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm text-gray-300">
                                                             Min:
@@ -546,12 +587,13 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                                             e
                                                                                 .target
                                                                                 .value
-                                                                        ),
+                                                                        ) || 0,
                                                                         priceRange.max
                                                                     ),
                                                                 })
                                                             }
                                                             className="w-full accent-green-500"
+                                                            aria-label="Minimum price"
                                                         />
                                                         <input
                                                             type="number"
@@ -568,16 +610,16 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                                             e
                                                                                 .target
                                                                                 .value
-                                                                        ),
+                                                                        ) || 0,
                                                                         priceRange.max
                                                                     ),
                                                                 })
                                                             }
                                                             className="w-24 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                            aria-label="Minimum price input"
                                                         />
                                                     </div>
-
-                                                    {/* Max */}
+                                                    {/* Max Price */}
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm text-gray-300">
                                                             Max:
@@ -597,12 +639,13 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                                             e
                                                                                 .target
                                                                                 .value
-                                                                        ),
+                                                                        ) || 0,
                                                                         priceRange.min
                                                                     ),
                                                                 })
                                                             }
                                                             className="w-full accent-green-500"
+                                                            aria-label="Maximum price"
                                                         />
                                                         <input
                                                             type="number"
@@ -619,12 +662,13 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                                             e
                                                                                 .target
                                                                                 .value
-                                                                        ),
+                                                                        ) || 0,
                                                                         priceRange.min
                                                                     ),
                                                                 })
                                                             }
                                                             className="w-24 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                            aria-label="Maximum price input"
                                                         />
                                                     </div>
                                                 </div>
@@ -653,16 +697,19 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                             !selectedTypes.includes("all") ||
                             priceRange.min > 0 ||
                             priceRange.max < 10000) && (
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => {
                                     setSelectedCategories([]);
                                     setSelectedTypes(["all"]);
                                     setPriceRange({ min: 0, max: 10000 });
                                 }}
                                 className="text-green-400 hover:text-green-300 text-sm"
+                                aria-label="Clear all filters"
                             >
                                 Clear all filters
-                            </button>
+                            </motion.button>
                         )}
                     </div>
                 </motion.div>
@@ -680,7 +727,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                 className="col-span-full text-center py-16"
                             >
                                 <div className="max-w-md mx-auto">
-                                    <Search className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                                    <Search
+                                        className="w-16 h-16 text-gray-600 mx-auto mb-4"
+                                        aria-hidden="true"
+                                    />
                                     <h3 className="text-2xl font-bold mb-2">
                                         No results found
                                     </h3>
@@ -689,7 +739,9 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                         search criteria. Try adjusting your
                                         filters or search query.
                                     </p>
-                                    <button
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
                                         onClick={() => {
                                             setSearchQuery("");
                                             setSelectedCategories([]);
@@ -700,9 +752,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                             });
                                         }}
                                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
+                                        aria-label="Clear all filters"
                                     >
                                         Clear all filters
-                                    </button>
+                                    </motion.button>
                                 </div>
                             </motion.div>
                         ) : (
@@ -723,13 +776,13 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                 item.image ||
                                                 "https://via.placeholder.com/640x480?text=No+Image"
                                             }
-                                            alt={item.title}
+                                            alt={item.title || "Item"}
                                             className="w-full h-48 object-cover transform transition-transform duration-500 group-hover:scale-105"
                                             loading="lazy"
-                                            onError={(e) => {
-                                                e.target.src =
-                                                    "https://via.placeholder.com/640x480?text=No+Image";
-                                            }}
+                                            onError={(e) =>
+                                                (e.target.src =
+                                                    "https://via.placeholder.com/640x480?text=No+Image")
+                                            }
                                         />
                                         <div className="absolute top-3 left-3 flex gap-2">
                                             <span
@@ -745,7 +798,7 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+                                        <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
                                             {calculateDiscount(
                                                 item.price,
                                                 item.discount_price
@@ -758,15 +811,21 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                     % OFF
                                                 </div>
                                             )}
-                                            <button
+                                            {/* <button
                                                 onClick={() =>
                                                     toggleFavorite(item)
                                                 }
-                                                className="bg-gray-900 bg-opacity-50 p-2 rounded-full hover:bg-green-600 transition-all duration-200 active:scale-95 cursor-pointer backdrop-blur-sm"
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm z-20 ${
+                                                    favorites[
+                                                        `${item.type}-${item.id}`
+                                                    ]?.is_favorite
+                                                        ? "bg-red-500 hover:bg-red-600"
+                                                        : "bg-gray-900 bg-opacity-50 hover:bg-gray-700"
+                                                }`}
                                                 aria-label={
                                                     favorites[
                                                         `${item.type}-${item.id}`
-                                                    ]
+                                                    ]?.is_favorite
                                                         ? "Remove from favorites"
                                                         : "Add to favorites"
                                                 }
@@ -776,12 +835,12 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                                     className={
                                                         favorites[
                                                             `${item.type}-${item.id}`
-                                                        ]
-                                                            ? "text-green-400 fill-green-400"
+                                                        ]?.is_favorite
+                                                            ? "text-white fill-white"
                                                             : "text-gray-300"
                                                     }
                                                 />
-                                            </button>
+                                            </button> */}
                                         </div>
                                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300"></div>
                                     </div>
@@ -927,6 +986,9 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                             <Link
                                                 href={getItemDetailUrl(item)}
                                                 className="w-full inline-block text-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-all duration-300 transform group-hover:shadow-lg"
+                                                aria-label={`View details for ${
+                                                    item.title || "item"
+                                                }`}
                                             >
                                                 View Details
                                             </Link>
@@ -946,7 +1008,9 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                         variants={fadeIn}
                         className="flex justify-center items-center gap-2 mb-16"
                     >
-                        <button
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() =>
                                 setCurrentPage((prev) => Math.max(prev - 1, 1))
                             }
@@ -956,9 +1020,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                     ? "bg-gray-800 text-gray-600 cursor-not-allowed"
                                     : "bg-gray-800 text-white hover:bg-gray-700"
                             } transition-all duration-300`}
+                            aria-label="Previous page"
                         >
                             <ChevronLeft className="w-5 h-5" />
-                        </button>
+                        </motion.button>
 
                         <div className="flex items-center gap-1">
                             {Array.from(
@@ -981,17 +1046,20 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                     page === totalPages
                                 ) {
                                     return (
-                                        <button
+                                        <motion.button
                                             key={page}
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
                                             onClick={() => setCurrentPage(page)}
                                             className={`flex items-center justify-center w-10 h-10 rounded-full ${
                                                 currentPage === page
                                                     ? "bg-green-600 text-white"
                                                     : "bg-gray-800 text-white hover:bg-gray-700"
                                             } transition-all duration-300`}
+                                            aria-label={`Go to page ${page}`}
                                         >
                                             {page}
-                                        </button>
+                                        </motion.button>
                                     );
                                 }
 
@@ -1021,7 +1089,9 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                             })}
                         </div>
 
-                        <button
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() =>
                                 setCurrentPage((prev) =>
                                     Math.min(prev + 1, totalPages)
@@ -1033,9 +1103,10 @@ const BookNowPage = ({ auth, favorites: initialFavorites = [] }) => {
                                     ? "bg-gray-800 text-gray-600 cursor-not-allowed"
                                     : "bg-gray-800 text-white hover:bg-gray-700"
                             } transition-all duration-300`}
+                            aria-label="Next page"
                         >
                             <ChevronRight className="w-5 h-5" />
-                        </button>
+                        </motion.button>
                     </motion.div>
                 )}
             </div>

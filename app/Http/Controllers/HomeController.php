@@ -6,13 +6,20 @@ use App\Models\HeroSection;
 use App\Models\Offer;
 use App\Models\Destination;
 use App\Models\Package;
+use App\Models\Favorite;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
 {
     public function index()
     {
+        $userId = Auth::guard('web')->check() ? Auth::guard('web')->id() : null;
+
+        // Fetch favorites for the authenticated user
+        $favorites = $userId ? Favorite::where('user_id', $userId)->get() : collect([]);
+
         $heroSections = HeroSection::select(['id', 'title', 'subtitle', 'image'])
             ->where('is_active', true)
             ->orderBy('created_at', 'desc')
@@ -42,7 +49,7 @@ class HomeController extends Controller
             }])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($offer) {
+            ->map(function ($offer) use ($favorites) {
                 $offer->image = $offer->image ? Storage::url($offer->image) : null;
                 $offer->title = $offer->title ?? 'Unknown Offer';
                 $offer->description = $offer->description ?? '';
@@ -54,6 +61,10 @@ class HomeController extends Controller
                 $offer->end_date = $offer->end_date ? $offer->end_date->format('Y-m-d') : null;
                 $offer->destination_title = $offer->destination ? $offer->destination->title : 'Unknown Destination';
                 $offer->destination_location = $offer->destination ? $offer->destination->location : 'Unknown Location';
+                // Add favorite status
+                $favorite = $favorites->firstWhere('offer_id', $offer->id);
+                $offer->is_favorite = !is_null($favorite);
+                $offer->favorite_id = $favorite ? $favorite->id : null;
                 return $offer;
             });
 
@@ -72,7 +83,7 @@ class HomeController extends Controller
             ->where('is_featured', true)
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($destination) {
+            ->map(function ($destination) use ($favorites) {
                 $destination->image = $destination->image ? Storage::url($destination->image) : null;
                 $destination->title = $destination->title ?? 'Unknown Destination';
                 $destination->location = $destination->location ?? 'Unknown Location';
@@ -82,6 +93,10 @@ class HomeController extends Controller
                 $destination->category = $destination->category ?? '';
                 $destination->rating = $destination->rating ?? 0;
                 $destination->is_featured = $destination->is_featured ?? false;
+                // Add favorite status
+                $favorite = $favorites->firstWhere('destination_id', $destination->id);
+                $destination->is_favorite = !is_null($favorite);
+                $destination->favorite_id = $favorite ? $favorite->id : null;
                 return $destination;
             });
 
@@ -108,7 +123,7 @@ class HomeController extends Controller
             }])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($package) {
+            ->map(function ($package) use ($favorites) {
                 $package->image = $package->image ? Storage::url($package->image) : null;
                 $package->title = $package->title ?? 'Unknown Package';
                 $package->description = $package->description ?? '';
@@ -117,6 +132,10 @@ class HomeController extends Controller
                 $package->category = $package->category ?? '';
                 $package->destination_title = $package->destination ? $package->destination->title : 'Unknown Destination';
                 $package->destination_location = $package->destination ? $package->destination->location : 'Unknown Location';
+                // Add favorite status for packages (if supported)
+                $favorite = $favorites->firstWhere('package_id', $package->id);
+                $package->is_favorite = !is_null($favorite);
+                $package->favorite_id = $favorite ? $favorite->id : null;
                 return $package;
             });
 
@@ -164,6 +183,14 @@ class HomeController extends Controller
             'destinations' => $destinations,
             'packages' => $packages,
             'translations' => $translations,
+            'favorites' => $favorites->map(function ($favorite) {
+                return [
+                    'id' => $favorite->id,
+                    'favoritable_type' => $favorite->offer_id ? 'offer' : ($favorite->destination_id ? 'destination' : 'package'),
+                    'favoritable_id' => $favorite->offer_id ?? $favorite->destination_id ?? $favorite->package_id,
+                ];
+            }),
+            'auth' => ['user' => Auth::guard('web')->user()],
         ]);
     }
 }

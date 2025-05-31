@@ -42,7 +42,7 @@ class FavoriteController extends Controller
             } elseif (!empty($validated['offer_id'])) {
                 $itemId = $validated['offer_id'];
                 $itemType = 'offer_id';
-            } 
+            }
 
             $userId = Auth::guard('web')->id();
 
@@ -63,28 +63,28 @@ class FavoriteController extends Controller
             }
 
             // Create favorite
-        $favorite = Favorite::create([
-            'user_id' => $userId,
-            $itemType => $itemId,
-            'destination_id' => ($itemType === 'destination_id') ? $itemId : null,
-            'package_id' => ($itemType === 'package_id') ? $itemId : null,
-            'offer_id' => ($itemType === 'offer_id') ? $itemId : null,
-        ]);
+            $favorite = Favorite::create([
+                'user_id' => $userId,
+                $itemType => $itemId,
+                'destination_id' => ($itemType === 'destination_id') ? $itemId : null,
+                'package_id' => ($itemType === 'package_id') ? $itemId : null,
+                'offer_id' => ($itemType === 'offer_id') ? $itemId : null,
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Added to favorites!',
-            'is_favorite' => true,
-            'favorite_id' => $favorite->id
-        ]);
-    } catch (ValidationException $e) {
-        return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'message' => 'Failed to manage favorite.'], 500);
+            return response()->json([
+                'success' => true,
+                'message' => 'Added to favorites!',
+                'is_favorite' => true,
+                'favorite_id' => $favorite->id
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to manage favorite.'], 500);
+        }
     }
-}
 
-public function destroy($id)
+    public function destroy($id)
     {
         if (!Auth::guard('web')->check()) {
             return response()->json(['success' => false, 'message' => 'You must be logged in to manage favorites.'], 401);

@@ -358,7 +358,7 @@ const PackagesPage = ({ auth, packages = [] }) => {
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer}
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
                 >
                     <AnimatePresence mode="popLayout">
                         {paginatedPackages.length === 0 ? (
