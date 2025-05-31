@@ -9,7 +9,7 @@ use App\Models\Company;
 use App\Models\Destination;
 use App\Models\Offer;
 use App\Models\Package;
-use App\Models\Booking;
+use App\Models\Checkout;
 use App\Models\HeroSection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -32,7 +32,7 @@ class DashboardController extends Controller
                 'destinations' => Destination::count(),
                 'offers' => Offer::count(),
                 'packages' => Package::count(),
-                'bookings' => Booking::count(),
+                'bookings' => Checkout::count(),
                 'hero_sections' => HeroSection::count(),
             ];
 
@@ -46,7 +46,7 @@ class DashboardController extends Controller
                 ->take(5)
                 ->get();
 
-            $latestBookings = Booking::with(['user', 'company', 'destination', 'offer', 'package'])
+            $latestBookings = Checkout::with(['user', 'company', 'destination', 'offer', 'package'])
                 ->select('id', 'user_id', 'company_id', 'destination_id', 'offer_id', 'package_id', 'status', 'total_price', 'created_at')
                 ->orderBy('created_at', 'desc')
                 ->take(5)
