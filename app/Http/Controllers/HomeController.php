@@ -61,7 +61,6 @@ class HomeController extends Controller
                 $offer->end_date = $offer->end_date ? $offer->end_date->format('Y-m-d') : null;
                 $offer->destination_title = $offer->destination ? $offer->destination->title : 'Unknown Destination';
                 $offer->destination_location = $offer->destination ? $offer->destination->location : 'Unknown Location';
-                // Add favorite status
                 $favorite = $favorites->firstWhere('offer_id', $offer->id);
                 $offer->is_favorite = !is_null($favorite);
                 $offer->favorite_id = $favorite ? $favorite->id : null;
@@ -93,7 +92,6 @@ class HomeController extends Controller
                 $destination->category = $destination->category ?? '';
                 $destination->rating = $destination->rating ?? 0;
                 $destination->is_featured = $destination->is_featured ?? false;
-                // Add favorite status
                 $favorite = $favorites->firstWhere('destination_id', $destination->id);
                 $destination->is_favorite = !is_null($favorite);
                 $destination->favorite_id = $favorite ? $favorite->id : null;
@@ -132,7 +130,6 @@ class HomeController extends Controller
                 $package->category = $package->category ?? '';
                 $package->destination_title = $package->destination ? $package->destination->title : 'Unknown Destination';
                 $package->destination_location = $package->destination ? $package->destination->location : 'Unknown Location';
-                // Add favorite status for packages (if supported)
                 $favorite = $favorites->firstWhere('package_id', $package->id);
                 $package->is_favorite = !is_null($favorite);
                 $package->favorite_id = $favorite ? $favorite->id : null;
@@ -190,7 +187,6 @@ class HomeController extends Controller
                     'favoritable_id' => $favorite->offer_id ?? $favorite->destination_id ?? $favorite->package_id,
                 ];
             }),
-            'auth' => ['user' => Auth::guard('web')->user()],
         ]);
     }
 }

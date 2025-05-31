@@ -247,7 +247,6 @@ class DestinationController extends Controller
         return Inertia::render('Destinations/Index', [
             'destinations' => $destinations,
             'favorites' => $favorites,
-            'auth' => Auth::guard('web')->user() ? ['user' => Auth::guard('web')->user()] : null,
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
@@ -284,9 +283,6 @@ class DestinationController extends Controller
                         'id' => $destination->company->id,
                         'company_name' => $destination->company->company_name,
                     ] : null,
-                ],
-                'auth' => [
-                    'user' => Auth::guard('web')->user(),
                 ],
             ]);
         } catch (\Exception $e) {
