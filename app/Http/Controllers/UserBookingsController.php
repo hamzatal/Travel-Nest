@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Checkout;
+use App\Models\CheckOut;
 use App\Models\Favorite;
 use App\Models\Review;
 use App\Models\Destination;
@@ -69,7 +69,7 @@ class UserBookingsController extends Controller
                 },
                 'reviews' => function ($query) use ($user) {
                     $query->where('user_id', $user->id)
-                        ->select(['id', 'user_id', 'reviewable_type', 'reviewable_id', 'rating', 'comment']);
+                        ->select(['id', 'user_id', 'reviewable_type', 'reviewable_id', 'rating', 'comment', 'booking_id']);
                 },
             ])
             ->select([
@@ -201,12 +201,19 @@ class UserBookingsController extends Controller
                 ->with(['destination', 'package', 'offer'])
                 ->firstOrFail();
 
+            // Check if booking is completed
             if ($booking->status !== 'completed') {
                 return response()->json(['error' => 'Only completed bookings can be rated.'], 403);
             }
 
+            // Check if check_out date exists and is in the past
+            if (!$booking->check_out || now()->lte($booking->check_out)) {
+                return response()->json(['error' => 'Rating is only available after the trip ends.'], 403);
+            }
+
+            // Validate request
             $request->validate([
-                'rating' => 'required|numeric|min:1|max:5',
+                'rating' => 'required|integer|min:1|max:5',
                 'comment' => 'nullable|string|max:500',
             ]);
 
@@ -218,13 +225,9 @@ class UserBookingsController extends Controller
             $reviewableType = $booking->destination ? 'destination' : ($booking->package ? 'package' : 'offer');
             $reviewableId = $entity->id;
 
-            // Check if the user has already rated this entity for this booking
+            // Check if the user has already rated this booking
             $existingReview = Review::where('user_id', $user->id)
-                ->where('reviewable_type', $reviewableType)
-                ->where('reviewable_id', $reviewableId)
-                ->whereHas('booking', function ($query) use ($bookingId) {
-                    $query->where('id', $bookingId);
-                })
+                ->where('booking_id', $bookingId)
                 ->first();
 
             if ($existingReview) {
@@ -272,11 +275,11 @@ class UserBookingsController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to submit rating', [
-                'user_id' => Auth::id(),
+                'user_id' => Auth::id() ?? 'guest',
                 'booking_id' => $bookingId,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json(['error' => 'Failed to submit rating.'], 500);
+            return response()->json(['error' => 'Failed to submit rating: ' . $e->getMessage()], 500);
         }
     }
 }

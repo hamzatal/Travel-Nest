@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Head, Link } from "@inertiajs/react";
 import axios from "axios";
 import { motion } from "framer-motion";
-import { MapPin, ChevronLeft, Star, Heart, Check } from "lucide-react";
+import { MapPin, ChevronLeft, Star, Heart, Check, X } from "lucide-react";
 import Navbar from "../../Components/Nav";
 import Footer from "../../Components/Footer";
 import toast, { Toaster } from "react-hot-toast";
@@ -14,6 +14,11 @@ export default function PackageDetails({ package: pkg, auth }) {
     });
     const [loadingFavorite, setLoadingFavorite] = useState(false);
     const user = auth?.user || null;
+
+    useEffect(() => {
+        console.log("Auth prop:", auth);
+        console.log("Package image:", pkg.image);
+    }, [auth, pkg.image]);
 
     const fadeIn = {
         hidden: { opacity: 0, y: 20 },
@@ -59,7 +64,6 @@ export default function PackageDetails({ package: pkg, auth }) {
             return;
         }
 
-        // Optimistic update
         const prevState = { ...favoriteState };
         setFavoriteState({
             is_favorite: !favoriteState.is_favorite,
@@ -77,12 +81,12 @@ export default function PackageDetails({ package: pkg, auth }) {
 
             if (success) {
                 setFavoriteState({ is_favorite, favorite_id });
-                toast(message, {
-                    icon: <Check size={16} className="text-green-500" />,
+                toast.success(message, {
+                    icon: <Check size={16} className="text-green-600" />,
                 });
             } else {
                 toast.error(message, {
-                    icon: <X size={16} className="text-red-500" />,
+                    icon: <X size={16} className="text-red-600" />,
                 });
                 setFavoriteState(prevState);
             }
@@ -98,32 +102,29 @@ export default function PackageDetails({ package: pkg, auth }) {
         }
     };
 
-    const serviceFee = 9.99;
-    const bookingFee = 4.99;
+    const serviceFee = 50;
+    const bookingFee = 100;
     const basePrice = parseFloat(pkg.discount_price || pkg.price || 0);
     const totalPrice = basePrice + serviceFee + bookingFee;
 
-    const imageSrc = pkg.image
-        ? `/storage/${pkg.image}`
-        : "https://via.placeholder.com/1200x800?text=Package+Image";
+    const imageSrc = pkg.image || "/images/placeholder.jpg";
 
     if (!pkg || Object.keys(pkg).length === 0) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex items-center justify-center">
-                <p className="text-xl">No package details available.</p>
+                <p className="text-center">No package details available.</p>
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white">
-            <Head title={`${pkg.title || "Package"} - Travel Nest`} />
+            <Head title={`${pkg.title || "Package"} - TravelNest`} />
             <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
             <Navbar user={user} />
-
             <div className="relative h-64 md:h-72 overflow-hidden">
-                <div className="absolute inset-0 bg-gray-900 opacity-80"></div>
-                <div className="absolute inset-0 bg-[url('/images/world.svg')] bg-no-repeat bg-center opacity-30 bg-contain"></div>
+                <div className="absolute inset-0 bg-gray-900 bg-opacity-80"></div>
+                <div className="absolute inset-0 bg-[url('/images/static/worlds.svg')] bg-no-repeat bg-center opacity-30 bg-contain"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center px-4">
                         <motion.h1
@@ -192,8 +193,12 @@ export default function PackageDetails({ package: pkg, auth }) {
                                     className="w-full h-96 object-cover"
                                     loading="lazy"
                                     onError={(e) => {
+                                        console.error(
+                                            "Image failed to load:",
+                                            imageSrc
+                                        );
                                         e.target.src =
-                                            "https://via.placeholder.com/1200x800?text=Package+Image";
+                                            "/images/placeholder.jpg";
                                     }}
                                 />
                                 {pkg.category && (
@@ -238,7 +243,7 @@ export default function PackageDetails({ package: pkg, auth }) {
                                             className={
                                                 favoriteState.is_favorite
                                                     ? "text-white fill-white"
-                                                    : "text-gray-300"
+                                                    : "text-white"
                                             }
                                         />
                                     </button>

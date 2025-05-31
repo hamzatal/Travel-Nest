@@ -1,11 +1,12 @@
 <?php
+
 namespace App\Services;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\DB;
 
-class ChatGPTServices
+class TravelChatGPTService
 {
     protected $client;
     protected $apiKey;
@@ -17,25 +18,26 @@ class ChatGPTServices
     }
 
     /**
-     * Retrieve movie details from the database
+     * Retrieve trip details from the database
      *
-     * @param int $movieId
+     * @param int $tripId
      * @return array|string
      */
-    public function getMovieDetails($movieId)
+    public function getTripDetails($tripId)
     {
-        $movie = DB::table('movies')->where('id', $movieId)->first();
+        $trip = DB::table('trips')->where('id', $tripId)->first();
 
-        if ($movie) {
+        if ($trip) {
             return [
-                'id' => $movie->id,
-                'title' => $movie->title,
-                'genre' => $movie->genre,
-                'description' => $movie->description,
-                'release_date' => $movie->release_date,
-                'rating' => $movie->rating,
-                'poster_url' => $movie->poster_url,
-                'trailer_url' => $movie->trailer_url,
+                'id' => $trip->id,
+                'title' => $trip->title,
+                'destination' => $trip->destination,
+                'description' => $trip->description,
+                'start_date' => $trip->start_date,
+                'end_date' => $trip->end_date,
+                'price' => $trip->price,
+                'image_url' => $trip->image_url,
+                'booking_link' => $trip->booking_link,
                 'exists' => true
             ];
         }
@@ -44,85 +46,79 @@ class ChatGPTServices
     }
 
     /**
-     * Find similar movies based on genre or other criteria
+     * Find similar trips based on destination or other criteria
      *
-     * @param string $genre
-     * @param int $excludeMovieId
+     * @param string $destination
+     * @param int $excludeTripId
      * @return array
      */
-    public function findSimilarMovies($genre, $excludeMovieId)
+    public function findSimilarTrips($destination, $excludeTripId)
     {
-        return DB::table('movies')
-            ->where('genre', $genre)
-            ->where('id', '!=', $excludeMovieId)
+        return DB::table('trips')
+            ->where('destination', $destination)
+            ->where('id', '!=', $excludeTripId)
             ->limit(3)
             ->get()
-            ->map(function($movie) {
+            ->map(function ($trip) {
                 return [
-                    'id' => $movie->id,
-                    'title' => $movie->title,
-                    'genre' => $movie->genre,
-                    'rating' => $movie->rating
+                    'id' => $trip->id,
+                    'title' => $trip->title,
+                    'destination' => $trip->destination,
+                    'price' => $trip->price
                 ];
             })
             ->toArray();
     }
 
     /**
-     * Search for a movie and provide comprehensive response
+     * Search for a trip and provide a comprehensive response
      *
-     * @param int $movieId
+     * @param int $tripId
      * @return array
      */
-    public function searchMovie($movieId)
+    public function searchTrip($tripId)
     {
-        // Get movie details
-        $movieDetails = $this->getMovieDetails($movieId);
+        $tripDetails = $this->getTripDetails($tripId);
 
-        // If movie exists
-        if ($movieDetails['exists']) {
-            // Prepare response for existing movie
+        if ($tripDetails['exists']) {
             $response = [
                 'status' => 'found',
-                'message' => 'Movie is available on our site!',
-                'movie' => $movieDetails
+                'message' => 'Trip is available on our site!',
+                'trip' => $tripDetails
             ];
 
-            // Find similar movies
-            $similarMovies = $this->findSimilarMovies(
-                $movieDetails['genre'],
-                $movieDetails['id']
+            $similarTrips = $this->findSimilarTrips(
+                $tripDetails['destination'],
+                $tripDetails['id']
             );
 
-            $response['similar_movies'] = $similarMovies;
+            $response['similar_trips'] = $similarTrips;
 
             return $response;
         }
 
-        // If movie does not exist
         try {
-            // Use ChatGPT to suggest a similar movie
             $aiSuggestion = $this->askChatGPT(
-                "Suggest a similar movie to the movie with ID $movieId. " .
-                "Provide a brief description and why it might be interesting."
+                "Suggest a travel trip similar to the trip with ID $tripId. " .
+                    "Include a brief description and explain why it is worth recommending."
             );
 
             return [
                 'status' => 'not_found',
-                'message' => 'Unfortunately, this movie is not in our database.',
+                'message' => 'Unfortunately, this trip is not in our database.',
                 'ai_suggestion' => $aiSuggestion['choices'][0]['message']['content']
             ];
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
-                'message' => 'An error occurred while searching for the movie.',
+                'message' => 'An error occurred while searching for the trip.',
                 'error' => $e->getMessage()
             ];
         }
     }
 
     /**
-     * Ask ChatGPT for a movie-related query
+     * Ask ChatGPT for a trip-related query
      *
      * @param string $message
      * @return array
@@ -138,7 +134,7 @@ class ChatGPTServices
                 'json' => [
                     'model' => 'gpt-4',
                     'messages' => [
-                        ['role' => 'system', 'content' => 'You are a movie recommendation assistant.'],
+                        ['role' => 'system', 'content' => 'You are a travel recommendation assistant.'],
                         ['role' => 'user', 'content' => $message],
                     ],
                     'max_tokens' => 200,
@@ -153,7 +149,6 @@ class ChatGPTServices
             }
 
             return ['choices' => [['message' => ['content' => 'No meaningful response from ChatGPT.']]]];
-
         } catch (RequestException $e) {
             throw new \Exception('Error connecting to OpenAI API: ' . $e->getMessage());
         }

@@ -906,13 +906,7 @@ const UserBookings = ({ auth }) => {
                                         ? getCancelCountdown(item.created_at)
                                         : null;
                                     const userReview = item.reviews?.[0];
-                                    console.log(
-                                        `Booking ID: ${item.id}, Status: ${
-                                            item.status
-                                        }, Can Rate: ${canRateBooking(
-                                            item
-                                        )}, Has Review: ${!!userReview}`
-                                    );
+                               
                                     return (
                                         <motion.div
                                             key={`${activeTab}-${item.id}`}

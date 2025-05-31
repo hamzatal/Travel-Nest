@@ -31,13 +31,37 @@ class PackagesController extends Controller
     {
         try {
             $package->load(['company', 'destination']);
+
+            $user = auth()->guard('web')->user();
+            $packageData = $package->toArray();
+            $packageData['image'] = $package->image ? Storage::url($package->image) : null;
+            $packageData['company'] = $package->company ? [
+                'id' => $package->company->id,
+                'company_name' => $package->company->company_name,
+            ] : null;
+            $packageData['destination'] = $package->destination ? [
+                'id' => $package->destination->id,
+                'title' => $package->destination->title,
+            ] : null;
+
+            if ($user) {
+                $favorite = $user->favorites()
+                    ->where('package_id', $package->id)
+                    ->first();
+                $packageData['is_favorite'] = !!$favorite;
+                $packageData['favorite_id'] = $favorite ? $favorite->id : null;
+            } else {
+                $packageData['is_favorite'] = false;
+                $packageData['favorite_id'] = null;
+            }
+
             return Inertia::render('Packages/Show', [
-                'package' => $package,
-                'auth' => auth()->user(),
+                'package' => $packageData,
+                'auth' => ['user' => $user ? $user->only('id', 'name', 'email') : null],
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to fetch package ID ' . $package->id . ': ' . $e->getMessage());
-            return back()->with('error', 'Failed to load package.');
+            return redirect()->back()->with('error', 'Failed to load package.');
         }
     }
 
