@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CheckOut;
+use App\Models\Checkout;
 use App\Models\Favorite;
+use App\Models\Review;
+use App\Models\Destination;
+use App\Models\Package;
+use App\Models\Offer;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UserBookingsController extends Controller
 {
@@ -57,12 +64,18 @@ class UserBookingsController extends Controller
                         'discount_price',
                         'image',
                         'category',
+                        'rating',
                     ]);
+                },
+                'reviews' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id)
+                        ->select(['id', 'user_id', 'reviewable_type', 'reviewable_id', 'rating', 'comment']);
                 },
             ])
             ->select([
                 'id',
                 'user_id',
+                'company_id',
                 'destination_id',
                 'offer_id',
                 'package_id',
@@ -121,6 +134,7 @@ class UserBookingsController extends Controller
                         'discount_price',
                         'image',
                         'category',
+                        'rating',
                     ]);
                 },
                 'offer' => function ($query) {
@@ -137,6 +151,9 @@ class UserBookingsController extends Controller
                         'rating',
                         'end_date',
                     ])->where('is_active', true);
+                },
+                'company' => function ($query) {
+                    $query->select(['id', 'name']);
                 },
             ])
             ->select(['id', 'user_id', 'destination_id', 'package_id', 'offer_id', 'created_at'])
@@ -169,5 +186,97 @@ class UserBookingsController extends Controller
             'bookings' => $bookings,
             'favorites' => $favorites,
         ]);
+    }
+
+    public function submitRating(Request $request, $bookingId)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            $booking = CheckOut::where('id', $bookingId)
+                ->where('user_id', $user->id)
+                ->with(['destination', 'package', 'offer'])
+                ->firstOrFail();
+
+            if ($booking->status !== 'completed') {
+                return response()->json(['error' => 'Only completed bookings can be rated.'], 403);
+            }
+
+            $request->validate([
+                'rating' => 'required|numeric|min:1|max:5',
+                'comment' => 'nullable|string|max:500',
+            ]);
+
+            $entity = $booking->destination ?? $booking->package ?? $booking->offer;
+            if (!$entity) {
+                return response()->json(['error' => 'No reviewable entity found for this booking.'], 400);
+            }
+
+            $reviewableType = $booking->destination ? 'destination' : ($booking->package ? 'package' : 'offer');
+            $reviewableId = $entity->id;
+
+            // Check if the user has already rated this entity for this booking
+            $existingReview = Review::where('user_id', $user->id)
+                ->where('reviewable_type', $reviewableType)
+                ->where('reviewable_id', $reviewableId)
+                ->whereHas('booking', function ($query) use ($bookingId) {
+                    $query->where('id', $bookingId);
+                })
+                ->first();
+
+            if ($existingReview) {
+                return response()->json(['error' => 'You have already rated this booking.'], 409);
+            }
+
+            DB::beginTransaction();
+
+            // Create the review
+            $review = Review::create([
+                'user_id' => $user->id,
+                'reviewable_type' => $reviewableType,
+                'reviewable_id' => $reviewableId,
+                'rating' => $request->rating,
+                'comment' => $request->comment,
+                'booking_id' => $booking->id,
+            ]);
+
+            // Update the entity's average rating
+            $averageRating = Review::where('reviewable_type', $reviewableType)
+                ->where('reviewable_id', $reviewableId)
+                ->avg('rating');
+
+            $modelClass = match ($reviewableType) {
+                'destination' => Destination::class,
+                'package' => Package::class,
+                'offer' => Offer::class,
+                default => null,
+            };
+
+            if ($modelClass) {
+                $modelClass::where('id', $reviewableId)->update(['rating' => round($averageRating, 1)]);
+            }
+
+            DB::commit();
+
+            Log::info('Rating submitted successfully', [
+                'user_id' => $user->id,
+                'booking_id' => $bookingId,
+                'review_id' => $review->id,
+                'rating' => $request->rating,
+            ]);
+
+            return response()->json(['success' => 'Rating submitted successfully!']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to submit rating', [
+                'user_id' => Auth::id(),
+                'booking_id' => $bookingId,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Failed to submit rating.'], 500);
+        }
     }
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\AdminAuth\HeroSectionController;
 use App\Http\Controllers\AdminAuth\LoginController;
 use App\Http\Controllers\AdminAuth\OfferController as AdminOfferController;
 use App\Http\Controllers\AdminAuth\PackagesController;
+use App\Http\Controllers\AdminAuth\CompanyInfoController;
 
 // ===================================================
 //! User Authentication
@@ -108,6 +109,8 @@ Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
     Route::get('/book', [BookingController::class, 'create'])->name('book.create');
     Route::post('/book', [BookingController::class, 'store'])->name('book.store');
     Route::delete('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->middleware('auth:web');
+    // Add rating route for regular users
+    Route::post('/bookings/{bookingId}/rate', [UserBookingsController::class, 'submitRating'])->name('bookings.rate');
     // User profile page
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
@@ -153,6 +156,17 @@ Route::middleware(['auth:web', 'verified'])->prefix('api')->name('api.')->group(
 Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(function () {
     // Admin authentication
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
+    // Company info
+    Route::get('/company-info', [CompanyInfoController::class, 'index'])->name('company-info.index');
+    Route::post('/company-info/{id}/toggle-active', [CompanyInfoController::class, 'toggleActive'])->name('company-info.toggle-active');
+    Route::delete('/company-info/{id}', [CompanyInfoController::class, 'destroy'])->name('company-info.destroy');
+    Route::post('/company-info/{companyId}/destination/{id}/toggle-active', [CompanyInfoController::class, 'toggleDestinationActive'])->name('company-info.destination.toggle-active');
+    Route::delete('/company-info/{companyId}/destination/{id}', [CompanyInfoController::class, 'destroyDestination'])->name('company-info.destination.destroy');
+    Route::post('/company-info/{companyId}/offer/{id}/toggle-active', [CompanyInfoController::class, 'toggleOfferActive'])->name('company-info.offer.toggle-active');
+    Route::delete('/company-info/{companyId}/offer/{id}', [CompanyInfoController::class, 'destroyOffer'])->name('company-info.offer.destroy');
+    Route::post('/company-info/{companyId}/package/{id}/toggle-active', [CompanyInfoController::class, 'togglePackageActive'])->name('company-info.package.toggle-active');
+    Route::delete('/company-info/{companyId}/package/{id}', [CompanyInfoController::class, 'destroyPackage'])->name('company-info.package.destroy');
 
     // Admin dashboard and profile
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -217,6 +231,7 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
     // Company authentication
     Route::post('/logout', [CompanyController::class, 'logout'])->name('logout');
 
+   
     // Company dashboard and profile
     Route::get('/dashboard', [CompanyDashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [CompanyController::class, 'profile'])->name('profile');
@@ -224,6 +239,7 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
     Route::put('/profile/password', [CompanyController::class, 'updatePassword'])->name('profile.password');
 
     // Company bookings management
+    Route::post('/bookings/{bookingId}/rate', [UserBookingsController::class, 'submitRating'])->name('bookings.rate');
     Route::delete('/bookings/{id}/cancel', [CompanyDashboardController::class, 'cancelBooking'])->name('bookings.cancel');
 
     // Company destinations management

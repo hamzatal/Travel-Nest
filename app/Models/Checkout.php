@@ -16,6 +16,7 @@ class CheckOut extends Model
 
     protected $fillable = [
         'user_id',
+
         'company_id',
         'destination_id',
         'package_id',
@@ -62,7 +63,10 @@ class CheckOut extends Model
     {
         return $this->belongsTo(Offer::class);
     }
-
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'booking_id');
+    }
     public static function boot()
     {
         parent::boot();

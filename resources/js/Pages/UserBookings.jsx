@@ -46,6 +46,9 @@ const UserBookings = ({ auth }) => {
         isDarkMode: true,
         isLoading: false,
         cancelConfirmation: null,
+        ratingModal: null,
+        selectedRating: 0,
+        ratingComment: "",
     };
 
     const reducer = (state, action) => {
@@ -89,6 +92,17 @@ const UserBookings = ({ auth }) => {
                 return { ...state, isLoading: action.payload };
             case "SET_CANCEL_CONFIRMATION":
                 return { ...state, cancelConfirmation: action.payload };
+            case "SET_RATING_MODAL":
+                return {
+                    ...state,
+                    ratingModal: action.payload,
+                    selectedRating: 0,
+                    ratingComment: "",
+                };
+            case "SET_SELECTED_RATING":
+                return { ...state, selectedRating: action.payload };
+            case "SET_RATING_COMMENT":
+                return { ...state, ratingComment: action.payload };
             case "CLEAR_SEARCH":
                 return { ...state, searchQuery: "", currentPage: 1 };
             default:
@@ -107,6 +121,9 @@ const UserBookings = ({ auth }) => {
         isDarkMode,
         isLoading,
         cancelConfirmation,
+        ratingModal,
+        selectedRating,
+        ratingComment,
     } = state;
 
     const itemsPerPage = 6;
@@ -239,20 +256,35 @@ const UserBookings = ({ auth }) => {
     };
 
     // Render star ratings
-    const renderStars = (rating) => {
+    const renderStars = (rating, interactive = false) => {
         const stars = [];
         const roundedRating = Math.round((rating || 0) * 2) / 2;
         for (let i = 1; i <= 5; i++) {
             stars.push(
-                <Star
+                <motion.div
                     key={i}
-                    size={16}
-                    className={
-                        i <= roundedRating
-                            ? "text-yellow-400 fill-yellow-400"
-                            : "text-gray-500"
+                    whileHover={interactive ? { scale: 1.2 } : {}}
+                    whileTap={interactive ? { scale: 0.9 } : {}}
+                    onClick={
+                        interactive
+                            ? () =>
+                                  dispatch({
+                                      type: "SET_SELECTED_RATING",
+                                      payload: i,
+                                  })
+                            : null
                     }
-                />
+                    className={interactive ? "cursor-pointer" : ""}
+                >
+                    <Star
+                        size={16}
+                        className={
+                            i <= (interactive ? selectedRating : roundedRating)
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-gray-600"
+                        }
+                    />
+                </motion.div>
             );
         }
         return stars;
@@ -303,6 +335,15 @@ const UserBookings = ({ auth }) => {
         return hoursDiff <= 12;
     };
 
+    // Check if booking can be rated (after 24 hours and completed)
+    const canRateBooking = (booking) => {
+        if (!booking.created_at || booking.status !== "completed") return false;
+        const createdAt = moment(booking.created_at);
+        const now = moment();
+        const hoursDiff = now.diff(createdAt, "hours");
+        return hoursDiff >= 24;
+    };
+
     // Get cancellation countdown
     const getCancelCountdown = (createdAt) => {
         if (!createdAt) return null;
@@ -333,6 +374,33 @@ const UserBookings = ({ auth }) => {
         });
     };
 
+    // Handle submit rating
+    const handleSubmitRating = (booking) => {
+        if (!selectedRating) {
+            toast.error("Please select a rating.");
+            return;
+        }
+        dispatch({ type: "SET_LOADING", payload: true });
+        router.post(
+            `/bookings/${booking.id}/rate`,
+            {
+                rating: selectedRating,
+                comment: ratingComment,
+            },
+            {
+                onSuccess: () => {
+                    toast.success("Rating submitted successfully!");
+                    dispatch({ type: "SET_LOADING", payload: false });
+                    dispatch({ type: "SET_RATING_MODAL", payload: null });
+                },
+                onError: (errors) => {
+                    toast.error(errors.error || "Failed to submit rating.");
+                    dispatch({ type: "SET_LOADING", payload: false });
+                },
+            }
+        );
+    };
+
     // Favorite type icon
     const getFavoriteTypeIcon = (type) => {
         switch (type) {
@@ -356,7 +424,7 @@ const UserBookings = ({ auth }) => {
                 `Missing favoritable_type or favoritable_id for item:`,
                 item
             );
-            return "/"; // Fallback to homepage
+            return "/";
         }
         switch (type.toLowerCase()) {
             case "offer":
@@ -369,7 +437,7 @@ const UserBookings = ({ auth }) => {
                 console.warn(
                     `Invalid favoritable_type: ${type} for item ID: ${id}`
                 );
-                return "/"; // Fallback to homepage
+                return "/";
         }
     };
 
@@ -837,6 +905,14 @@ const UserBookings = ({ auth }) => {
                                     const countdown = isBooking
                                         ? getCancelCountdown(item.created_at)
                                         : null;
+                                    const userReview = item.reviews?.[0];
+                                    console.log(
+                                        `Booking ID: ${item.id}, Status: ${
+                                            item.status
+                                        }, Can Rate: ${canRateBooking(
+                                            item
+                                        )}, Has Review: ${!!userReview}`
+                                    );
                                     return (
                                         <motion.div
                                             key={`${activeTab}-${item.id}`}
@@ -972,6 +1048,38 @@ const UserBookings = ({ auth }) => {
                                                                 }
                                                             </span>
                                                         </div>
+                                                    )}
+                                                {isBooking && userReview && (
+                                                    <div className="flex items-center gap-1 mb-2">
+                                                        <Star
+                                                            size={14}
+                                                            className="text-yellow-400"
+                                                        />
+                                                        <span
+                                                            className={`text-xs ${
+                                                                isDarkMode
+                                                                    ? "text-gray-300"
+                                                                    : "text-gray-600"
+                                                            }`}
+                                                        >
+                                                            Your rating:{" "}
+                                                            {userReview.rating}
+                                                            /5
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {isBooking &&
+                                                    userReview?.comment && (
+                                                        <p
+                                                            className={`text-xs italic ${
+                                                                isDarkMode
+                                                                    ? "text-gray-400"
+                                                                    : "text-gray-500"
+                                                            } mb-2`}
+                                                        >
+                                                            Your comment:{" "}
+                                                            {userReview.comment}
+                                                        </p>
                                                     )}
                                                 <p
                                                     className={`text-xs mb-3 line-clamp-2 ${
@@ -1214,10 +1322,53 @@ const UserBookings = ({ auth }) => {
                                                                 </motion.button>
                                                             )}
                                                         {isBooking &&
+                                                            canRateBooking(
+                                                                item
+                                                            ) &&
+                                                            !userReview && (
+                                                                <motion.button
+                                                                    whileHover={{
+                                                                        scale: 1.05,
+                                                                    }}
+                                                                    whileTap={{
+                                                                        scale: 0.95,
+                                                                    }}
+                                                                    onClick={() =>
+                                                                        dispatch(
+                                                                            {
+                                                                                type: "SET_RATING_MODAL",
+                                                                                payload:
+                                                                                    item,
+                                                                            }
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        isLoading
+                                                                    }
+                                                                    className={`flex-1 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-1 ${
+                                                                        isLoading
+                                                                            ? "bg-gray-600 cursor-not-allowed"
+                                                                            : "bg-yellow-600 text-white hover:bg-yellow-700"
+                                                                    } transition-all duration-300`}
+                                                                >
+                                                                    <Star
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                    />
+                                                                    Rate
+                                                                </motion.button>
+                                                            )}
+                                                        {isBooking &&
                                                             (!canCancelBooking(
                                                                 item
                                                             ) ||
-                                                                !countdown) && (
+                                                                !countdown) &&
+                                                            !canRateBooking(
+                                                                item
+                                                            ) &&
+                                                            item.status !==
+                                                                "completed" && (
                                                                 <motion.button
                                                                     whileHover={{
                                                                         scale: 1.05,
@@ -1358,8 +1509,139 @@ const UserBookings = ({ auth }) => {
                         )}
                     </AnimatePresence>
 
+                    {/* Rating Modal */}
+                    <AnimatePresence>
+                        {ratingModal && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                                onClick={() =>
+                                    dispatch({
+                                        type: "SET_RATING_MODAL",
+                                        payload: null,
+                                    })
+                                }
+                            >
+                                <motion.div
+                                    variants={modalVariants}
+                                    className={`rounded-xl max-w-md w-full p-6 ${
+                                        isDarkMode ? "bg-gray-800" : "bg-white"
+                                    } shadow-xl`}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Star
+                                            size={24}
+                                            className="text-yellow-400"
+                                        />
+                                        <h3
+                                            className={`text-lg font-semibold ${
+                                                isDarkMode
+                                                    ? "text-white"
+                                                    : "text-gray-900"
+                                            }`}
+                                        >
+                                            Rate Your Experience
+                                        </h3>
+                                    </div>
+                                    <p
+                                        className={`text-sm mb-4 ${
+                                            isDarkMode
+                                                ? "text-gray-300"
+                                                : "text-gray-600"
+                                        }`}
+                                    >
+                                        How would you rate{" "}
+                                        <strong>
+                                            {ratingModal.offer?.title ||
+                                                ratingModal.package?.title ||
+                                                ratingModal.destination?.title}
+                                        </strong>
+                                        ?
+                                    </p>
+                                    <div className="flex justify-center gap-2 mb-4">
+                                        {renderStars(selectedRating, true)}
+                                    </div>
+                                    <div className="mb-4">
+                                        <label
+                                            className={`text-sm font-medium ${
+                                                isDarkMode
+                                                    ? "text-gray-300"
+                                                    : "text-gray-900"
+                                            }`}
+                                            htmlFor="rating-comment"
+                                        >
+                                            Comment (Optional)
+                                        </label>
+                                        <textarea
+                                            id="rating-comment"
+                                            value={ratingComment}
+                                            onChange={(e) =>
+                                                dispatch({
+                                                    type: "SET_RATING_COMMENT",
+                                                    payload: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Share your experience..."
+                                            className={`w-full p-2 mt-1 rounded-md border ${
+                                                isDarkMode
+                                                    ? "bg-gray-700 text-gray-300 border-gray-600"
+                                                    : "bg-gray-100 text-gray-900 border-gray-200"
+                                            } focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 resize-none h-24`}
+                                            maxLength={500}
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                                dispatch({
+                                                    type: "SET_RATING_MODAL",
+                                                    payload: null,
+                                                })
+                                            }
+                                            className={`flex-1 py-2 rounded-full text-sm font-medium ${
+                                                isDarkMode
+                                                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                                    : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                                            }`}
+                                        >
+                                            Cancel
+                                        </motion.button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                                handleSubmitRating(ratingModal)
+                                            }
+                                            disabled={
+                                                isLoading || !selectedRating
+                                            }
+                                            className={`flex-1 py-2 rounded-full text-sm font-medium flex items-center justify-center gap-1 ${
+                                                isLoading || !selectedRating
+                                                    ? "bg-gray-600 cursor-not-allowed"
+                                                    : "bg-blue-600 text-white hover:bg-blue-700"
+                                            } transition-all duration-300`}
+                                        >
+                                            {isLoading && (
+                                                <Loader
+                                                    size={16}
+                                                    className="animate-spin"
+                                                />
+                                            )}
+                                            Submit Rating
+                                        </motion.button>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     {/* Pagination */}
-                    {filteredItems.length > 0 && totalPages > 1 && (
+                    {filteredItems.length > 0 && totalPages > 0 && (
                         <motion.div
                             initial="hidden"
                             whileInView="visible"
@@ -1373,11 +1655,11 @@ const UserBookings = ({ auth }) => {
                                 onClick={() =>
                                     dispatch({
                                         type: "SET_CURRENT_PAGE",
-                                        payload: Math.max(currentPage - 1, 1),
+                                        payload: Math.max(1, currentPage - 1),
                                     })
                                 }
                                 disabled={currentPage === 1}
-                                className={`flex items-center justify-center w-10 h-8 rounded-full ${
+                                className={`flex items-center justify-center w-10 h-10 rounded-full ${
                                     currentPage === 1
                                         ? isDarkMode
                                             ? "bg-gray-800 text-gray-600 cursor-not-allowed"
@@ -1403,11 +1685,11 @@ const UserBookings = ({ auth }) => {
                                         totalPages,
                                         currentPage + pageRange
                                     );
+
                                     if (
-                                        (page >= startPage &&
-                                            page <= endPage) ||
                                         page === 1 ||
-                                        page === totalPages
+                                        page === totalPages ||
+                                        (page >= startPage && page <= endPage)
                                     ) {
                                         return (
                                             <motion.button

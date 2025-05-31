@@ -38,7 +38,7 @@ class Destination extends Model
 
     public function bookings()
     {
-        return $this->hasMany(Booking::class, 'destination_id');
+        return $this->hasMany(Checkout::class, 'destination_id');
     }
 
     public function favorites()

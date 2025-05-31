@@ -46,7 +46,7 @@ class Offer extends Model
 
     public function bookings()
     {
-        return $this->hasMany(Booking::class, 'offer_id');
+        return $this->hasMany(Checkout::class, 'offer_id');
     }
 
     public function favorites()

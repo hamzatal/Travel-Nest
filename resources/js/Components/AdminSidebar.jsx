@@ -10,6 +10,7 @@ import {
     LogOut,
     Home,
     Package2Icon,
+    Building2,
 } from "lucide-react";
 
 export default function AdminSidebar() {
@@ -61,6 +62,13 @@ export default function AdminSidebar() {
                             href="/admin/dashboard"
                             label="Dashboard"
                             icon={<Grid className="w-5 h-5 text-blue-400" />}
+                        />
+                        <SidebarLink
+                            href="/admin/company-info"
+                            label="Company Info"
+                            icon={
+                                <Building2 className="w-5 h-5 text-red-400" />
+                            }
                         />
                         <SidebarLink
                             href="/admin/hero"
