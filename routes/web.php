@@ -208,7 +208,7 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     Route::prefix('hero')->name('hero.')->group(function () {
         Route::get('/', [HeroSectionController::class, 'index'])->name('index');
         Route::post('/', [HeroSectionController::class, 'store'])->name('store');
-        Route::put('/{id}', [HeroSectionController::class, 'update'])->name('update');
+        Route::post('/{id}', [HeroSectionController::class, 'update'])->name('update');
         Route::patch('/{id}/toggle', [HeroSectionController::class, 'toggleActive'])->name('toggle');
         Route::delete('/{id}', [HeroSectionController::class, 'destroy'])->name('delete');
     });
