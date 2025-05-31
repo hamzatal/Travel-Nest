@@ -17,7 +17,6 @@ class Company extends Authenticatable
         'license_number',
         'email',
         'password',
-        'contact_avatar',
         'company_logo',
         'is_active',
     ];
@@ -49,6 +48,6 @@ class Company extends Authenticatable
 
     public function bookings()
     {
-        return $this->hasMany(Booking::class);
+        return $this->hasMany(Checkout::class);
     }
 }

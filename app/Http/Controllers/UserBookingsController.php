@@ -144,16 +144,20 @@ class UserBookingsController extends Controller
             ->get()
             ->map(function ($favorite) {
                 if ($favorite->destination) {
+                    $favorite->favoritable_type = 'destination';
+                    $favorite->favoritable_id = $favorite->destination_id;
                     $favorite->destination->image = $favorite->destination->image
                         ? Storage::url($favorite->destination->image)
                         : null;
-                }
-                if ($favorite->package) {
+                } elseif ($favorite->package) {
+                    $favorite->favoritable_type = 'package';
+                    $favorite->favoritable_id = $favorite->package_id;
                     $favorite->package->image = $favorite->package->image
                         ? Storage::url($favorite->package->image)
                         : null;
-                }
-                if ($favorite->offer) {
+                } elseif ($favorite->offer) {
+                    $favorite->favoritable_type = 'offer';
+                    $favorite->favoritable_id = $favorite->offer_id;
                     $favorite->offer->image = $favorite->offer->image
                         ? Storage::url($favorite->offer->image)
                         : null;

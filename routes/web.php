@@ -107,7 +107,7 @@ Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
     Route::get('/UserBookings', [UserBookingsController::class, 'index'])->name('bookings.index');
     Route::get('/book', [BookingController::class, 'create'])->name('book.create');
     Route::post('/book', [BookingController::class, 'store'])->name('book.store');
-
+    Route::delete('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->middleware('auth:web');
     // User profile page
     Route::get('/UserProfile', fn() => Inertia::render('UserProfile', ['user' => Auth::user()]))->name('UserProfile');
 
@@ -220,38 +220,39 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
     // Company dashboard and profile
     Route::get('/dashboard', [CompanyDashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [CompanyController::class, 'profile'])->name('profile');
-    Route::put('/profile', [CompanyController::class, 'updateProfile'])->name('profile');
+    Route::put('/profile', [CompanyController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [CompanyController::class, 'updatePassword'])->name('profile.password');
+
+    // Company bookings management
+    Route::delete('/bookings/{id}/cancel', [CompanyDashboardController::class, 'cancelBooking'])->name('bookings.cancel');
 
     // Company destinations management
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [CompanyDestinationController::class, 'index'])->name('index');
         Route::post('/', [CompanyDestinationController::class, 'store'])->name('store');
         Route::put('/{destination}', [CompanyDestinationController::class, 'update'])->name('update');
-        Route::post('/{destination}/update', [CompanyDestinationController::class, 'update'])->name('update.post');
         Route::delete('/{destination}', [CompanyDestinationController::class, 'destroy'])->name('destroy');
         Route::patch('/{destination}/toggle-featured', [CompanyDestinationController::class, 'toggleFeatured'])->name('toggle-featured');
         Route::patch('/{destination}/toggle-active', [CompanyDestinationController::class, 'toggleActive'])->name('toggle-active');
     });
 
+    // Company offers management
+    Route::prefix('offers')->name('offers.')->group(function () {
+        Route::get('/', [CompanyOfferController::class, 'index'])->name('index');
+        Route::post('/', [CompanyOfferController::class, 'store'])->name('store');
+        Route::put('/{offer}', [CompanyOfferController::class, 'update'])->name('update');
+        Route::delete('/{offer}', [CompanyOfferController::class, 'destroy'])->name('destroy');
+        Route::patch('/{offer}/toggle-active', [CompanyOfferController::class, 'toggleActive'])->name('toggle-active');
+    });
 
     // Company packages management
     Route::prefix('packages')->name('packages.')->group(function () {
         Route::get('/', [CompanyPackageController::class, 'index'])->name('index');
         Route::post('/', [CompanyPackageController::class, 'store'])->name('store');
         Route::put('/{package}', [CompanyPackageController::class, 'update'])->name('update');
+        Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
         Route::patch('/{package}/toggle-featured', [CompanyPackageController::class, 'toggleFeatured'])->name('toggle-featured');
         Route::patch('/{package}/toggle-active', [CompanyPackageController::class, 'toggleActive'])->name('toggle-active');
-        Route::delete('/{package}', [CompanyPackageController::class, 'destroy'])->name('destroy');
-    });
-
-    // Company offers management - FIXED
-    Route::prefix('offers')->name('offers.')->group(function () {
-        Route::get('/', [CompanyOfferController::class, 'index'])->name('index');
-        Route::post('/', [CompanyOfferController::class, 'store'])->name('store');
-        Route::put('/{offer}', [CompanyOfferController::class, 'update'])->name('update'); // FIXED: {offer} instead of {id}
-        Route::delete('/{offer}', [CompanyOfferController::class, 'destroy'])->name('destroy'); // FIXED: {offer} instead of {id}
-        Route::patch('/{offer}/toggle-active', [CompanyOfferController::class, 'toggleActive'])->name('toggle-active'); // FIXED: {offer} and toggle-active
     });
 });
 

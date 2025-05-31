@@ -174,17 +174,7 @@ export default function CompanyProfile() {
                                 <Building2 className="w-5 h-5 mr-2" />
                                 Profile
                             </button>
-                            <button
-                                onClick={() => setActiveTab("contacts")}
-                                className={`py-4 px-6 font-medium flex items-center transition-all ${
-                                    activeTab === "contacts"
-                                        ? "border-b-2 border-green-500 text-green-500"
-                                        : "text-gray-400 hover:text-white"
-                                }`}
-                            >
-                                <Phone className="w-5 h-5 mr-2" />
-                                Contacts
-                            </button>
+                          
                             <button
                                 onClick={() => setActiveTab("settings")}
                                 className={`py-4 px-6 font-medium flex items-center transition-all ${
