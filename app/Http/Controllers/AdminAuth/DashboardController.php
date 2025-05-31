@@ -27,6 +27,8 @@ class DashboardController extends Controller
                 'users' => User::count(),
                 'deactivated_users' => User::where('is_active', 0)->count(),
                 'companies' => Company::count(),
+                'active_companies' => Company::where('is_active', 1)->count(),
+                'deactivated_companies' => Company::where('is_active', 0)->count(),
                 'messages' => Contact::count(),
                 'unread_messages' => Contact::where('is_read', false)->count(),
                 'destinations' => Destination::count(),
@@ -47,7 +49,7 @@ class DashboardController extends Controller
                 ->get();
 
             $latestBookings = Checkout::with(['user', 'company', 'destination', 'offer', 'package'])
-                ->select('id', 'user_id', 'company_id', 'destination_id', 'offer_id', 'package_id', 'status', 'total_price', 'created_at')
+                ->select(['id', 'user_id', 'company_id', 'destination_id', 'offer_id', 'package_id', 'status', 'total_price', 'created_at'])
                 ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get()->map(function ($booking) {
@@ -55,7 +57,7 @@ class DashboardController extends Controller
                         'id' => $booking->id,
                         'user' => $booking->user ? ['id' => $booking->user->id, 'name' => $booking->user->name] : null,
                         'company' => $booking->company ? ['id' => $booking->company->id, 'name' => $booking->company->company_name] : null,
-                        'destination' => $booking->destination ? ['id' => $booking->destination->id, 'name' => $booking->destination->name] : null,
+                        'destination' => $booking->destination ? ['id' => $booking->destination->id, 'name' => $booking->destination->title] : null,
                         'offer' => $booking->offer ? ['id' => $booking->offer->id, 'title' => $booking->offer->title] : null,
                         'package' => $booking->package ? ['id' => $booking->package->id, 'title' => $booking->package->title] : null,
                         'status' => $booking->status,

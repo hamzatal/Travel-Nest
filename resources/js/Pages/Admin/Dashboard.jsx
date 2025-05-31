@@ -7,10 +7,8 @@ import {
     Tag,
     Image,
     Grid,
-    BarChart2,
-    Eye,
     AlertCircle,
-    TrendingUp,
+    Eye,
     PinIcon,
 } from "lucide-react";
 import AdminSidebar from "@/Components/AdminSidebar";
@@ -27,6 +25,9 @@ export default function Dashboard() {
         destinations: 0,
         offers: 0,
         hero_sections: 0,
+        companies: 0,
+        active_companies: 0,
+        deactivated_companies: 0,
     };
     const latest_users = props.latest_users || [];
     const latest_messages = props.latest_messages || [];
@@ -46,8 +47,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
-                    
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-5">
+                    {/* Users Card */}
                     <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg shadow-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -68,6 +69,7 @@ export default function Dashboard() {
                         </div>
                     </div>
 
+                    {/* Destinations Card */}
                     <div className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg shadow-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -84,10 +86,11 @@ export default function Dashboard() {
                             <MapPin className="w-4 h-4 mr-1" />
                             <span>
                                 {stats.destinations} destinations listed
-                            </span>{" "}
+                            </span>
                         </div>
                     </div>
 
+                    {/* Messages Card */}
                     <div className="bg-gradient-to-br from-yellow-600 to-amber-700 rounded-lg shadow-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -107,7 +110,31 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {/* Companies Card */}
+                    <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-lg shadow-lg p-6">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-green-200">
+                                    Total Companies
+                                </p>
+                                <h3 className="text-3xl font-bold mt-1">
+                                    {stats.companies}
+                                </h3>
+                            </div>
+                            <div className="bg-green-500/30 p-3 rounded-lg">
+                                <PinIcon className="w-6 h-6" />
+                            </div>
+                        </div>
+                        <div className="flex items-center mt-4 text-green-200 text-sm">
+                            <Grid className="w-4 h-4 mr-1" />
+                            <span>
+                                Active: {stats.active_companies} | Deactivated:{" "}
+                                {stats.deactivated_companies}
+                            </span>
+                        </div>
+                    </div>
+                    {/* Special Offers Card */}
                     <div className="bg-gradient-to-br from-pink-600 to-pink-800 rounded-lg shadow-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -126,6 +153,7 @@ export default function Dashboard() {
                         </div>
                     </div>
 
+                    {/* Hero Sections Card */}
                     <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-lg shadow-lg p-6">
                         <div className="flex justify-between items-start">
                             <div>
@@ -143,24 +171,6 @@ export default function Dashboard() {
                             <span>Hero sections available</span>
                         </div>
                     </div>
-
-                    {/* <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-lg shadow-lg p-6">
-                            <div>
-                                <p className="text-green-200">Revenue</p>
-                                <h3 className="text-3xl font-bold mt-1">
-                                    $0
-                                </h3>{" "}
-                            </div>
-                            <div className="bg-green-500/30 p-3 rounded-lg">
-                                <BarChart2 className="w-6 h-6" />
-                            </div>
-                        </div> 
-
-                        <div className="flex items-center mt-4 text-green-200 text-sm">
-                            <TrendingUp className="w-4 h-4 mr-1" />
-                            <span>0% increase this week</span>{" "}
-                        </div>
-                    </div> */}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -247,7 +257,6 @@ export default function Dashboard() {
                                                     </p>
                                                 </div>
                                             </div>
-
                                             <div className="flex items-center">
                                                 {!message.is_read && (
                                                     <span className="bg-red-500 w-2 h-2 rounded-full mr-2"></span>
