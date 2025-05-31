@@ -23,9 +23,9 @@ class LoginController extends Controller
                 'password' => ['required'],
             ]);
 
-            if (Auth::guard('admin')->attempt($credentials, $request->boolean('remember'))) { // Added remember functionality
+            if (Auth::guard('admin')->attempt($credentials, $request->boolean('remember'))) { 
                 $admin = Auth::guard('admin')->user();
-                if (method_exists($admin, 'update') && property_exists($admin, 'last_login')) { // Check if last_login can be set
+                if (method_exists($admin, 'update') && property_exists($admin, 'last_login')) { 
                     $admin->last_login = now();
                     $admin->save();
                 }
@@ -38,10 +38,10 @@ class LoginController extends Controller
             Log::warning('Admin login failed:', ['email' => $request->email]);
             return back()->withErrors([
                 'email' => 'The provided credentials do not match our records.',
-            ])->with('error', 'Invalid login credentials.'); // This will be a flash message
-        } catch (\Illuminate\Validation\ValidationException $e) { // Catch validation exception specifically
+            ])->with('error', 'Invalid login credentials.'); 
+        } catch (\Illuminate\Validation\ValidationException $e) { 
             Log::warning('Admin login validation failed:', ['errors' => $e->errors()]);
-            return back()->withErrors($e->errors())->withInput(); // Return with input and errors
+            return back()->withErrors($e->errors())->withInput(); 
         } catch (\Exception $e) {
             Log::error('Admin login error:', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to login. Please try again later.');
@@ -51,7 +51,7 @@ class LoginController extends Controller
     public function destroy(Request $request)
     {
         try {
-            $adminId = Auth::guard('admin')->id(); // Get admin ID before logout
+            $adminId = Auth::guard('admin')->id(); 
             Auth::guard('admin')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
