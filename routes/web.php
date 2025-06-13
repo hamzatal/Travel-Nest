@@ -29,7 +29,10 @@ use App\Http\Controllers\FavoriteController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
 use Inertia\Inertia;
+use Illuminate\Http\Request;
+use App\Services\ChatGPTServices;
 
 // ===================================================
 //! Company Authentication
@@ -128,15 +131,6 @@ Route::middleware(['auth:web', 'verified', 'active'])->group(function () {
 });
 
 // ===================================================
-//! ChatBot API Routes (Regular Users Only)
-// ===================================================
-
-Route::middleware(['auth:web', 'verified'])->prefix('chatbot')->name('chatbot.')->group(function () {
-    Route::post('/message', [ChatBotController::class, 'processMessage'])->name('message');
-    Route::get('/history', [ChatBotController::class, 'getHistory'])->name('history');
-});
-
-// ===================================================
 //! API Routes (Regular Users Only)
 // ===================================================
 
@@ -231,7 +225,7 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
     // Company authentication
     Route::post('/logout', [CompanyController::class, 'logout'])->name('logout');
 
-   
+
     // Company dashboard and profile
     Route::get('/dashboard', [CompanyDashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [CompanyController::class, 'profile'])->name('profile');
@@ -271,6 +265,18 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
         Route::patch('/{package}/toggle-active', [CompanyPackageController::class, 'toggleActive'])->name('toggle-active');
     });
 });
+
+// ===================================================
+//! Chat Bot Routes
+// ===================================================
+
+Route::post('/chatbot', function (Request $request) {
+    $chat = new ChatGPTServices();
+    $response = $chat->handleUserMessage($request->input('message'));
+
+    return response()->json(['response' => $response]);
+});
+Route::post('/chatbot', [ChatBotController::class, 'handleChat'])->name('chatbot.handle');
 
 // ===================================================
 //! Fallback Routes

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
-use Illuminate\Http\Request;
 use App\Services\ChatGPTServices;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ChatBotController extends Controller
 {
@@ -15,28 +15,42 @@ class ChatBotController extends Controller
         $this->chatGPTService = $chatGPTService;
     }
 
-    // Render ChatBot page
-    public function index()
+    public function handleChat(Request $request)
     {
-        return Inertia::render('Chatbot');
-    }
+        try {
+            $request->validate([
+                'message' => 'required|string|max:1000',
+            ]);
 
-    // Handle chat request
-    public function chatbot(Request $request)
-    {
-        $message = $request->input('message');
+            $message = $request->input('message');
+            $response = $this->chatGPTService->handleUserMessage($message);
 
-        if (!$message) {
-            return response()->json(['error' => 'Message is required'], 400);
+            if ($response['status'] === 'error') {
+                Log::error('ChatBotController error: ' . $response['message'], [
+                    'error' => $response['error'] ?? 'No additional error info',
+                    'message' => $message,
+                ]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $response['message'],
+                    'error' => $response['error'] ?? 'Unknown error',
+                ], 500);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'response' => $response['response'],
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('ChatBotController exception: ' . $e->getMessage(), [
+                'message' => $request->input('message', 'N/A'),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $response = $this->chatGPTService->askChatGPT($message);
-
-        // Extract the response content
-        $chatGPTResponse = $response['choices'][0]['message']['content'] ?? 'No response from ChatGPT.';
-
-        return response()->json([
-            'response' => $chatGPTResponse,
-        ]);
     }
 }

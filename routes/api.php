@@ -7,8 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ChatBotController;
 
 
-
-Route::post('/chatbot', [ChatBotController::class, 'chatbot']); // Updated to 'chatbot'
+Route::post('/chatbot', [ChatBotController::class, 'chat']);
 
 /*
 |----------------------------------------------------------------------
