@@ -253,7 +253,10 @@ export default function AdminPackage() {
             return;
         }
 
-        put(`/admin/packages/${selectedPackage.id}`, {
+        // Use POST with _method: 'PUT' for file uploads
+        post(`/admin/packages/${selectedPackage.id}`, {
+            ...data,
+            _method: "PUT", // Laravel method spoofing
             preserveScroll: true,
             onSuccess: () => {
                 setShowEditModal(false);
@@ -269,7 +272,6 @@ export default function AdminPackage() {
             },
         });
     };
-
     // Handle delete package
     const handleDelete = () => {
         if (packageToDelete) {

@@ -211,6 +211,7 @@ Route::middleware(['auth:admin'])->prefix('admin')->name('admin.')->group(functi
     Route::prefix('packages')->name('packages.')->group(function () {
         Route::get('/', [PackagesController::class, 'index'])->name('index');
         Route::post('/', [PackagesController::class, 'store'])->name('store');
+        Route::post('/{package}', [PackagesController::class, 'update'])->name('update.post');
         Route::put('/{package}', [PackagesController::class, 'update'])->name('update');
         Route::patch('/{package}/toggle-featured', [PackagesController::class, 'toggleFeatured'])->name('toggle-featured');
         Route::delete('/{package}', [PackagesController::class, 'destroy'])->name('destroy');
