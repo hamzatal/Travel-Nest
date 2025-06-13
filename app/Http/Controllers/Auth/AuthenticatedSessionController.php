@@ -46,8 +46,6 @@ class AuthenticatedSessionController extends Controller
         // Regenerate session only after is_active check
         $request->session()->regenerate();
 
-        // Flash success message only after all checks pass
-        return redirect()->intended(route('home'))->with('success', 'Login successful! Redirecting...');
     }
 
     /**

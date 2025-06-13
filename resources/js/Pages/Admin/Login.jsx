@@ -148,7 +148,6 @@ const AdminLoginPage = () => {
                 // No need for router.visit() here if server sends redirect.
                 // setNotification({ // This would be a duplicate if flash message is set
                 // type: "success",
-                // message: "Login successful! Redirecting...",
                 // });
             },
             onError: (serverErrors) => {

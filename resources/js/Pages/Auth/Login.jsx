@@ -77,13 +77,7 @@ export default function Login({ status }) {
         const routeName = accountType === "company" ? "company.login" : "login";
         post(route(routeName), {
             onSuccess: () => {
-                setNotification({
-                    type: "success",
-                    message:
-                        accountType === "company"
-                            ? "Company login successful! Redirecting to home..."
-                            : "Login successful! Redirecting...",
-                });
+               
                 setTimeout(() => {
                     router.visit(route("home"), { replace: true });
                 }, 1000);
