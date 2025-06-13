@@ -361,8 +361,7 @@ const UserBookings = ({ auth }) => {
     const handleCancelBooking = (bookingId) => {
         dispatch({ type: "SET_LOADING", payload: true });
         router.delete(`/bookings/${bookingId}/cancel`, {
-            onSuccess: () => {
-                toast.success("Booking cancelled successfully!");
+            onSuccess: (page) => {
                 dispatch({ type: "SET_LOADING", payload: false });
                 dispatch({ type: "SET_CANCEL_CONFIRMATION", payload: null });
             },
@@ -373,7 +372,6 @@ const UserBookings = ({ auth }) => {
             },
         });
     };
-
     // Handle submit rating
     const handleSubmitRating = (booking) => {
         if (!selectedRating) {

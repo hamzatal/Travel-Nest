@@ -363,16 +363,22 @@ class BookingController extends Controller
         'booking' => $booking,
     ]);
 }
-    public function cancel(Checkout $booking)
+    public function cancel(CheckOut $booking)
     {
         if (!in_array($booking->status, ['pending', 'confirmed'])) {
-            return response()->json(['message' => 'Booking cannot be cancelled.'], 403);
+            return Redirect::route('bookings.index')
+                ->with('error', 'Booking cannot be cancelled.');
         }
+
         $createdAt = Carbon::parse($booking->created_at);
         if ($createdAt->diffInHours(now()) > 12) {
-            return response()->json(['message' => 'Cancellation period has expired.'], 403);
+            return Redirect::route('bookings.index')
+                ->with('error', 'Cancellation period has expired.');
         }
+
         $booking->update(['status' => 'cancelled']);
-        return response()->json(['success' => true, 'message' => 'Booking cancelled successfully']);
+
+        return Redirect::route('bookings.index')
+            ->with('success', 'Booking cancelled successfully');
     }
 }

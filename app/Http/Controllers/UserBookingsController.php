@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class UserBookingsController extends Controller
 {
@@ -190,96 +189,73 @@ class UserBookingsController extends Controller
 
     public function submitRating(Request $request, $bookingId)
     {
-        try {
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
-
-            $booking = CheckOut::where('id', $bookingId)
-                ->where('user_id', $user->id)
-                ->with(['destination', 'package', 'offer'])
-                ->firstOrFail();
-
-            // Check if booking is completed
-            if ($booking->status !== 'completed') {
-                return response()->json(['error' => 'Only completed bookings can be rated.'], 403);
-            }
-
-            // Check if check_out date exists and is in the past
-            if (!$booking->check_out || now()->lte($booking->check_out)) {
-                return response()->json(['error' => 'Rating is only available after the trip ends.'], 403);
-            }
-
-            // Validate request
-            $request->validate([
-                'rating' => 'required|integer|min:1|max:5',
-                'comment' => 'nullable|string|max:500',
-            ]);
-
-            $entity = $booking->destination ?? $booking->package ?? $booking->offer;
-            if (!$entity) {
-                return response()->json(['error' => 'No reviewable entity found for this booking.'], 400);
-            }
-
-            $reviewableType = $booking->destination ? 'destination' : ($booking->package ? 'package' : 'offer');
-            $reviewableId = $entity->id;
-
-            // Check if the user has already rated this booking
-            $existingReview = Review::where('user_id', $user->id)
-                ->where('booking_id', $bookingId)
-                ->first();
-
-            if ($existingReview) {
-                return response()->json(['error' => 'You have already rated this booking.'], 409);
-            }
-
-            DB::beginTransaction();
-
-            // Create the review
-            $review = Review::create([
-                'user_id' => $user->id,
-                'reviewable_type' => $reviewableType,
-                'reviewable_id' => $reviewableId,
-                'rating' => $request->rating,
-                'comment' => $request->comment,
-                'booking_id' => $booking->id,
-            ]);
-
-            // Update the entity's average rating
-            $averageRating = Review::where('reviewable_type', $reviewableType)
-                ->where('reviewable_id', $reviewableId)
-                ->avg('rating');
-
-            $modelClass = match ($reviewableType) {
-                'destination' => Destination::class,
-                'package' => Package::class,
-                'offer' => Offer::class,
-                default => null,
-            };
-
-            if ($modelClass) {
-                $modelClass::where('id', $reviewableId)->update(['rating' => round($averageRating, 1)]);
-            }
-
-            DB::commit();
-
-            Log::info('Rating submitted successfully', [
-                'user_id' => $user->id,
-                'booking_id' => $bookingId,
-                'review_id' => $review->id,
-                'rating' => $request->rating,
-            ]);
-
-            return response()->json(['success' => 'Rating submitted successfully!']);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to submit rating', [
-                'user_id' => Auth::id() ?? 'guest',
-                'booking_id' => $bookingId,
-                'error' => $e->getMessage(),
-            ]);
-            return response()->json(['error' => 'Failed to submit rating: ' . $e->getMessage()], 500);
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
+
+        $booking = CheckOut::where('id', $bookingId)
+            ->where('user_id', $user->id)
+            ->with(['destination', 'package', 'offer'])
+            ->firstOrFail();
+
+        if ($booking->status !== 'completed') {
+            return response()->json(['error' => 'Only completed bookings can be rated.'], 403);
+        }
+
+        if (!$booking->check_out || now()->lte($booking->check_out)) {
+            return response()->json(['error' => 'Rating is only available after the trip ends.'], 403);
+        }
+
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:500',
+        ]);
+
+        $entity = $booking->destination ?? $booking->package ?? $booking->offer;
+        if (!$entity) {
+            return response()->json(['error' => 'No reviewable entity found for this booking.'], 400);
+        }
+
+        $reviewableType = $booking->destination ? 'destination' : ($booking->package ? 'package' : 'offer');
+        $reviewableId = $entity->id;
+
+        $existingReview = Review::where('user_id', $user->id)
+            ->where('booking_id', $bookingId)
+            ->first();
+
+        if ($existingReview) {
+            return response()->json(['error' => 'You have already rated this booking.'], 409);
+        }
+
+        DB::beginTransaction();
+
+        $review = Review::create([
+            'user_id' => $user->id,
+            'reviewable_type' => $reviewableType,
+            'reviewable_id' => $reviewableId,
+            'rating' => $request->rating,
+            'comment' => $request->comment,
+            'booking_id' => $booking->id,
+        ]);
+
+        $averageRating = Review::where('reviewable_type', $reviewableType)
+            ->where('reviewable_id', $reviewableId)
+            ->avg('rating');
+
+        $modelClass = match ($reviewableType) {
+            'destination' => Destination::class,
+            'package' => Package::class,
+            'offer' => Offer::class,
+            default => null,
+        };
+
+        if ($modelClass) {
+            $modelClass::where('id', $reviewableId)->update(['rating' => round($averageRating, 1)]);
+        }
+
+        DB::commit();
+
+        return response()->json(['success' => 'Rating submitted successfully!']);
     }
 }
