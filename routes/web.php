@@ -26,6 +26,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\UserBookingsController;
 use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\ContactController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -64,7 +65,7 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 })->name('welcome');
-
+Route::post('/contacts', [ContactController::class, 'store'])->name('contacts.store'); 
 // ===================================================
 //! Company Authentication Routes (Public)
 // ===================================================
