@@ -454,11 +454,7 @@ const ChatBot = () => {
                                         <h4 className="text-lg font-bold text-white">
                                             TravelNest AI
                                         </h4>
-                                        <p className="text-xs text-green-300">
-                                            {currentLanguage === "ar"
-                                                ? "مخطط سفرك"
-                                                : "Your travel planner"}
-                                        </p>
+                                 
                                     </div>
                                 </div>
                                 <motion.button
