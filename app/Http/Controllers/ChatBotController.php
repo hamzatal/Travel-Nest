@@ -19,7 +19,7 @@ class ChatBotController extends Controller
     {
         try {
             $request->validate([
-                'message' => 'required|string|max:1000',
+                'message' => 'required|string|max:2000',
             ]);
 
             $message = $request->input('message');
@@ -40,6 +40,7 @@ class ChatBotController extends Controller
             return response()->json([
                 'status' => 'success',
                 'response' => $response['response'],
+                'language' => $response['language'] ?? 'en',
             ], 200);
         } catch (\Exception $e) {
             Log::error('ChatBotController exception: ' . $e->getMessage(), [

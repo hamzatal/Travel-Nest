@@ -25,7 +25,7 @@ class ChatGPTServices
     }
 
     /**
-     * Handle user message related to travel, booking, and travel cost estimation.
+     * Handle user message with intelligent travel-focused responses
      *
      * @param string $message
      * @return array
@@ -33,8 +33,9 @@ class ChatGPTServices
     public function handleUserMessage(string $message): array
     {
         try {
-            $prompt = $this->buildTravelPrompt($message);
             $language = $this->detectLanguage($message);
+            $queryType = $this->analyzeQueryType($message);
+            $prompt = $this->buildIntelligentPrompt($message, $queryType, $language);
 
             $response = $this->client->post('https://api.openai.com/v1/chat/completions', [
                 'headers' => [
@@ -46,22 +47,11 @@ class ChatGPTServices
                     'messages' => [
                         [
                             'role' => 'system',
-                            'content' => "You are an expert travel planner for TravelNest, specializing in creating detailed travel itineraries and booking recommendations. Always respond in the same language as the user's input (e.g., Arabic for Arabic input, English for English input). Structure your response in clear sections using the delimiter '===SECTION===' between each section, and format it in Markdown. Ensure every section is clearly separated with '===SECTION===' even if some sections are brief. Include:
-
-1. Suggested destination(s) based on user's input.
-2. A day-by-day itinerary for a 5-7 day trip.
-3. Estimated total cost (flights, accommodation, activities, meals, transport).
-4. Description of 3-5 main tourist attractions.
-5. Best times to visit (weather, crowds, festivals).
-6. Accommodation and transportation suggestions.
-7. Local food or cultural tips.
-8. Visa or travel requirements if applicable.
-
-If the user provides limited info, make reasonable assumptions (e.g., 1-2 travelers, moderate budget) and state them clearly. If the input is vague, ask clarifying questions in the response. Do not skip the '===SECTION===' delimiter under any circumstances.",
+                            'content' => $this->getAdvancedSystemPrompt($language, $queryType),
                         ],
                         ['role' => 'user', 'content' => $prompt],
                     ],
-                    'max_tokens' => 1000,
+                    'max_tokens' => 1800,
                     'temperature' => 0.7,
                 ],
             ]);
@@ -72,6 +62,7 @@ If the user provides limited info, make reasonable assumptions (e.g., 1-2 travel
                 'status' => 'success',
                 'response' => $body['choices'][0]['message']['content'] ?? 'No response from AI.',
                 'language' => $language,
+                'query_type' => $queryType,
             ];
         } catch (RequestException $e) {
             Log::error('Failed to connect to ChatGPT API: ' . $e->getMessage(), [
@@ -80,7 +71,7 @@ If the user provides limited info, make reasonable assumptions (e.g., 1-2 travel
             ]);
             return [
                 'status' => 'error',
-                'message' => 'Failed to connect to ChatGPT API.',
+                'message' => $this->getErrorMessage($language, 'api_error'),
                 'error' => $e->getMessage(),
             ];
         } catch (\Exception $e) {
@@ -90,48 +81,186 @@ If the user provides limited info, make reasonable assumptions (e.g., 1-2 travel
             ]);
             return [
                 'status' => 'error',
-                'message' => 'Unexpected error.',
+                'message' => $this->getErrorMessage($language, 'general_error'),
                 'error' => $e->getMessage(),
             ];
         }
     }
 
-    private function buildTravelPrompt(string $message): string
+    private function analyzeQueryType(string $message): string
     {
-        $language = $this->detectLanguage($message);
-        $langInstruction = $language === 'ar' ?
-            "يرجى الرد باللغة العربية بنفس أسلوب المدخل." :
-            "Please respond in English matching the input style.";
+        $message = strtolower($message);
 
-        return <<<EOT
-User inquiry:
+        // Budget-related queries
+        if (preg_match('/\b(budget|cheap|affordable|cost|price|money|expensive|ميزانية|رخيص|تكلفة|سعر|مال)\b/i', $message)) {
+            return 'budget';
+        }
 
-"$message"
+        // Destination queries
+        if (preg_match('/\b(where|destination|place|country|city|visit|travel to|وجهة|مكان|دولة|مدينة|زيارة|السفر إلى)\b/i', $message)) {
+            return 'destination';
+        }
 
-$langInstruction
+        // Time/season queries
+        if (preg_match('/\b(when|time|season|weather|month|best time|وقت|موسم|طقس|شهر|أفضل وقت)\b/i', $message)) {
+            return 'timing';
+        }
 
-Create a detailed travel plan based on the user's input. If the message includes a budget, travel dates, or preferences, incorporate them. If details are missing, make reasonable assumptions and state them. Format the response in Markdown with clear sections separated by '===SECTION==='. Ensure every section is clearly separated with '===SECTION===' even if some sections are brief:
+        // Activity queries
+        if (preg_match('/\b(activity|activities|things to do|attractions|sightseeing|أنشطة|أشياء للقيام|معالم|جولات)\b/i', $message)) {
+            return 'activities';
+        }
 
-1. **Destinations**: Suggest 1-2 destinations.
-2. **Itinerary**: Provide a 5-7 day day-by-day itinerary.
-3. **Estimated Costs**: Breakdown of flights, accommodation, activities, meals, transport.
-4. **Top Attractions**: Describe 3-5 attractions with history and practical info.
-5. **Best Times to Visit**: Weather, crowds, festivals.
-6. **Accommodation & Transport**: Suggest options with estimated prices.
-7. **Cultural Tips**: Local food, customs, etiquette.
-8. **Visa Requirements**: Entry rules if applicable.
+        // Accommodation queries
+        if (preg_match('/\b(hotel|accommodation|stay|resort|booking|فندق|إقامة|منتجع|حجز)\b/i', $message)) {
+            return 'accommodation';
+        }
 
-If the input is vague, include clarifying questions in the response. Do not skip the '===SECTION===' delimiter under any circumstances.
-EOT;
+        // Transportation queries
+        if (preg_match('/\b(flight|transport|car|bus|train|taxi|طيران|نقل|سيارة|حافلة|قطار|تاكسي)\b/i', $message)) {
+            return 'transportation';
+        }
+
+        // General help
+        if (preg_match('/\b(help|assist|guide|plan|مساعدة|دليل|خطة)\b/i', $message)) {
+            return 'help';
+        }
+
+        return 'general';
+    }
+
+    private function getAdvancedSystemPrompt(string $language, string $queryType): string
+    {
+        $basePrompt = "You are TravelNest AI, a professional travel planning expert with extensive knowledge of global destinations, travel logistics, and cultural insights.";
+
+        if ($language === 'ar') {
+            $basePrompt .= " Always respond in Arabic when the user writes in Arabic.";
+        } else {
+            $basePrompt .= " Always respond in English when the user writes in English.";
+        }
+
+        $basePrompt .= "\n\nQUERY TYPE: " . strtoupper($queryType) . "\n";
+
+        switch ($queryType) {
+            case 'budget':
+                $basePrompt .= "Focus on cost-effective travel solutions, budget breakdowns, money-saving tips, and affordable alternatives.";
+                break;
+            case 'destination':
+                $basePrompt .= "Provide detailed destination recommendations with unique selling points, cultural highlights, and practical travel information.";
+                break;
+            case 'timing':
+                $basePrompt .= "Focus on optimal travel timing, weather patterns, seasonal considerations, and event calendars.";
+                break;
+            case 'activities':
+                $basePrompt .= "Emphasize attractions, activities, experiences, and local entertainment options with practical booking information.";
+                break;
+            case 'accommodation':
+                $basePrompt .= "Provide detailed accommodation recommendations across different price ranges with booking tips and location advantages.";
+                break;
+            case 'transportation':
+                $basePrompt .= "Focus on transportation options, routes, booking strategies, and logistics for efficient travel.";
+                break;
+            case 'help':
+                $basePrompt .= "Provide comprehensive travel planning guidance and explain how you can assist with various travel needs.";
+                break;
+            default:
+                $basePrompt .= "Provide comprehensive travel planning assistance covering all relevant aspects.";
+        }
+
+        $basePrompt .= "
+
+RESPONSE STRUCTURE:
+- Use '===SECTION===' as delimiter between sections
+- Format in Markdown for readability
+- Include relevant sections based on query type
+
+AVAILABLE SECTIONS:
+1. **Quick Answer**: Direct response to the specific question
+2. **Destination Highlights**: Key attractions and unique features
+3. **Detailed Itinerary**: Day-by-day planning (when relevant)
+4. **Budget Breakdown**: Realistic cost estimates with ranges
+5. **Best Time to Visit**: Seasonal recommendations and considerations
+6. **Accommodation Options**: Various price ranges and locations
+7. **Transportation Guide**: Getting there and getting around
+8. **Local Insights**: Cultural tips, food, customs, safety
+9. **Booking Tips**: Practical advice for reservations and planning
+10. **Alternative Options**: Additional suggestions and variations
+
+RESPONSE GUIDELINES:
+- Be specific and actionable
+- Include realistic prices in USD (and local currency when relevant)
+- Mention specific businesses, attractions, or services when helpful
+- Provide multiple options across different budgets
+- Include practical booking and planning advice
+- Use professional yet friendly tone
+- If information is incomplete, make reasonable assumptions and state them
+- Always include the '===SECTION===' delimiter between sections";
+
+        return $basePrompt;
+    }
+
+    private function buildIntelligentPrompt(string $message, string $queryType, string $language): string
+    {
+        $contextualPrompt = "User Query: \"$message\"\n";
+        $contextualPrompt .= "Query Type: " . ucfirst($queryType) . "\n";
+        $contextualPrompt .= "Language: " . ($language === 'ar' ? 'Arabic' : 'English') . "\n\n";
+
+        switch ($queryType) {
+            case 'budget':
+                $contextualPrompt .= "Provide a comprehensive budget-focused response including cost breakdowns, money-saving strategies, and affordable alternatives. Include specific price ranges and practical tips for budget travel.";
+                break;
+            case 'destination':
+                $contextualPrompt .= "Recommend destinations based on the user's preferences. Include detailed information about each destination's unique features, attractions, and practical travel information.";
+                break;
+            case 'timing':
+                $contextualPrompt .= "Focus on the best times to travel, considering weather, crowds, prices, and special events. Provide month-by-month guidance when relevant.";
+                break;
+            case 'activities':
+                $contextualPrompt .= "Highlight top activities, attractions, and experiences. Include practical information about booking, timing, and costs for each activity.";
+                break;
+            case 'accommodation':
+                $contextualPrompt .= "Provide accommodation recommendations across different price ranges. Include specific hotel suggestions, booking tips, and location advantages.";
+                break;
+            case 'transportation':
+                $contextualPrompt .= "Focus on transportation options, routes, and logistics. Include booking strategies, cost comparisons, and practical travel tips.";
+                break;
+            case 'help':
+                $contextualPrompt .= "Explain your capabilities as a travel planning assistant and provide guidance on how to get the most helpful travel advice.";
+                break;
+            default:
+                $contextualPrompt .= "Provide comprehensive travel planning assistance covering all relevant aspects of the user's inquiry.";
+        }
+
+        $contextualPrompt .= "\n\nEnsure your response is well-structured with clear sections separated by '===SECTION==='. Make your advice practical, specific, and actionable.";
+
+        return $contextualPrompt;
     }
 
     private function detectLanguage(string $message): string
     {
-        // Simple regex to detect Arabic characters
-        if (preg_match('/[ء-ي]/u', $message)) {
+        // Enhanced Arabic detection with more comprehensive patterns
+        if (
+            preg_match('/[ء-ي]/u', $message) ||
+            preg_match('/\b(في|من|إلى|على|مع|هذا|هذه|ذلك|تلك|أين|متى|كيف|ماذا|لماذا)\b/u', $message)
+        ) {
             return 'ar';
         }
-        // Default to English
         return 'en';
+    }
+
+    private function getErrorMessage(string $language, string $errorType): string
+    {
+        $messages = [
+            'ar' => [
+                'api_error' => 'عذراً، حدث خطأ في الاتصال بالخدمة. يرجى المحاولة مرة أخرى.',
+                'general_error' => 'عذراً، حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.',
+            ],
+            'en' => [
+                'api_error' => 'Sorry, there was a connection error. Please try again.',
+                'general_error' => 'Sorry, an unexpected error occurred. Please try again.',
+            ]
+        ];
+
+        return $messages[$language][$errorType] ?? $messages['en'][$errorType];
     }
 }
