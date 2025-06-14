@@ -65,7 +65,7 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 })->name('welcome');
-Route::post('/contacts', [ContactController::class, 'store'])->name('contacts.store'); 
+Route::post('/contacts', [ContactController::class, 'store'])->name('contacts.store');
 // ===================================================
 //! Company Authentication Routes (Public)
 // ===================================================
@@ -237,7 +237,7 @@ Route::middleware(['auth:company', 'verified'])->prefix('company')->name('compan
     // Company bookings management
     Route::post('/bookings/{bookingId}/rate', [UserBookingsController::class, 'submitRating'])->name('bookings.rate');
     Route::delete('/bookings/{id}/cancel', [CompanyDashboardController::class, 'cancelBooking'])->name('bookings.cancel');
-
+    Route::patch('/bookings/{id}/confirm', [CompanyDashboardController::class, 'confirmBooking'])->name('bookings.confirm');
     // Company destinations management
     Route::prefix('destinations')->name('destinations.')->group(function () {
         Route::get('/', [CompanyDestinationController::class, 'index'])->name('index');

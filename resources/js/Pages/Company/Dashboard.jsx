@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, forwardRef } from "react";
 import { Head, usePage, useForm } from "@inertiajs/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -835,304 +835,345 @@ const CancelConfirmationModal = ({
     );
 };
 
-const ItemCard = ({
-    item,
-    type,
-    openEditModal,
-    openDeleteModal,
-    handleToggle,
-    handleCancelBooking,
-    availableDestinations,
-}) => {
-    const isDestination = type === "destination";
-    const isOffer = type === "offer";
-    const isPackage = type === "package";
-    const isBooking = type === "booking";
+// Wrap ItemCard with forwardRef
+const ItemCard = forwardRef(
+    (
+        {
+            item,
+            type,
+            openEditModal,
+            openDeleteModal,
+            handleToggle,
+            handleCancelBooking,
+            handleConfirmBooking,
+            availableDestinations,
+        },
+        ref
+    ) => {
+        const isDestination = type === "destination";
+        const isOffer = type === "offer";
+        const isPackage = type === "package";
+        const isBooking = type === "booking";
 
-    // Determine the main entity for bookings
-    const entity = isBooking
-        ? item.destination || item.offer || item.package
-        : item;
-    const itemTitle = isDestination ? item.name : item.title;
-    const itemDescription = item.description;
-    const itemPrice = parseFloat(item.price);
-    const itemDiscountPrice = parseFloat(item.discount_price);
-    const itemRating = item.rating || 0;
-    const itemImage = entity?.image || defaultImage;
-    const displayTag = isDestination ? item.category : item.discount_type;
+        // Determine the main entity for bookings
+        const entity = isBooking
+            ? item.destination || item.offer || item.package
+            : item;
+        const itemTitle = isDestination ? item.name : item.title;
+        const itemDescription = item.description;
+        const itemPrice = parseFloat(item.price);
+        const itemDiscountPrice = parseFloat(item.discount_price);
+        const itemRating = item.rating || 0;
+        const itemImage = entity?.image || defaultImage;
+        const displayTag = isDestination ? item.category : item.discount_type;
 
-    const associatedDestinationName =
-        (isOffer || isPackage) && item.destination_id
-            ? availableDestinations.find((d) => d.id === item.destination_id)
-                  ?.name || "N/A"
-            : null;
+        const associatedDestinationName =
+            (isOffer || isPackage) && item.destination_id
+                ? availableDestinations.find(
+                      (d) => d.id === item.destination_id
+                  )?.name || "N/A"
+                : null;
 
-    const canCancel =
-        isBooking && ["pending", "confirmed"].includes(item.status);
+        const canCancel =
+            isBooking && ["pending", "confirmed"].includes(item.status);
+        const canConfirm = isBooking && item.status === "pending";
 
-    return (
-        <motion.div
-            key={`${type}-${item.id}`}
-            variants={{
-                hidden: { opacity: 0, y: 20 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-                exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
-            }}
-            layout
-            whileHover={{ y: -8, transition: { duration: 0.3 } }}
-            className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-gray-800 to-gray-850 hover:from-gray-750 hover:to-gray-800 border border-gray-700 flex flex-col group transition-all duration-300"
-        >
-            <div className="relative overflow-hidden">
-                <img
-                    src={itemImage}
-                    alt={itemTitle || "Image"}
-                    className="w-full h-56 object-cover transform group-hover:scale-110 transition-transform duration-500"
-                    loading="lazy"
-                    onError={(e) => {
-                        e.target.src = defaultImage;
-                    }}
-                />
-                {isBooking ? (
-                    <span
-                        className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(
-                            item.status
-                        )} shadow-lg`}
-                    >
-                        {item.status.charAt(0).toUpperCase() +
-                            item.status.slice(1)}
-                    </span>
-                ) : (
-                    <>
-                        {displayTag && (
-                            <span className="absolute top-3 left-3 px-3 py-1 bg-green-600 rounded-full text-xs font-medium text-white shadow-lg">
-                                {displayTag.charAt(0).toUpperCase() +
-                                    displayTag.slice(1)}
-                            </span>
-                        )}
-                        {calculateDiscount(itemPrice, itemDiscountPrice) !==
-                            null && (
-                            <div className="absolute top-3 right-3 bg-gradient-to-r from-rose-500 to-rose-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                                {calculateDiscount(
-                                    itemPrice,
-                                    itemDiscountPrice
-                                )}
-                                % OFF
-                            </div>
-                        )}
-                    </>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-70 transition-opacity duration-300"></div>
-            </div>
-            <div className="p-6 flex flex-col flex-grow">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xl font-bold line-clamp-1 text-white group-hover:text-green-300 transition-colors duration-300">
-                        {itemTitle ||
-                            (isBooking && (entity?.name || entity?.title)) ||
-                            "N/A"}
-                    </h3>
+        return (
+            <motion.div
+                ref={ref}
+                key={`${type}-${item.id}`}
+                variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.4 },
+                    },
+                    exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
+                }}
+                layout
+                whileHover={{ y: -8, transition: { duration: 0.3 } }}
+                className="rounded-2xl overflow-hidden shadow-xl bg-gradient-to-b from-gray-800 to-gray-850 hover:from-gray-750 hover:to-gray-800 border border-gray-700 flex flex-col group transition-all duration-300"
+            >
+                <div className="relative overflow-hidden">
+                    <img
+                        src={itemImage}
+                        alt={itemTitle || "Image"}
+                        className="w-full h-56 object-cover transform group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                        onError={(e) => {
+                            e.target.src = defaultImage;
+                        }}
+                    />
+                    {isBooking ? (
+                        <span
+                            className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(
+                                item.status
+                            )} shadow-lg`}
+                        >
+                            {item.status.charAt(0).toUpperCase() +
+                                item.status.slice(1)}
+                        </span>
+                    ) : (
+                        <>
+                            {displayTag && (
+                                <span className="absolute top-3 left-3 px-3 py-1 bg-green-600 rounded-full text-xs font-medium text-white shadow-lg">
+                                    {displayTag.charAt(0).toUpperCase() +
+                                        displayTag.slice(1)}
+                                </span>
+                            )}
+                            {calculateDiscount(itemPrice, itemDiscountPrice) !==
+                                null && (
+                                <div className="absolute top-3 right-3 bg-gradient-to-r from-rose-500 to-rose-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                                    {calculateDiscount(
+                                        itemPrice,
+                                        itemDiscountPrice
+                                    )}
+                                    % OFF
+                                </div>
+                            )}
+                        </>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-70 transition-opacity duration-300"></div>
                 </div>
-                {isBooking && item.user && (
-                    <div className="flex items-center gap-2 mb-2">
-                        <User
-                            size={16}
-                            className="text-green-400 flex-shrink-0"
-                        />
-                        <span className="text-sm text-gray-300">
-                            {item.user?.name || "N/A"}
-                        </span>
-                        <span className="text-sm text-gray-300">
-                            ({item.user?.phone || "N/A"})
-                        </span>
+                <div className="p-6 flex flex-col flex-grow">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xl font-bold line-clamp-1 text-white group-hover:text-green-300 transition-colors duration-300">
+                            {itemTitle ||
+                                (isBooking &&
+                                    (entity?.name || entity?.title)) ||
+                                "N/A"}
+                        </h3>
                     </div>
-                )}
-                {/* <div className="flex items-center gap-2 mb-2">
-                    <Mail size={16} className="text-green-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-300">
-                        {item.user?.email || "N/A"}
-                    </span>
-                </div> */}
-                {!isBooking && item.location && (
-                    <div className="flex items-center gap-2 mb-2">
-                        <MapPin
-                            size={16}
-                            className="text-green-400 flex-shrink"
-                        />
-                        <span className="text-sm text-gray-300">
-                            {item.location}
-                        </span>
-                    </div>
-                )}
-                {(isOffer || isPackage) && associatedDestinationName && (
-                    <div className="flex items-center gap-2 mb-2">
-                        <MapPin
-                            size={16}
-                            className="text-green-400 flex-shrink"
-                        />
-                        <span className="text-sm text-gray-300">
-                            {associatedDestinationName}
-                        </span>
-                    </div>
-                )}
-                {isBooking && (
-                    <div className="flex items-center gap-2 mb-2">
-                        <Calendar size={16} className="text-green-400" />
-                        <span className="text-sm text-gray-300">
-                            {formatDate(item.check_in)} -{" "}
-                            {formatDate(item.check_out)}
-                        </span>
-                    </div>
-                )}
-                {isBooking && (
-                    <div className="flex items-center gap-2 mb-3">
-                        <User size={16} className="text-green-400" />
-                        <span className="text-sm text-gray-300">
-                            Guests: {item.guests}
-                        </span>
-                    </div>
-                )}
-                {!isBooking && (
-                    <div className="flex items-center gap-1 mb-3">
-                        {renderStars(itemRating)}
-                        <span className="text-sm ml-2 text-gray-400">
-                            ({itemRating}/5)
-                        </span>
-                    </div>
-                )}
-                {!isBooking && (
-                    <p className="text-sm mb-4 line-clamp-2 text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
-                        {itemDescription || "No description available."}
-                    </p>
-                )}
-                {(isOffer || isPackage) && item.end_date && (
-                    <div className="flex items-center gap-2 mb-4">
-                        <Clock size={16} className="text-green-400" />
-                        <span className="text-sm text-gray-300">
-                            Valid until {formatDate(item.end_date)}
-                        </span>
-                    </div>
-                )}
-                <div className="mt-auto">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <span className="block text-xs font-medium text-gray-400">
-                                {isBooking ? "Total Price" : "Starting from"}
+                    {isBooking && item.user && (
+                        <div className="flex items-center gap-2 mb-2">
+                            <User
+                                size={16}
+                                className="text-green-400 flex-shrink-0"
+                            />
+                            <span className="text-sm text-gray-300">
+                                {item.user?.name || "N/A"}
                             </span>
-                            <div className="flex items-baseline gap-2">
-                                {item.discount_price && !isBooking ? (
-                                    <>
+                            <span className="text-sm text-gray-300">
+                                ({item.user?.phone || "N/A"})
+                            </span>
+                        </div>
+                    )}
+                    {!isBooking && item.location && (
+                        <div className="flex items-center gap-2 mb-2">
+                            <MapPin
+                                size={16}
+                                className="text-green-400 flex-shrink"
+                            />
+                            <span className="text-sm text-gray-300">
+                                {item.location}
+                            </span>
+                        </div>
+                    )}
+                    {(isOffer || isPackage) && associatedDestinationName && (
+                        <div className="flex items-center gap-2 mb-2">
+                            <MapPin
+                                size={16}
+                                className="text-green-400 flex-shrink"
+                            />
+                            <span className="text-sm text-gray-300">
+                                {associatedDestinationName}
+                            </span>
+                        </div>
+                    )}
+                    {isBooking && (
+                        <div className="flex items-center gap-2 mb-2">
+                            <Calendar size={16} className="text-green-400" />
+                            <span className="text-sm text-gray-300">
+                                {formatDate(item.check_in)} -{" "}
+                                {formatDate(item.check_out)}
+                            </span>
+                        </div>
+                    )}
+                    {isBooking && (
+                        <div className="flex items-center gap-2 mb-3">
+                            <User size={16} className="text-green-400" />
+                            <span className="text-sm text-gray-300">
+                                Guests: {item.guests}
+                            </span>
+                        </div>
+                    )}
+                    {!isBooking && (
+                        <div className="flex items-center gap-1 mb-3">
+                            {renderStars(itemRating)}
+                            <span className="text-sm ml-2 text-gray-400">
+                                ({itemRating}/5)
+                            </span>
+                        </div>
+                    )}
+                    {!isBooking && (
+                        <p className="text-sm mb-4 line-clamp-2 text-gray-300 group-hover:text-gray-200 transition-colors duration-300">
+                            {itemDescription || "No description available."}
+                        </p>
+                    )}
+                    {(isOffer || isPackage) && item.end_date && (
+                        <div className="flex items-center gap-2 mb-4">
+                            <Clock size={16} className="text-green-400" />
+                            <span className="text-sm text-gray-300">
+                                Valid until {formatDate(item.end_date)}
+                            </span>
+                        </div>
+                    )}
+                    <div className="mt-auto">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <span className="block text-xs font-medium text-gray-400">
+                                    {isBooking
+                                        ? "Total Price"
+                                        : "Starting from"}
+                                </span>
+                                <div className="flex items-baseline gap-2">
+                                    {item.discount_price && !isBooking ? (
+                                        <>
+                                            <span className="text-xl font-bold text-green-400 group-hover:text-green-300 transition-colors duration-300">
+                                                $
+                                                {parseFloat(
+                                                    item.discount_price
+                                                ).toFixed(2)}
+                                            </span>
+                                            <span className="text-sm line-through text-gray-400">
+                                                $
+                                                {parseFloat(item.price).toFixed(
+                                                    2
+                                                )}
+                                            </span>
+                                        </>
+                                    ) : (
                                         <span className="text-xl font-bold text-green-400 group-hover:text-green-300 transition-colors duration-300">
                                             $
                                             {parseFloat(
-                                                item.discount_price
+                                                item.price ||
+                                                    item.total_price ||
+                                                    0
                                             ).toFixed(2)}
                                         </span>
-                                        <span className="text-sm line-through text-gray-400">
-                                            ${parseFloat(item.price).toFixed(2)}
+                                    )}
+                                    {!isBooking && (
+                                        <span className="text-xs text-gray-400">
+                                            / person
                                         </span>
-                                    </>
-                                ) : (
-                                    <span className="text-xl font-bold text-green-400 group-hover:text-green-300 transition-colors duration-300">
-                                        $
-                                        {parseFloat(
-                                            item.price || item.total_price || 0
-                                        ).toFixed(2)}
-                                    </span>
-                                )}
-                                {!isBooking && (
-                                    <span className="text-xs text-gray-400">
-                                        / person
-                                    </span>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
+                        {isBooking && (canCancel || canConfirm) ? (
+                            <div className="flex gap-3">
+                                {canConfirm && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() =>
+                                            handleConfirmBooking(item)
+                                        }
+                                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-500 hover:to-emerald-600 transition-all duration-300 transform group-hover:shadow-lg"
+                                    >
+                                        <Check className="w-4 h-4" />
+                                        Confirm
+                                    </motion.button>
+                                )}
+                                {canCancel && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() =>
+                                            handleCancelBooking(item)
+                                        }
+                                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-gradient-to-r from-rose-600 to-rose-700 text-white hover:from-rose-500 hover:to-rose-600 transition-all duration-300 transform group-hover:shadow-lg"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Cancel
+                                    </motion.button>
+                                )}
+                            </div>
+                        ) : isBooking ? (
+                            <div className="text-center text-sm text-gray-400 py-3">
+                                No actions available for this booking
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center space-x-2 mb-4 justify-center">
+                                    {(isDestination || isPackage) && (
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                                handleToggle(
+                                                    item,
+                                                    type,
+                                                    "is_featured"
+                                                )
+                                            }
+                                            className="text-gray-400 hover:text-amber-400 p-1.5 rounded-full transition-all bg-gray-700/50 hover:bg-gray-700"
+                                            title="Toggle Featured"
+                                        >
+                                            {item.is_featured ? (
+                                                <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
+                                            ) : (
+                                                <Star className="w-6 h-6" />
+                                            )}
+                                        </motion.button>
+                                    )}
+                                    {(isOffer ||
+                                        isPackage ||
+                                        isDestination) && (
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                                handleToggle(
+                                                    item,
+                                                    type,
+                                                    "is_active"
+                                                )
+                                            }
+                                            className="text-gray-400 hover:text-emerald-400 p-1.5 rounded-full transition-all bg-gray-700/50 hover:bg-gray-700"
+                                            title="Toggle Active"
+                                        >
+                                            {item.is_active ? (
+                                                <ToggleRight className="w-6 h-6 text-emerald-500" />
+                                            ) : (
+                                                <ToggleLeft className="w-6 h-6" />
+                                            )}
+                                        </motion.button>
+                                    )}
+                                </div>
+                                <div className="flex gap-2">
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() =>
+                                            openEditModal(item, type)
+                                        }
+                                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 transition-all duration-300 transform group-hover:shadow-lg"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                        Edit
+                                    </motion.button>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() =>
+                                            openDeleteModal(item, type)
+                                        }
+                                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-gradient-to-r from-rose-600 to-rose-700 text-white hover:from-rose-500 hover:to-rose-600 transition-all duration-300 transform group-hover:shadow-lg"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete
+                                    </motion.button>
+                                </div>
+                            </>
+                        )}
                     </div>
-                    {isBooking && canCancel ? (
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleCancelBooking(item)}
-                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-gradient-to-r from-rose-600 to-rose-700 text-white hover:from-rose-500 hover:to-rose-600 transition-all duration-300 transform group-hover:shadow-lg"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Cancel Booking
-                        </motion.button>
-                    ) : isBooking ? (
-                        <div className="text-center text-sm text-gray-400 py-3">
-                            Cannot cancel this booking
-                        </div>
-                    ) : (
-                        <>
-                            <div className="flex items-center space-x-2 mb-4 justify-center">
-                                {(isDestination || isPackage) && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() =>
-                                            handleToggle(
-                                                item,
-                                                type,
-                                                "is_featured"
-                                            )
-                                        }
-                                        className="text-gray-400 hover:text-amber-400 p-1.5 rounded-full transition-all bg-gray-700/50 hover:bg-gray-700"
-                                        title="Toggle Featured"
-                                    >
-                                        {item.is_featured ? (
-                                            <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
-                                        ) : (
-                                            <Star className="w-6 h-6" />
-                                        )}
-                                    </motion.button>
-                                )}
-                                {(isOffer || isPackage || isDestination) && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() =>
-                                            handleToggle(
-                                                item,
-                                                type,
-                                                "is_active"
-                                            )
-                                        }
-                                        className="text-gray-400 hover:text-emerald-400 p-1.5 rounded-full transition-all bg-gray-700/50 hover:bg-gray-700"
-                                        title="Toggle Active"
-                                    >
-                                        {item.is_active ? (
-                                            <ToggleRight className="w-6 h-6 text-emerald-500" />
-                                        ) : (
-                                            <ToggleLeft className="w-6 h-6" />
-                                        )}
-                                    </motion.button>
-                                )}
-                            </div>
-                            <div className="flex gap-2">
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => openEditModal(item, type)}
-                                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-500 hover:to-green-600 transition-all duration-300 transform group-hover:shadow-lg"
-                                >
-                                    <Edit2 className="w-4 h-4" />
-                                    Edit
-                                </motion.button>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => openDeleteModal(item, type)}
-                                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-base font-medium bg-gradient-to-r from-rose-600 to-rose-700 text-white hover:from-rose-500 hover:to-rose-600 transition-all duration-300 transform group-hover:shadow-lg"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    Delete
-                                </motion.button>
-                            </div>
-                        </>
-                    )}
                 </div>
-            </div>
-        </motion.div>
-    );
-};
+            </motion.div>
+        );
+    }
+);
 
 // --- Main Dashboard Component ---
 
@@ -1462,6 +1503,22 @@ export default function Dashboard() {
         setShowCancelModal(true);
     }, []);
 
+    // Handle confirming a booking
+    const handleConfirmBooking = useCallback(
+        (booking) => {
+            patch(route("company.bookings.confirm", booking.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success("Booking confirmed successfully!");
+                },
+                onError: () => {
+                    toast.error("Failed to confirm booking. Please try again.");
+                },
+            });
+        },
+        [patch]
+    );
+
     const confirmCancelBooking = useCallback(() => {
         if (!bookingToCancel) return;
 
@@ -1662,6 +1719,7 @@ export default function Dashboard() {
                 openDeleteModal={openDeleteModal}
                 handleToggle={handleToggle}
                 handleCancelBooking={handleCancelBooking}
+                handleConfirmBooking={handleConfirmBooking}
                 availableDestinations={availableDestinations}
             />
         ));

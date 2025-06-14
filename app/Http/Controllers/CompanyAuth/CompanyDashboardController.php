@@ -211,10 +211,42 @@ class CompanyDashboardController extends Controller
             $booking->status = 'cancelled';
             $booking->save();
 
-            return back()->with('success', 'Booking cancelled successfully.');
         } catch (\Exception $e) {
             Log::error('Failed to cancel booking:', ['error' => $e->getMessage()]);
             return back()->with('error', 'Failed to cancel booking. Please try again.');
+        }
+    }
+
+    public function confirmBooking(Request $request, $id)
+    {
+        try {
+            $company = Auth::guard('company')->user();
+            if (!$company) {
+                return redirect()->route('company.login')->with('error', 'Unauthorized access.');
+            }
+
+            $booking = Checkout::where('id', $id)
+                ->where(function ($query) use ($company) {
+                    $query->whereHas('destination', fn($q) => $q->where('company_id', $company->id))
+                        ->orWhereHas('offer', fn($q) => $q->where('company_id', $company->id))
+                        ->orWhereHas('package', fn($q) => $q->where('company_id', $company->id));
+                })
+                ->first();
+
+            if (!$booking) {
+                return back()->with('error', 'Booking not found or unauthorized.');
+            }
+
+            if ($booking->status !== 'pending') {
+                return back()->with('error', 'Only pending bookings can be confirmed.');
+            }
+
+            $booking->status = 'confirmed';
+            $booking->save();
+
+        } catch (\Exception $e) {
+            Log::error('Failed to confirm booking:', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Failed to confirm booking. Please try again.');
         }
     }
 }
