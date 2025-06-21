@@ -608,6 +608,6 @@ If you find this project helpful, please consider giving it a ⭐ star!
 
 **Made with ❤️ by the Travel Nest Team**
 
-[![GitHub Profile]([https://github.com/](https://github.com/hamzatal/Travel-Nest))
-[![LinkedIn](https://linkedin.com/hamzatal)
+[![GitHub Profile](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)]([https://github.com/](https://github.com/hamzatal/Travel-Nest))
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/hamzatal)
 </div>
