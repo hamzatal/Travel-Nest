@@ -574,20 +574,7 @@ hotfix/xxx        # Critical fixes
 ## 📞 **Support & Contact**
 
 <div align="center">
-
-### 💬 **Get Help**
-
-[![Discord](https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/travelnest)
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/travelnest)
-[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:support@travelnest.com)
-
-### 📚 **Documentation**
-
-- 📖 [User Guide](https://docs.travelnest.com/users)
-- 🏢 [Company Guide](https://docs.travelnest.com/companies)
-- 👑 [Admin Guide](https://docs.travelnest.com/admins)
-- 🔧 [API Documentation](https://api.travelnest.com/docs)
-
+📞 00692772372187
 </div>
 
 ---
