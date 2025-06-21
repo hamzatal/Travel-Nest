@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Travel Nest Logo](https://via.placeholder.com/200x100/4F46E5/FFFFFF?text=Travel+Nest)
+![Travel Nest Logo](/public/github-images/welcome.png)
 
 [![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
