@@ -3,10 +3,10 @@
 <div align="center">
 
 ![Travel Nest Logo](/public/github-images/logo.png)
-![Travel Nest Logo](/public/github-images/logo.png)
-![Travel Nest Logo](/public/github-images/logo.png)
-![Travel Nest Logo](/public/github-images/logo.png)
-![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest welcome](/public/github-images/welcome.png)
+![Travel Nest login](/public/github-images/login.png)
+![Travel Nest admin-login](/public/github-images/admin-login.png)
+![Travel Nest register](/public/github-images/register.png)
 ![Travel Nest Logo](/public/github-images/logo.png)
 ![Travel Nest Logo](/public/github-images/logo.png)
 
