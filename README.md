@@ -2,12 +2,13 @@
 
 <div align="center">
 
-[Laravel](/public/github-images/logo.png)
-[Laravel](/public/github-images/welcome.png)
-[Laravel](/public/github-images/login.png)
-[Laravel](/public/github-images/admin-loign.png)
-[Laravel](/public/github-images/register.png)
-[Laravel](/public/github-images/home.png)
+![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest Logo](/public/github-images/logo.png)
 
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
 [![Inertia.js](https://img.shields.io/badge/Inertia.js-Latest-9553E9?style=for-the-badge&logo=inertia&logoColor=white)](https://inertiajs.com)
