@@ -2,8 +2,7 @@
 
 <div align="center">
 
-![Travel Nest Logo](/public/github-images/logo.png)
-
+[![Laravel](/public/github-images/logo.png)
 [![Laravel](/public/github-images/welcome.png)
 [![Laravel](/public/github-images/login.png)
 [![Laravel](/public/github-images/admin-loign.png)
