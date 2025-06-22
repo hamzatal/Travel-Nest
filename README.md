@@ -7,8 +7,21 @@
 ![Travel Nest login](/public/github-images/login.png)
 ![Travel Nest admin-login](/public/github-images/admin-login.png)
 ![Travel Nest register](/public/github-images/register.png)
-![Travel Nest Logo](/public/github-images/logo.png)
-![Travel Nest Logo](/public/github-images/logo.png)
+![Travel Nest home](/public/github-images/home.png)
+![Travel Nest chatbot](/public/github-images/chatbot.png)
+![Travel Nest contact-us](/public/github-images/contact-us.png)
+![Travel Nest about-us](/public/github-images/about-us.png)
+![Travel Nest offer](/public/github-images/offer.png)
+![Travel Nest profile](/public/github-images/profile.png)
+![Travel Nest admin-home](/public/github-images/admin-home.png)
+![Travel Nest admin-company-info](/public/github-images/admin-company-info.png)
+![Travel Nest admin-hero](/public/github-images/admin-hero.png)
+![Travel Nest admin-user](/public/github-images/admin-user.png)
+![Travel Nest admin-message](/public/github-images/admin-message.png)
+![Travel Nest admin-package](/public/github-images/admin-package.png)
+![Travel Nest admin-destination](/public/github-images/admin-destination.png)
+![Travel Nest admin-offer](/public/github-images/admin-offer.png)
+![Travel Nest admin-profile](/public/github-images/admin-profile.png)
 
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
 [![Inertia.js](https://img.shields.io/badge/Inertia.js-Latest-9553E9?style=for-the-badge&logo=inertia&logoColor=white)](https://inertiajs.com)
@@ -561,20 +574,7 @@ hotfix/xxx        # Critical fixes
 ## 📞 **Support & Contact**
 
 <div align="center">
-
-### 💬 **Get Help**
-
-[![Discord](https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/travelnest)
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/travelnest)
-[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:support@travelnest.com)
-
-### 📚 **Documentation**
-
-- 📖 [User Guide](https://docs.travelnest.com/users)
-- 🏢 [Company Guide](https://docs.travelnest.com/companies)
-- 👑 [Admin Guide](https://docs.travelnest.com/admins)
-- 🔧 [API Documentation](https://api.travelnest.com/docs)
-
+📞 00962772372187 (WhatsApp)
 </div>
 
 ---
@@ -595,8 +595,6 @@ If you find this project helpful, please consider giving it a ⭐ star!
 
 **Made with ❤️ by the Travel Nest Team**
 
-[![GitHub Profile](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/travel-nest)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/company/travel-nest)
-[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/travel_nest)
-
+[![GitHub Profile](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)]([https://github.com/](https://github.com/hamzatal/Travel-Nest))
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)]([https://linkedin.com/hamzatal](http://linkedin.com/in/hamza-tal/))
 </div>
